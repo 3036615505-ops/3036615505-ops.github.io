@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-fontsize="medium" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="第一章 初见 - 春华录">
+  <title>第一章 初见 - 春华录</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body class="reading-page">
+  <div class="reading-wrapper">
+    <!-- 刘海（桌面端显示） -->
+    <div class="notch"></div>
+
+    <!-- 模拟手机状态栏 -->
+    <div class="status-bar">
+      <span class="status-time" id="statusTime">21:27</span>
+      <span class="status-icons">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.24 4.24 0 00-6 0zm-4-4l2 2a7.07 7.07 0 0110 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+      </span>
+    </div>
+
+    <!-- 阅读进度细线 -->
+    <div class="reading-progress-line"></div>
+
+    <!-- 顶部栏（点击显示/隐藏） -->
+    <div class="reader-topbar" id="readerTopbar">
+      <a href="./" class="back-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </a>
+      <span class="chapter-name">第一章 初见</span>
+    </div>
+
+    <!-- 点击翻页区域 -->
+    <div class="reader-tap-area" id="readerTapArea"></div>
+
+    <!-- 章节内容 -->
+    <article class="chapter-content">
+      <h1>第一章 初见</h1>
+<p>三月的江南，细雨如织。
+</p>
+<p>沈屿背着书包走出校门的时候，雨忽然大了起来。他没有伞，便将书包顶在头上，沿着林荫道一路小跑。
+</p>
+<p>道旁的香樟树刚刚抽出新叶，嫩绿的颜色在雨中格外鲜明。光透过叶隙落下来，在地上铺出一片斑驳的光影——像是谁不小心打翻了一盘碎金。
+</p>
+<p>他跑到小路尽头，才看见那座石桥。
+</p>
+<p>桥很老，青石板被雨水洗得发亮，缝隙里长出细小的苔藓。桥下是一条窄窄的河，水面漂着几片落花，缓缓向下游流去。
+</p>
+<p>而桥上，站着一个女孩。
+</p>
+<p>她撑着一把透明的伞，正低头看着河水出神。雨珠顺着伞面滑落，在她脚边溅开小小的水花。风吹起她的裙角，像是白纸上落下的一笔淡墨。
+</p>
+<p>沈屿停住了脚步。
+</p>
+<p>不是因为她好看——虽然她确实好看——而是因为她站在那里，和这座桥、这条河、这场雨，浑然一体，仿佛一幅还没画完的画。
+</p>
+<p>"同学，"他脱口而出，"你在看什么？"
+</p>
+<p>女孩转过头来，眼睛弯弯的，像是藏了一整个春天。
+</p>
+<p>"在看水里的鱼，"她说，"你见过鱼在雨里游泳吗？它们好像很开心。"
+</p>
+<p>沈屿愣了一下，然后笑了。
+</p>
+<p>他走到桥上，站在她旁边，一起看河水里那些根本看不见的鱼。
+</p>
+<p>雨还在下，香樟树的叶子沙沙作响，像是在低声念一首没人听过的诗。
+</p>
+<p>那是他第一次见到林晚晴。
+</p>
+<p>很多年以后，他依然记得那天的雨，那座桥，还有她看鱼时微微歪着头的样子。
+</p>
+<p>春天的花，总是在你最没准备的时候开的。
+</p>
+    </article>
+
+    <!-- 章节底部导航 -->
+    <div class="chapter-bottom-nav">
+      <span>上一章</span>
+      <a href="chapter-02.html">下一章</a>
+    </div>
+
+    <!-- Home Indicator -->
+    <div class="home-indicator"></div>
+
+    <!-- 底部工具栏（点击显示/隐藏） -->
+    <div class="reader-bottombar" id="readerBottombar">
+      <!-- 进度 -->
+      <div class="reader-progress-area">
+        <span class="ch-name">第一章 初见</span>
+        <div class="reader-progress-bar">
+          <div class="fill" id="progressFill" style="width:0%"></div>
+        </div>
+        <span class="percent" id="progressPercent">0%</span>
+      </div>
+
+      <!-- 主题选择 -->
+      <div class="theme-row">
+        <div class="theme-circle white active" data-theme="light" onclick="setTheme('light')"><span class="label">白色</span></div>
+        <div class="theme-circle wheat" data-theme="wheat" onclick="setTheme('wheat')"><span class="label">牛皮纸</span></div>
+        <div class="theme-circle green" data-theme="green" onclick="setTheme('green')"><span class="label">护眼</span></div>
+        <div class="theme-circle brown" data-theme="brown" onclick="setTheme('brown')"><span class="label">深褐</span></div>
+        <div class="theme-circle dark" data-theme="dark" onclick="setTheme('dark')"><span class="label">夜间</span></div>
+      </div>
+
+      <!-- 字号 -->
+      <div class="fontsize-row">
+        <span class="label">字号</span>
+        <button class="fontsize-btn" onclick="changeFontSize(-1)">A-</button>
+        <span class="fontsize-current" id="fontSizeLabel">中</span>
+        <button class="fontsize-btn" onclick="changeFontSize(1)">A+</button>
+      </div>
+
+      <!-- 菜单 -->
+      <div class="reader-menu-row">
+        <a href="./">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          目录
+        </a>
+        <a href="#">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          上一章
+        </a>
+        <a href="chapter-02.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 6 15 12 9 18"/></svg>
+          下一章
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/reader.js"></script>
+</body>
+</html>
