@@ -1,13 +1,13 @@
 /**
  * 小说阅读器交互
- * 番茄/七猫风格：点击中央弹出工具栏，左右翻页
+ * 番茄风格：点击中央弹出工具栏，左右翻页
  */
 (function() {
   'use strict';
 
   var state = {
     fontSize: localStorage.getItem('reader-fontsize') || 'medium',
-    theme: localStorage.getItem('reader-theme') || 'light',
+    theme: localStorage.getItem('reader-theme') || 'wheat',
     barsVisible: false
   };
 
@@ -22,7 +22,7 @@
     initStatusBar();
   }
 
-  // ===== 状态栏时间 =====
+  // ===== 状态栏时间（桌面端） =====
   function initStatusBar() {
     function updateTime() {
       var el = document.getElementById('statusTime');
@@ -75,12 +75,18 @@
         brown: '#3b2e24',
         dark: '#1a1a1a'
       };
-      meta.content = colors[theme] || '#ffffff';
+      meta.content = colors[theme] || '#f5e6c8';
     }
   }
 
   window.setTheme = function(theme) {
     applyTheme(theme);
+  };
+
+  // ===== 夜间模式切换 =====
+  window.toggleNightMode = function() {
+    var newTheme = state.theme === 'dark' ? 'wheat' : 'dark';
+    applyTheme(newTheme);
   };
 
   // ===== 点击区域 =====
@@ -120,7 +126,6 @@
   function initReadingProgress() {
     var progressLine = document.querySelector('.reading-progress-line');
     var progressFill = document.getElementById('progressFill');
-    var progressPercent = document.getElementById('progressPercent');
 
     if (!progressLine && !progressFill) return;
 
@@ -132,7 +137,6 @@
 
       if (progressLine) progressLine.style.width = pct + '%';
       if (progressFill) progressFill.style.width = pct + '%';
-      if (progressPercent) progressPercent.textContent = pct + '%';
     }
 
     window.addEventListener('scroll', updateProgress, { passive: true });

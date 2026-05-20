@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-fontsize="medium" data-theme="light">
+<html lang="zh-CN" data-fontsize="medium" data-theme="wheat">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="theme-color" content="#f5e6c8">
   <meta name="description" content="第二章 同桌 - 春华录">
   <title>第二章 同桌 - 春华录</title>
   <link rel="stylesheet" href="../css/style.css">
@@ -13,7 +13,7 @@
     <!-- 刘海（桌面端显示） -->
     <div class="notch"></div>
 
-    <!-- 模拟手机状态栏 -->
+    <!-- 模拟手机状态栏（桌面端显示） -->
     <div class="status-bar">
       <span class="status-time" id="statusTime">21:27</span>
       <span class="status-icons">
@@ -113,24 +113,24 @@
       <span>下一章</span>
     </div>
 
-    <!-- Home Indicator -->
+    <!-- Home Indicator（桌面端显示） -->
     <div class="home-indicator"></div>
 
-    <!-- 底部工具栏（点击显示/隐藏） -->
+    <!-- 底部工具栏（点击显示/隐藏）- 番茄风格 -->
     <div class="reader-bottombar" id="readerBottombar">
-      <!-- 进度 -->
+      <!-- 进度 - 上一章 进度条 下一章 -->
       <div class="reader-progress-area">
-        <span class="ch-name">第二章 同桌</span>
+        <a href="chapter-01.html" class="prev-ch">上一章</a>
         <div class="reader-progress-bar">
           <div class="fill" id="progressFill" style="width:0%"></div>
         </div>
-        <span class="percent" id="progressPercent">0%</span>
+        <a href="#" class="next-ch">下一章</a>
       </div>
 
       <!-- 主题选择 -->
       <div class="theme-row">
-        <div class="theme-circle white active" data-theme="light" onclick="setTheme('light')"><span class="label">白色</span></div>
-        <div class="theme-circle wheat" data-theme="wheat" onclick="setTheme('wheat')"><span class="label">牛皮纸</span></div>
+        <div class="theme-circle white" data-theme="light" onclick="setTheme('light')"><span class="label">白色</span></div>
+        <div class="theme-circle wheat active" data-theme="wheat" onclick="setTheme('wheat')"><span class="label">牛皮纸</span></div>
         <div class="theme-circle green" data-theme="green" onclick="setTheme('green')"><span class="label">护眼</span></div>
         <div class="theme-circle brown" data-theme="brown" onclick="setTheme('brown')"><span class="label">深褐</span></div>
         <div class="theme-circle dark" data-theme="dark" onclick="setTheme('dark')"><span class="label">夜间</span></div>
@@ -144,20 +144,20 @@
         <button class="fontsize-btn" onclick="changeFontSize(1)">A+</button>
       </div>
 
-      <!-- 菜单 -->
+      <!-- 菜单 - 目录 夜间 设置 -->
       <div class="reader-menu-row">
         <a href="./">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
           目录
         </a>
-        <a href="chapter-01.html">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-          上一章
-        </a>
-        <a href="#">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 6 15 12 9 18"/></svg>
-          下一章
-        </a>
+        <button onclick="toggleNightMode()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+          夜间
+        </button>
+        <button>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          设置
+        </button>
       </div>
     </div>
   </div>
