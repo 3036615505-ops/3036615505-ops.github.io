@@ -1,6 +1,6 @@
 /**
- * 小说阅读器交互
- * 番茄风格：点击中央弹出工具栏，左右翻页
+ * 阅读器交互
+ * 点击中央弹出工具栏，左右区域翻页
  */
 (function() {
   'use strict';
@@ -19,21 +19,6 @@
     applyTheme(state.theme);
     initTapArea();
     initReadingProgress();
-    initStatusBar();
-  }
-
-  // ===== 状态栏时间（桌面端） =====
-  function initStatusBar() {
-    function updateTime() {
-      var el = document.getElementById('statusTime');
-      if (!el) return;
-      var now = new Date();
-      var h = now.getHours();
-      var m = now.getMinutes();
-      el.textContent = (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
-    }
-    updateTime();
-    setInterval(updateTime, 30000);
   }
 
   // ===== 字号 =====
@@ -60,8 +45,6 @@
     state.theme = theme;
     localStorage.setItem('reader-theme', theme);
 
-    document.body.style.background = '';
-
     document.querySelectorAll('.theme-circle').forEach(function(el) {
       el.classList.toggle('active', el.dataset.theme === theme);
     });
@@ -70,12 +53,11 @@
     if (meta) {
       var colors = {
         light: '#ffffff',
-        wheat: '#f5e6c8',
-        green: '#cce8cf',
-        brown: '#3b2e24',
-        dark: '#1a1a1a'
+        wheat: '#f5efe0',
+        green: '#d5e4d0',
+        dark: '#1c1c1c'
       };
-      meta.content = colors[theme] || '#f5e6c8';
+      meta.content = colors[theme] || '#f5efe0';
     }
   }
 
@@ -83,7 +65,6 @@
     applyTheme(theme);
   };
 
-  // ===== 夜间模式切换 =====
   window.toggleNightMode = function() {
     var newTheme = state.theme === 'dark' ? 'wheat' : 'dark';
     applyTheme(newTheme);
