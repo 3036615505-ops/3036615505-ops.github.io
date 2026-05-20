@@ -18,7 +18,7 @@
   --reading-bg: #f5efe0;
   --reading-text: #4a3b2f;
 
-  --font-size-base: 18px;
+  --font-size-base: 25px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -44,10 +44,9 @@
 }
 
 /* 字号 */
-[data-fontsize="small"]  { --font-size-base: 16px; }
-[data-fontsize="medium"] { --font-size-base: 18px; }
-[data-fontsize="large"]  { --font-size-base: 21px; }
-[data-fontsize="xlarge"] { --font-size-base: 24px; }
+[data-fontsize="small"]  { --font-size-base: 19px; }
+[data-fontsize="medium"] { --font-size-base: 22px; }
+[data-fontsize="large"]  { --font-size-base: 25px; }
 
 /* ===== 重置 ===== */
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -92,9 +91,20 @@ a { color: inherit; text-decoration: none; }
 /* 书架 */
 .bookshelf {
   padding: 0 16px 40px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px 16px;
+}
+
+.bookshelf .book-item {
+  width: 110px;
+}
+
+@media (min-width: 420px) {
+  .bookshelf .book-item {
+    width: 120px;
+  }
 }
 
 .book-item {
@@ -119,6 +129,18 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   justify-content: center;
   padding: 16px;
+}
+
+.book-cover::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(rgba(255,255,255,0.12), transparent);
+  border-radius: 6px 6px 0 0;
+  pointer-events: none;
 }
 
 .book-cover img {
@@ -220,6 +242,19 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   justify-content: center;
   padding: 14px;
+  position: relative;
+}
+
+.detail-cover::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(rgba(255,255,255,0.12), transparent);
+  border-radius: 6px 6px 0 0;
+  pointer-events: none;
 }
 
 .detail-cover img {
@@ -349,6 +384,7 @@ a { color: inherit; text-decoration: none; }
   border-bottom: 1px solid var(--border);
   font-size: 15px;
   transition: color 0.15s;
+  gap: 8px;
 }
 
 .chapter-item:last-child {
@@ -371,6 +407,12 @@ a { color: inherit; text-decoration: none; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.chapter-words {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 /* ===== 阅读页 ===== */
@@ -460,7 +502,7 @@ body.reading-page {
 /* 阅读内容 */
 .chapter-content {
   padding: 24px 20px 48px;
-  font-family: "Noto Serif SC", "Songti SC", Georgia, serif;
+  font-family: "FZYouHei", "方正悠黑", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   font-size: var(--font-size-base);
   line-height: 2.0;
   color: var(--reading-text);
@@ -681,6 +723,134 @@ body.reading-page {
   width: 22px;
   height: 22px;
 }
+
+/* ===== 目录下拉面板 ===== */
+.dir-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 400;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.dir-overlay.visible {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+.dir-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.35);
+}
+
+.dir-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 300px;
+  max-width: 85vw;
+  background: var(--bg-card);
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.dir-overlay.visible .dir-panel {
+  transform: translateX(0);
+}
+
+.dir-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  padding-top: calc(14px + env(safe-area-inset-top, 0px));
+  border-bottom: 1px solid var(--border);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.dir-close-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+}
+
+.dir-close-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.dir-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dir-item {
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
+  gap: 10px;
+  transition: background 0.15s;
+  border-bottom: 1px solid var(--border);
+}
+
+.dir-item:active {
+  background: rgba(0,0,0,0.03);
+}
+
+.dir-item.active {
+  color: var(--accent);
+}
+
+.dir-item-num {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.dir-item.active .dir-item-num {
+  color: var(--accent);
+}
+
+.dir-item-main {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dir-item-title {
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dir-item-words {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ===== 章节字数（详情页目录） ===== */
 
 /* ===== 选中 ===== */
 ::selection {
