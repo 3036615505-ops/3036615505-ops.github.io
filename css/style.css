@@ -1208,8 +1208,9 @@ body.reading-page {
 /* 底部菜单行 */
 .reader-menu-row {
   display: flex;
-  padding: 4px 0 12px;
+  padding: 6px 0 14px;
   border-top: 1px solid rgba(0,0,0,0.04);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent 65%);
 }
 
 .reader-menu-row a,
@@ -1397,22 +1398,118 @@ body.reading-page {
 }
 
 /* ===== 设置弹窗 ===== */
+.settings-modal .modal-panel,
+.modal-panel.settings-modal {
+  width: min(92vw, 380px);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--bg-card) 88%, var(--reading-bg) 12%);
+  box-shadow: 0 24px 64px rgba(37, 24, 10, 0.24);
+}
+
+.settings-modal .modal-header {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
 .settings-modal .modal-body {
-  padding: 16px 20px;
+  padding: 18px 20px 20px;
 }
 
 .setting-group {
-  margin-bottom: 20px;
+  margin-bottom: 22px;
 }
 
 .setting-group:last-child {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .setting-label {
   font-size: 13px;
   color: var(--text-muted);
   margin-bottom: 10px;
+}
+
+.progress-setting {
+  padding: 14px 14px 12px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(184,134,78,0.10) 0%, rgba(184,134,78,0.03) 100%);
+  border: 1px solid rgba(184,134,78,0.14);
+}
+
+.setting-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.progress-setting .setting-label {
+  margin-bottom: 0;
+  color: var(--text-secondary);
+}
+
+.progress-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+}
+
+.chapter-progress-slider {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.chapter-progress-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(184,134,78,0.95) 0%, rgba(212,160,80,0.92) var(--progress-pct, 0%), rgba(0,0,0,0.08) var(--progress-pct, 0%), rgba(0,0,0,0.08) 100%);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.2);
+}
+
+.chapter-progress-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: #fffaf3;
+  border: 2px solid var(--accent);
+  box-shadow: 0 4px 10px rgba(120,80,30,0.2);
+}
+
+.chapter-progress-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.08);
+}
+
+.chapter-progress-slider::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(184,134,78,0.95), rgba(212,160,80,0.92));
+}
+
+.chapter-progress-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fffaf3;
+  border: 2px solid var(--accent);
+  box-shadow: 0 4px 10px rgba(120,80,30,0.2);
+}
+
+.progress-hints {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 /* 主题圆圈（设置面板内） */

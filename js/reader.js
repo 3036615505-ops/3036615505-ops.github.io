@@ -23,6 +23,40 @@
 
   var chapterId = window.location.pathname.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-');
 
+  function clampProgress(pct) {
+    pct = parseInt(pct, 10);
+    if (isNaN(pct)) pct = 0;
+    if (pct < 0) pct = 0;
+    if (pct > 100) pct = 100;
+    return pct;
+  }
+
+  function getCurrentProgressPct() {
+    var dh = document.documentElement.scrollHeight - window.innerHeight;
+    if (dh <= 0) return 0;
+    return clampProgress(Math.round((window.scrollY / dh) * 100));
+  }
+
+  function scrollToProgress(pct) {
+    pct = clampProgress(pct);
+    var dh = document.documentElement.scrollHeight - window.innerHeight;
+    if (dh <= 0) return;
+    window.scrollTo({ top: (pct / 100) * dh, behavior: 'auto' });
+  }
+
+  function refreshProgressControls(pct) {
+    pct = clampProgress(pct);
+    updateProgressFill(pct);
+    var slider = document.getElementById('chapterProgressSlider');
+    if (slider) {
+      slider.value = pct;
+      slider.style.setProperty('--progress-pct', pct + '%');
+    }
+    var value = document.getElementById('chapterProgressValue');
+    if (value) value.textContent = pct + '%';
+  }
+
+
   /* ===== INIT ===== */
   function init() {
     applyFontSize(state.fontSize);
@@ -228,28 +262,27 @@
 
   /* ===== READING PROGRESS ===== */
   function saveProgress(pct) {
-    if (pct === undefined) {
-      var st = window.scrollY;
-      var dh = document.documentElement.scrollHeight - window.innerHeight;
-      pct = dh > 0 ? Math.min(Math.round((st / dh) * 100), 100) : 0;
-    }
+    if (pct === undefined) pct = getCurrentProgressPct();
+    pct = clampProgress(pct);
     localStorage.setItem('reader-pos-' + chapterId, pct);
-    if (pct >= 95) localStorage.setItem('reader-done-' + chapterId, '1');
-    updateProgressFill(pct);
+    if (pct >= 95) {
+      localStorage.setItem('reader-done-' + chapterId, '1');
+    } else {
+      localStorage.removeItem('reader-done-' + chapterId);
+    }
+    refreshProgressControls(pct);
   }
 
   function restoreProgress() {
-    var pct = parseInt(localStorage.getItem('reader-pos-' + chapterId)) || 0;
+    var pct = clampProgress(localStorage.getItem('reader-pos-' + chapterId));
     if (pct > 0 && pct < 95) {
-      setTimeout(function() {
-        var target = (pct / 100) * (document.documentElement.scrollHeight - window.innerHeight);
-        window.scrollTo({ top: target });
-      }, 200);
+      setTimeout(function() { scrollToProgress(pct); }, 200);
     }
-    updateProgressFill(pct);
+    refreshProgressControls(pct);
   }
 
   function updateProgressFill(pct) {
+    pct = clampProgress(pct);
     var line = document.querySelector('.reading-progress-line');
     var fill = document.getElementById('progressFill');
     if (line) line.style.width = pct + '%';
@@ -257,7 +290,7 @@
   }
 
   function initReadingProgress() {
-    updateProgressFill(parseInt(localStorage.getItem('reader-pos-' + chapterId)) || 0);
+    refreshProgressControls(clampProgress(localStorage.getItem('reader-pos-' + chapterId)));
     window.addEventListener('scroll', function() { saveProgress(); }, { passive: true });
     window.addEventListener('beforeunload', function() { saveProgress(); });
   }
@@ -353,6 +386,10 @@
           '</button>' +
         '</div>' +
         '<div class="modal-body">' +
+          '<div class="setting-group progress-setting"><div class="setting-row-head"><div class="setting-label">当前章节进度</div><span class="progress-value" id="chapterProgressValue">0%</span></div>' +
+            '<input type="range" min="0" max="100" value="0" class="chapter-progress-slider" id="chapterProgressSlider" aria-label="当前章节进度">' +
+            '<div class="progress-hints"><span>开头</span><span>本章末尾</span></div>' +
+          '</div>' +
           '<div class="setting-group"><div class="setting-label">阅读背景</div>' +
             '<div class="theme-row">' + themeHTML + '</div>' +
           '</div>' +
@@ -372,6 +409,18 @@
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
     ov.querySelector('.modal-backdrop').addEventListener('click', closeSettings);
+
+    var slider = document.getElementById('chapterProgressSlider');
+    if (slider) {
+      slider.addEventListener('input', function() {
+        refreshProgressControls(slider.value);
+      });
+      slider.addEventListener('change', function() {
+        var pct = clampProgress(slider.value);
+        scrollToProgress(pct);
+        saveProgress(pct);
+      });
+    }
   }
 
   window.openSettings = function() {
@@ -381,6 +430,7 @@
     circles.forEach(function(c) { c.classList.toggle('active', c.dataset.theme === state.theme); });
     var fl = document.getElementById('fontFamilyLabel');
     if (fl) fl.textContent = fontFamilyLabels[state.fontFamily] || '方正悠黑';
+    refreshProgressControls(getCurrentProgressPct());
     if (ov) { ov.classList.add('visible'); document.body.style.overflow = 'hidden'; }
     if (state.barsVisible) { stopAutoClose(); startAutoClose(); }
   };
