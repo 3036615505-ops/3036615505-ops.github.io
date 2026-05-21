@@ -73,9 +73,7 @@
     // ===== 引用数据（新增章节时在此添加） =====
     var quotes = [
       {
-        // 第一章
         source: '第一章·临渊羡鱼',
-        // 段落用数组表示，每段之间会渲染空行
         paragraphs: [
           '梧桐树又落了几片叶子，落在他们刚走过的路上。',
           '蝉在远处拉长了声调叫，好像夏天还没走，好像暑假还没结束。',
@@ -83,13 +81,24 @@
         ]
       },
       {
-        // 第二章
+        source: '第一章·临渊羡鱼',
+        paragraphs: [
+          '尾音拖出去很长，长过了这个九月。'
+        ]
+      },
+      {
+        source: '第一章·临渊羡鱼',
+        paragraphs: [
+          '那是高一开学的第一天。临渊羡鱼还没成为他们的老地方，院子里的梧桐树还没长过二楼的窗。',
+          '所有的事都还没开始，一切都还来得及。'
+        ]
+      },
+      {
         source: '第二章·前桌',
         paragraphs: [
           '忽然觉得，来上学这件事好像也没那么讨厌了。'
         ]
       }
-      // 新增章节时在此添加更多引用
     ];
 
     // 引用轮播（5s 切换，淡入淡出 + 位移）
@@ -110,51 +119,68 @@
     if (quoteOuter && quoteInner && quotes.length > 0) {
       quoteInner.innerHTML = renderQuote(currentIdx);
 
-      // 预计算最大高度，固定容器
-      var temp = document.createElement('div');
-      temp.style.cssText = 'position:absolute;visibility:hidden;padding:28px 28px 24px;text-align:center';
-      temp.style.width = quoteOuter.offsetWidth + 'px';
-      temp.style.font = getComputedStyle(quoteOuter).font;
-      document.body.appendChild(temp);
-      var maxH = 0;
-      quotes.forEach(function(q, i) {
-        temp.innerHTML = renderQuote(i);
-        if (temp.offsetHeight > maxH) maxH = temp.offsetHeight;
+      // 预计算最大高度，固定容器避免跳动
+      requestAnimationFrame(function() {
+        var temp = document.createElement('div');
+        temp.className = 'quote-inner';
+        temp.style.cssText = 'position:absolute;visibility:hidden;padding:28px 0 24px;text-align:center;width:' + quoteOuter.offsetWidth + 'px';
+        temp.style.font = getComputedStyle(quoteInner).font;
+        document.body.appendChild(temp);
+        var maxH = 0;
+        quotes.forEach(function(q, i) {
+          temp.innerHTML = renderQuote(i);
+          if (temp.offsetHeight > maxH) maxH = temp.offsetHeight;
+        });
+        document.body.removeChild(temp);
+        quoteOuter.style.height = maxH + 'px';
       });
-      document.body.removeChild(temp);
-      quoteOuter.style.minHeight = maxH + 'px';
 
       if (quotes.length > 1) {
         setInterval(function() {
           quoteInner.style.opacity = '0';
-          quoteInner.style.transform = 'translateY(-10px)';
+          quoteInner.style.transform = 'translateY(-6px)';
           setTimeout(function() {
             var next;
             do { next = Math.floor(Math.random() * quotes.length); } while (next === currentIdx && quotes.length > 1);
             currentIdx = next;
             quoteInner.innerHTML = renderQuote(currentIdx);
-            quoteInner.style.transform = 'translateY(10px)';
-            // force reflow
+            quoteInner.style.transform = 'translateY(6px)';
             quoteInner.offsetHeight;
             quoteInner.style.opacity = '1';
             quoteInner.style.transform = 'translateY(0)';
-          }, 500);
+          }, 550);
         }, 5000);
       }
     }
 
     // ===== 页面切换动画 =====
     var transition = document.getElementById('pageTransition');
-    window.addEventListener('pageshow', function() {
+
+    // 入场动画（从站内跳转过来时显示）
+    if (sessionStorage.getItem('page-transitioning')) {
+      sessionStorage.removeItem('page-transitioning');
+      if (transition) {
+        transition.classList.add('active');
+        setTimeout(function() { transition.classList.remove('active'); }, 600);
+      }
+    }
+
+    // 安全网：清除任何残留的遮罩
+    function resetOverlay() {
       document.querySelectorAll('.page-transition.active').forEach(function(el) { el.classList.remove('active'); });
-    });
+    }
+    window.addEventListener('pageshow', resetOverlay);
+    window.addEventListener('focus', resetOverlay);
+    document.addEventListener('visibilitychange', function() { if (!document.hidden) resetOverlay(); });
+
+    // 点击跳转
     document.querySelectorAll('a[href]').forEach(function(link) {
       link.addEventListener('click', function(e) {
         var href = link.getAttribute('href');
         if (!href || href.startsWith('#') || href.startsWith('javascript')) return;
         e.preventDefault();
-        if (transition) transition.classList.add('active');
-        setTimeout(function() { window.location.href = href; }, 320);
+        sessionStorage.setItem('page-transitioning', '1');
+        window.location.href = href;
       });
     });
 

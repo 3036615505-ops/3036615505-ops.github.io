@@ -111,18 +111,30 @@
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
 
-    window.addEventListener('pageshow', function() {
-      document.querySelectorAll('.page-transition.active').forEach(function(el) { el.classList.remove('active'); });
-    });
+    // 入场动画（从站内跳转过来时显示）
+    if (sessionStorage.getItem('page-transitioning')) {
+      sessionStorage.removeItem('page-transitioning');
+      ov.classList.add('active');
+      setTimeout(function() { ov.classList.remove('active'); }, 600);
+    }
 
+    // 安全网：清除任何残留的遮罩
+    function resetOverlay() {
+      document.querySelectorAll('.page-transition.active').forEach(function(el) { el.classList.remove('active'); });
+    }
+    window.addEventListener('pageshow', resetOverlay);
+    window.addEventListener('focus', resetOverlay);
+    document.addEventListener('visibilitychange', function() { if (!document.hidden) resetOverlay(); });
+
+    // 点击跳转
     document.addEventListener('click', function(e) {
       var link = e.target.closest('a[href]');
       if (!link) return;
       var href = link.getAttribute('href');
       if (!href || href.startsWith('#') || href.startsWith('javascript') || link.getAttribute('onclick')) return;
       e.preventDefault();
-      ov.classList.add('active');
-      setTimeout(function() { window.location.href = href; }, 320);
+      sessionStorage.setItem('page-transitioning', '1');
+      window.location.href = href;
     });
   }
 
