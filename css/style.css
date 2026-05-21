@@ -1494,7 +1494,36 @@ body.reading-page {
 
 /* 点击区域 */
 .reader-tap-area {
-  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.reader-tap-zone {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.reader-tap-zone.top {
+  top: 0;
+  height: 18vh;
+}
+
+.reader-tap-zone.middle {
+  top: 30vh;
+  height: 35vh;
+}
+
+.reader-tap-zone.bottom {
+  bottom: 0;
+  height: 18vh;
 }
 
 /* 阅读内容 */

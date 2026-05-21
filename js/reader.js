@@ -213,30 +213,22 @@
 
   /* ===== TAP AREA (上下滚动) ===== */
   function initTapArea() {
-    document.addEventListener('click', function(e) {
-      if (e.defaultPrevented) return;
-      if (window.getSelection && String(window.getSelection()).trim()) return;
-      if (e.target.closest('.reader-topbar, .reader-bottombar, .chapter-bottom-nav, .modal-panel, .modal-backdrop, .quote-mark, a, button, input, textarea, select')) return;
+    var tap = document.getElementById('readerTapArea');
+    if (!tap) return;
+    tap.innerHTML = '<button type="button" class="reader-tap-zone top" aria-label="向上翻页"></button><button type="button" class="reader-tap-zone middle" aria-label="显示工具栏"></button><button type="button" class="reader-tap-zone bottom" aria-label="向下翻页"></button>';
 
-      var dirOv = document.getElementById('dirOverlay');
-      if (dirOv && dirOv.classList.contains('visible')) { closeDirectory(); return; }
-      var setOv = document.getElementById('settingsOverlay');
-      if (setOv && setOv.classList.contains('visible')) { closeSettings(); return; }
-      var quotesOv = document.getElementById('quotesOverlay');
-      if (quotesOv && quotesOv.classList.contains('visible')) { closeQuotes(); return; }
+    tap.querySelector('.reader-tap-zone.top').addEventListener('click', function() {
+      if (state.barsVisible) hideBars();
+      window.scrollBy({ top: -window.innerHeight * 0.85, behavior: 'smooth' });
+    });
 
-      var y = e.clientY;
-      var h = window.innerHeight;
+    tap.querySelector('.reader-tap-zone.middle').addEventListener('click', function() {
+      state.barsVisible ? hideBars() : showBars();
+    });
 
-      if (y > h * 0.30 && y < h * 0.65) {
-        state.barsVisible ? hideBars() : showBars();
-      } else if (y <= h * 0.30) {
-        if (state.barsVisible) hideBars();
-        window.scrollBy({ top: -window.innerHeight * 0.85, behavior: 'smooth' });
-      } else {
-        if (state.barsVisible) hideBars();
-        window.scrollBy({ top: window.innerHeight * 0.85, behavior: 'smooth' });
-      }
+    tap.querySelector('.reader-tap-zone.bottom').addEventListener('click', function() {
+      if (state.barsVisible) hideBars();
+      window.scrollBy({ top: window.innerHeight * 0.85, behavior: 'smooth' });
     });
   }
 
