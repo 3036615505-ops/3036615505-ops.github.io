@@ -82,6 +82,8 @@
         <span class="leaf gold"></span>
         <span class="leaf green"></span>
         <span class="leaf brown"></span>
+        <span class="leaf gold soft"></span>
+        <span class="leaf green soft"></span>
       </div>
       <svg viewBox="0 0 40 40" fill="none" width="40" height="40">
         <path class="leaf-path" d="M20 4c0 0-8 4-10 12s4 16 10 20c6-4 12-12 10-20S20 4 20 4z" stroke="var(--accent)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
@@ -103,7 +105,7 @@
       }
       transition.classList.add('active');
       sessionStorage.setItem('page-transitioning', '1');
-      setTimeout(function() { window.location.href = href; }, 320);
+      setTimeout(function() { window.location.href = href; }, 120);
     }
 
     // 入场动画（从站内跳转过来时显示）
@@ -112,7 +114,7 @@
       if (transition) {
         requestAnimationFrame(function() {
           transition.classList.add('active');
-          setTimeout(function() { transition.classList.remove('active'); }, 850);
+          setTimeout(function() { transition.classList.remove('active'); }, 650);
         });
       }
     }
@@ -121,9 +123,9 @@
     function resetOverlay() {
       document.querySelectorAll('.page-transition.active').forEach(function(el) { el.classList.remove('active'); });
     }
-    window.addEventListener('pageshow', function() { setTimeout(resetOverlay, 900); });
-    window.addEventListener('focus', function() { setTimeout(resetOverlay, 900); });
-    document.addEventListener('visibilitychange', function() { if (!document.hidden) setTimeout(resetOverlay, 900); });
+    window.addEventListener('pageshow', function() { setTimeout(resetOverlay, 700); });
+    window.addEventListener('focus', function() { setTimeout(resetOverlay, 700); });
+    document.addEventListener('visibilitychange', function() { if (!document.hidden) setTimeout(resetOverlay, 700); });
 
     // 点击跳转
     document.querySelectorAll('a[href]').forEach(function(link) {

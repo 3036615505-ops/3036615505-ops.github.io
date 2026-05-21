@@ -131,7 +131,7 @@
     ov.id = 'pageTransition';
     ov.innerHTML =
       '<div class="transition-inner">' +
-        '<div class="transition-leaves"><span class="leaf gold"></span><span class="leaf green"></span><span class="leaf brown"></span></div>' +
+        '<div class="transition-leaves"><span class="leaf gold"></span><span class="leaf green"></span><span class="leaf brown"></span><span class="leaf gold soft"></span><span class="leaf green soft"></span></div>' +
         '<svg viewBox="0 0 40 40" fill="none" width="40" height="40">' +
           '<path class="leaf-path" d="M20 4c0 0-8 4-10 12s4 16 10 20c6-4 12-12 10-20S20 4 20 4z" stroke="var(--accent)" stroke-width="1.2" fill="none" stroke-linecap="round"/>' +
           '<path class="leaf-vein" d="M20 8v24M20 14l-4 4M20 14l4 4M20 20l-5 3M20 20l5 3" stroke="var(--accent)" stroke-width="0.8" opacity="0.5" stroke-linecap="round"/>' +
@@ -145,7 +145,7 @@
       sessionStorage.removeItem('page-transitioning');
       requestAnimationFrame(function() {
         ov.classList.add('active');
-        setTimeout(function() { ov.classList.remove('active'); }, 850);
+        setTimeout(function() { ov.classList.remove('active'); }, 650);
       });
     }
 
@@ -153,9 +153,9 @@
     function resetOverlay() {
       document.querySelectorAll('.page-transition.active').forEach(function(el) { el.classList.remove('active'); });
     }
-    window.addEventListener('pageshow', function() { setTimeout(resetOverlay, 900); });
-    window.addEventListener('focus', function() { setTimeout(resetOverlay, 900); });
-    document.addEventListener('visibilitychange', function() { if (!document.hidden) setTimeout(resetOverlay, 900); });
+    window.addEventListener('pageshow', function() { setTimeout(resetOverlay, 700); });
+    window.addEventListener('focus', function() { setTimeout(resetOverlay, 700); });
+    document.addEventListener('visibilitychange', function() { if (!document.hidden) setTimeout(resetOverlay, 700); });
 
     // 点击跳转
     document.addEventListener('click', function(e) {
@@ -166,7 +166,7 @@
       e.preventDefault();
       ov.classList.add('active');
       sessionStorage.setItem('page-transitioning', '1');
-      setTimeout(function() { window.location.href = href; }, 320);
+      setTimeout(function() { window.location.href = href; }, 120);
     });
   }
 
