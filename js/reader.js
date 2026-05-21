@@ -13,7 +13,8 @@
     settingsVisible: false,
     autoCloseTimer: null,
     currentPage: 0,
-    totalPages: 0
+    totalPages: 0,
+    pageFlipBusy: false
   };
 
   var fontSizes = ['small', 'medium', 'large'];
@@ -34,6 +35,23 @@
     if (state.pageMode) enterPageMode();
     updatePageModeUI();
     restoreProgress();
+
+    var resizeTimer;
+    window.addEventListener('resize', function() {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function() {
+        if (state.pageMode) {
+          var wrapper = document.querySelector('.reading-wrapper');
+          if (wrapper) wrapper.style.height = window.innerHeight + 'px';
+          recalcPages();
+          var content = document.querySelector('.chapter-content');
+          if (content) {
+            content.style.transition = 'none';
+            content.style.transform = 'translateY(-' + (state.currentPage * window.innerHeight) + 'px)';
+          }
+        }
+      }, 250);
+    });
   }
 
   /* ===== FONT SIZE ===== */
@@ -193,33 +211,51 @@
   function enterPageMode() {
     state.pageMode = true;
     document.body.classList.add('page-mode');
+    var wrapper = document.querySelector('.reading-wrapper');
+    if (wrapper) {
+      wrapper.style.height = window.innerHeight + 'px';
+      wrapper.style.overflow = 'hidden';
+    }
     recalcPages();
     updatePageModeUI();
     localStorage.setItem('reader-pagemode', 'true');
+    goToPage(state.currentPage, false);
   }
 
   function exitPageMode() {
     state.pageMode = false;
     document.body.classList.remove('page-mode');
+    var wrapper = document.querySelector('.reading-wrapper');
+    if (wrapper) {
+      wrapper.style.height = '';
+      wrapper.style.overflow = '';
+    }
+    var content = document.querySelector('.chapter-content');
+    if (content) content.style.transform = '';
     updatePageModeUI();
     localStorage.setItem('reader-pagemode', 'false');
+    // Restore scroll position from reading progress
+    restoreProgress();
   }
 
   function recalcPages() {
     var content = document.querySelector('.chapter-content');
     if (!content) return;
     var contentH = content.scrollHeight;
-    var vh = window.innerHeight;
-    var pageH = vh - 20; // small margin
+    var pageH = window.innerHeight;
     state.totalPages = Math.max(1, Math.ceil(contentH / pageH));
     if (state.currentPage >= state.totalPages) state.currentPage = state.totalPages - 1;
     updatePageIndicator();
   }
 
-  function goToPage(n) {
+  function goToPage(n, animate) {
+    if (state.pageFlipBusy) return;
+    if (animate === undefined) animate = true;
+
     if (n < 0) {
+      saveProgress(0);
       var p = document.querySelector('.prev-ch[href]:not([href="#"])');
-      if (p) { saveProgress(0); window.location.href = p.getAttribute('href'); }
+      if (p) window.location.href = p.getAttribute('href');
       return;
     }
     if (n >= state.totalPages) {
@@ -228,11 +264,46 @@
       if (nx) window.location.href = nx.getAttribute('href');
       return;
     }
-    state.currentPage = n;
-    var pageH = window.innerHeight - 20;
-    window.scrollTo({ top: n * pageH, behavior: 'smooth' });
-    updatePageIndicator();
-    saveProgress(Math.round((n / state.totalPages) * 100));
+
+    var content = document.querySelector('.chapter-content');
+    if (!content) return;
+
+    var pageH = window.innerHeight;
+    var currentPage = state.currentPage;
+    var targetPage = n;
+
+    if (!animate || currentPage === targetPage) {
+      content.style.transition = 'none';
+      content.style.transform = 'translateY(-' + (targetPage * pageH) + 'px)';
+      state.currentPage = targetPage;
+      updatePageIndicator();
+      saveProgress();
+    } else {
+      state.pageFlipBusy = true;
+      var direction = targetPage > currentPage ? 1 : -1;
+      var currentY = currentPage * pageH;
+      var targetY = targetPage * pageH;
+      var dur = 320;
+
+      content.style.transition = 'transform ' + (dur * 0.4) + 'ms ease-in';
+      content.style.transform = 'translateX(' + (-direction * 100) + '%) translateY(-' + currentY + 'px)';
+
+      setTimeout(function() {
+        content.style.transition = 'none';
+        content.style.transform = 'translateX(' + (direction * 100) + '%) translateY(-' + targetY + 'px)';
+        content.offsetHeight; // force reflow
+        content.style.transition = 'transform ' + (dur * 0.5) + 'ms ease-out';
+        content.style.transform = 'translateX(0) translateY(-' + targetY + 'px)';
+
+        state.currentPage = targetPage;
+        updatePageIndicator();
+        saveProgress();
+
+        setTimeout(function() {
+          state.pageFlipBusy = false;
+        }, dur * 0.5 + 30);
+      }, dur * 0.4);
+    }
   }
 
   function updatePageIndicator() {
@@ -261,7 +332,7 @@
   function saveProgress(pct) {
     if (pct === undefined) {
       if (state.pageMode) {
-        pct = state.totalPages > 1 ? Math.round((state.currentPage / state.totalPages) * 100) : 0;
+        pct = state.totalPages > 1 ? Math.round((state.currentPage / (state.totalPages - 1)) * 100) : 0;
       } else {
         var st = window.scrollY;
         var dh = document.documentElement.scrollHeight - window.innerHeight;
@@ -274,22 +345,29 @@
   }
 
   function restoreProgress() {
-    var pct = parseInt(localStorage.getItem('reader-pos-' + chapterId)) || 0;
-    if (pct > 0 && pct < 95) {
-      setTimeout(function() {
-        if (state.pageMode) {
-          var page = Math.floor((pct / 100) * state.totalPages);
-          state.currentPage = page;
-          var pageH = window.innerHeight - 20;
-          window.scrollTo({ top: page * pageH });
-          updatePageIndicator();
-        } else {
+    if (state.pageMode) {
+      var pct = parseInt(localStorage.getItem('reader-pos-' + chapterId)) || 0;
+      if (pct > 0 && pct < 95) {
+        var page = Math.floor((pct / 100) * (state.totalPages - 1));
+        state.currentPage = page;
+        var content = document.querySelector('.chapter-content');
+        if (content) {
+          content.style.transition = 'none';
+          content.style.transform = 'translateY(-' + (page * window.innerHeight) + 'px)';
+        }
+        updatePageIndicator();
+        saveProgress();
+      }
+    } else {
+      var pct = parseInt(localStorage.getItem('reader-pos-' + chapterId)) || 0;
+      if (pct > 0 && pct < 95) {
+        setTimeout(function() {
           var target = (pct / 100) * (document.documentElement.scrollHeight - window.innerHeight);
           window.scrollTo({ top: target });
-        }
-      }, 200);
+        }, 200);
+      }
     }
-    updateProgressFill(pct);
+    updateProgressFill(parseInt(localStorage.getItem('reader-pos-' + chapterId)) || 0);
   }
 
   function updateProgressFill(pct) {

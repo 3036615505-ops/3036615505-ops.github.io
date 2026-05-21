@@ -62,5 +62,45 @@
   </div>
 
   </div>
+  <script>
+  (function() {
+    function getChapterId(href) {
+      var path = '/novel/' + href;
+      return path.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-');
+    }
+    var items = document.querySelectorAll('.chapter-item');
+    var totalRead = 0, totalWords = 0;
+    var wordMap = { 'chapter-01.html': 2722, 'chapter-02.html': 2257 };
+    items.forEach(function(item) {
+      var href = item.getAttribute('href');
+      if (!href) return;
+      var id = getChapterId(href);
+      var pct = parseInt(localStorage.getItem('reader-pos-' + id)) || 0;
+      var done = localStorage.getItem('reader-done-' + id) === '1';
+      var words = wordMap[href] || 0;
+      if (pct > 0 || done) {
+        if (done) {
+          item.classList.add('done');
+          totalRead += words;
+        } else if (pct > 0 && pct < 95) {
+          var badge = document.createElement('span');
+          badge.className = 'chapter-progress';
+          badge.textContent = pct + '%';
+          var wordsSpan = item.querySelector('.chapter-words');
+          if (wordsSpan) wordsSpan.after(badge);
+          totalRead += Math.round(words * pct / 100);
+        }
+      }
+      totalWords += words;
+    });
+    if (totalRead > 0) {
+      var statsEl = document.querySelector('.stats');
+      if (statsEl) {
+        var readPct = Math.round(totalRead / totalWords * 100);
+        statsEl.textContent = statsEl.textContent + ' · 已读 ' + readPct + '%';
+      }
+    }
+  })();
+  </script>
 </body>
 </html>
