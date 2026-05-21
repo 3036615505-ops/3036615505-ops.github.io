@@ -60,13 +60,11 @@
 
   <!-- 页面切换动画 -->
   <div class="page-transition" id="pageTransition">
-    <div class="transition-book">
-      <div class="transition-page">
-        <svg viewBox="0 0 40 40" fill="none">
-          <path class="leaf-path" d="M20 4c0 0-8 4-10 12s4 16 10 20c6-4 12-12 10-20S20 4 20 4z" stroke="var(--accent)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-          <path class="leaf-vein" d="M20 8v24M20 14l-4 4M20 14l4 4M20 20l-5 3M20 20l5 3" stroke="var(--accent)" stroke-width="0.8" opacity="0.5" stroke-linecap="round"/>
-        </svg>
-      </div>
+    <div class="transition-inner">
+      <svg viewBox="0 0 40 40" fill="none" width="40" height="40">
+        <path class="leaf-path" d="M20 4c0 0-8 4-10 12s4 16 10 20c6-4 12-12 10-20S20 4 20 4z" stroke="var(--accent)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+        <path class="leaf-vein" d="M20 8v24M20 14l-4 4M20 14l4 4M20 20l-5 3M20 20l5 3" stroke="var(--accent)" stroke-width="0.8" opacity="0.5" stroke-linecap="round"/>
+      </svg>
     </div>
   </div>
 
@@ -94,17 +92,34 @@
       // 新增章节时在此添加更多引用
     ];
 
-    // 随机选一句引用
-    var q = quotes[Math.floor(Math.random() * quotes.length)];
+    // 引用轮播（5s 切换，淡入淡出）
     var quoteEl = document.getElementById('homeQuote');
-    if (quoteEl && q) {
+    var currentIdx = Math.floor(Math.random() * quotes.length);
+
+    function renderQuote(idx) {
+      var q = quotes[idx];
+      if (!q) return;
       var html = '<blockquote>';
-      q.paragraphs.forEach(function(p) {
-        html += '<p>' + p + '</p>';
-      });
+      q.paragraphs.forEach(function(p) { html += '<p>' + p + '</p>'; });
       html += '</blockquote>';
       html += '<div class="quote-source">—— ' + q.source + '</div>';
-      quoteEl.innerHTML = html;
+      return html;
+    }
+
+    if (quoteEl && quotes.length > 0) {
+      quoteEl.innerHTML = renderQuote(currentIdx);
+      if (quotes.length > 1) {
+        setInterval(function() {
+          quoteEl.style.opacity = '0';
+          setTimeout(function() {
+            var next;
+            do { next = Math.floor(Math.random() * quotes.length); } while (next === currentIdx && quotes.length > 1);
+            currentIdx = next;
+            quoteEl.innerHTML = renderQuote(currentIdx);
+            quoteEl.style.opacity = '1';
+          }, 400);
+        }, 5000);
+      }
     }
 
     // ===== 页面切换动画 =====

@@ -1,5 +1,5 @@
 /**
- * 阅读器 — 上下/左右双模式 · 阅读记录 · 目录弹窗 · 设置面板
+ * 阅读器 — 上下滚动 · 阅读记录 · 目录弹窗 · 设置面板
  */
 (function() {
   'use strict';
@@ -9,22 +9,17 @@
     fontSize: localStorage.getItem('reader-fontsize') || 'large',
     theme: localStorage.getItem('reader-theme') || 'wheat',
     fontFamily: localStorage.getItem('reader-fontfamily') || 'fzyouhei',
-    pageMode: localStorage.getItem('reader-pagemode') === 'true',
     barsVisible: false,
     settingsVisible: false,
-    autoCloseTimer: null,
-    currentPage: 0,
-    totalPages: 0,
-    pageFlipBusy: false,
-    pageBreaks: []
+    autoCloseTimer: null
   };
 
   var fontSizes = ['small', 'medium', 'large'];
   var fontSizeLabels = { small: '小', medium: '中', large: '大' };
   var fontSizeValues = { small: 19, medium: 22, large: 25 };
 
-  var fontFamilies = ['fzyouhei', 'system'];
-  var fontFamilyLabels = { fzyouhei: '方正悠黑', system: '系统字体' };
+  var fontFamilies = ['fzyouhei', 'serif'];
+  var fontFamilyLabels = { fzyouhei: '方正悠黑', serif: '宋体' };
 
   var chapterId = window.location.pathname.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-');
 
@@ -39,22 +34,7 @@
     initReadingProgress();
     initDirectoryPanel();
     initSettingsPanel();
-    if (state.pageMode) enterPageMode();
-    updatePageModeUI();
     restoreProgress();
-
-    var resizeTimer;
-    window.addEventListener('resize', function() {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(function() {
-        if (state.pageMode) {
-          var wrapper = document.querySelector('.reading-wrapper');
-          if (wrapper) wrapper.style.height = window.innerHeight + 'px';
-          recalcPages();
-          goToPage(state.currentPage, false);
-        }
-      }, 250);
-    });
   }
 
   /* ===== FONT SIZE ===== */
@@ -74,7 +54,6 @@
     if (idx < 0) idx = 0;
     if (idx >= fontSizes.length) idx = fontSizes.length - 1;
     applyFontSize(fontSizes[idx]);
-    if (state.pageMode) recalcPages();
   };
 
   /* ===== FONT FAMILY ===== */
@@ -84,13 +63,12 @@
     var content = document.querySelector('.chapter-content');
     if (!content) return;
     if (family === 'fzyouhei') {
-      content.style.fontFamily = '"FZYouHei", "方正悠黑", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif';
+      content.style.fontFamily = '"FZYouHei","方正悠黑","PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif';
     } else {
-      content.style.fontFamily = '-apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      content.style.fontFamily = '"Noto Serif SC","STSong","SimSun",serif';
     }
     var label = document.getElementById('fontFamilyLabel');
     if (label) label.textContent = fontFamilyLabels[family] || '方正悠黑';
-    if (state.pageMode) recalcPages();
   }
 
   window.toggleFontFamily = function() {
@@ -125,13 +103,11 @@
     ov.className = 'page-transition';
     ov.id = 'pageTransition';
     ov.innerHTML =
-      '<div class="transition-book">' +
-        '<div class="transition-page">' +
-          '<svg viewBox="0 0 40 40" fill="none">' +
-            '<path class="leaf-path" d="M20 4c0 0-8 4-10 12s4 16 10 20c6-4 12-12 10-20S20 4 20 4z" stroke="var(--accent)" stroke-width="1.2" fill="none" stroke-linecap="round"/>' +
-            '<path class="leaf-vein" d="M20 8v24M20 14l-4 4M20 14l4 4M20 20l-5 3M20 20l5 3" stroke="var(--accent)" stroke-width="0.8" opacity="0.5" stroke-linecap="round"/>' +
-          '</svg>' +
-        '</div>' +
+      '<div class="transition-inner">' +
+        '<svg viewBox="0 0 40 40" fill="none" width="40" height="40">' +
+          '<path class="leaf-path" d="M20 4c0 0-8 4-10 12s4 16 10 20c6-4 12-12 10-20S20 4 20 4z" stroke="var(--accent)" stroke-width="1.2" fill="none" stroke-linecap="round"/>' +
+          '<path class="leaf-vein" d="M20 8v24M20 14l-4 4M20 14l4 4M20 20l-5 3M20 20l5 3" stroke="var(--accent)" stroke-width="0.8" opacity="0.5" stroke-linecap="round"/>' +
+        '</svg>' +
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
 
@@ -175,7 +151,7 @@
     if (state.autoCloseTimer) { clearTimeout(state.autoCloseTimer); state.autoCloseTimer = null; }
   }
 
-  /* ===== TAP AREA ===== */
+  /* ===== TAP AREA (上下滚动) ===== */
   function initTapArea() {
     var tap = document.getElementById('readerTapArea');
     if (!tap) return;
@@ -189,34 +165,20 @@
       var rect = tap.getBoundingClientRect();
       var y = e.clientY - rect.top;
       var h = rect.height;
-      var x = e.clientX - rect.left;
-      var w = rect.width;
 
-      if (state.pageMode) {
-        if (x > w * 0.30 && x < w * 0.70) {
-          state.barsVisible ? hideBars() : showBars();
-        } else if (x <= w * 0.30) {
-          if (state.barsVisible) hideBars();
-          goToPage(state.currentPage - 1);
-        } else {
-          if (state.barsVisible) hideBars();
-          goToPage(state.currentPage + 1);
-        }
+      if (y > h * 0.30 && y < h * 0.65) {
+        state.barsVisible ? hideBars() : showBars();
+      } else if (y <= h * 0.30) {
+        if (state.barsVisible) hideBars();
+        window.scrollBy({ top: -window.innerHeight * 0.85, behavior: 'smooth' });
       } else {
-        if (y > h * 0.30 && y < h * 0.65) {
-          state.barsVisible ? hideBars() : showBars();
-        } else if (y <= h * 0.30) {
-          if (state.barsVisible) hideBars();
-          window.scrollBy({ top: -window.innerHeight * 0.85, behavior: 'smooth' });
-        } else {
-          if (state.barsVisible) hideBars();
-          window.scrollBy({ top: window.innerHeight * 0.85, behavior: 'smooth' });
-        }
+        if (state.barsVisible) hideBars();
+        window.scrollBy({ top: window.innerHeight * 0.85, behavior: 'smooth' });
       }
     });
   }
 
-  /* ===== SWIPE ===== */
+  /* ===== SWIPE (左右切章) ===== */
   function initSwipe() {
     var sx = 0, sy = 0, tracking = false;
 
@@ -235,171 +197,25 @@
       if (document.getElementById('dirOverlay') && document.getElementById('dirOverlay').classList.contains('visible')) return;
       if (document.getElementById('settingsOverlay') && document.getElementById('settingsOverlay').classList.contains('visible')) return;
 
-      if (state.pageMode) {
-        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
-          if (state.barsVisible) hideBars();
-          dx < 0 ? goToPage(state.currentPage + 1) : goToPage(state.currentPage - 1);
-        }
-      } else {
-        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 70) {
-          if (state.barsVisible) hideBars();
-          if (dx < 0) {
-            var n = document.querySelector('.next-ch[href]:not([href="#"])');
-            if (n) window.location.href = n.getAttribute('href');
-          } else {
-            var p = document.querySelector('.prev-ch[href]:not([href="#"])');
-            if (p) window.location.href = p.getAttribute('href');
-          }
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 70) {
+        if (state.barsVisible) hideBars();
+        if (dx < 0) {
+          var n = document.querySelector('.next-ch[href]:not([href="#"])');
+          if (n) window.location.href = n.getAttribute('href');
+        } else {
+          var p = document.querySelector('.prev-ch[href]:not([href="#"])');
+          if (p) window.location.href = p.getAttribute('href');
         }
       }
     }, { passive: true });
   }
 
-  /* ===== PAGE MODE (段落边界翻页) ===== */
-  function enterPageMode() {
-    state.pageMode = true;
-    document.body.classList.add('page-mode');
-    var wrapper = document.querySelector('.reading-wrapper');
-    if (wrapper) {
-      wrapper.style.height = window.innerHeight + 'px';
-      wrapper.style.overflow = 'hidden';
-    }
-    recalcPages();
-    updatePageModeUI();
-    localStorage.setItem('reader-pagemode', 'true');
-    goToPage(state.currentPage, false);
-  }
-
-  function exitPageMode() {
-    state.pageMode = false;
-    document.body.classList.remove('page-mode');
-    var wrapper = document.querySelector('.reading-wrapper');
-    if (wrapper) {
-      wrapper.style.height = '';
-      wrapper.style.overflow = '';
-    }
-    var content = document.querySelector('.chapter-content');
-    if (content) content.style.transform = '';
-    updatePageModeUI();
-    localStorage.setItem('reader-pagemode', 'false');
-    restoreProgress();
-  }
-
-  /* 计算段落边界的分页点 */
-  function recalcPages() {
-    var content = document.querySelector('.chapter-content');
-    if (!content) return;
-
-    var pageH = window.innerHeight;
-    var children = content.children;
-    state.pageBreaks = [0]; // 第一页从0开始
-
-    var currentY = 0;
-    var pageStartY = 0;
-
-    for (var i = 0; i < children.length; i++) {
-      var child = children[i];
-      var rect = child.getBoundingClientRect();
-      var contentRect = content.getBoundingClientRect();
-      var childTop = rect.top - contentRect.top + content.scrollTop;
-      var childBottom = childTop + rect.height;
-
-      // 如果这个元素超出了当前页的范围，在这里分页
-      if (childBottom - pageStartY > pageH && childTop - pageStartY > pageH * 0.15) {
-        // 在这个段落之前分页
-        state.pageBreaks.push(childTop);
-        pageStartY = childTop;
-      }
-      currentY = childBottom;
-    }
-
-    state.totalPages = state.pageBreaks.length;
-    if (state.currentPage >= state.totalPages) state.currentPage = state.totalPages - 1;
-    if (state.currentPage < 0) state.currentPage = 0;
-    updatePageIndicator();
-  }
-
-  function goToPage(n, animate) {
-    if (state.pageFlipBusy) return;
-    if (animate === undefined) animate = true;
-
-    if (n < 0) {
-      saveProgress(0);
-      var p = document.querySelector('.prev-ch[href]:not([href="#"])');
-      if (p) window.location.href = p.getAttribute('href');
-      return;
-    }
-    if (n >= state.totalPages) {
-      saveProgress(100);
-      var nx = document.querySelector('.next-ch[href]:not([href="#"])');
-      if (nx) window.location.href = nx.getAttribute('href');
-      return;
-    }
-
-    var content = document.querySelector('.chapter-content');
-    if (!content) return;
-
-    var targetY = state.pageBreaks[n] || 0;
-    var currentY = state.pageBreaks[state.currentPage] || 0;
-
-    if (!animate || currentY === targetY) {
-      content.style.transition = 'none';
-      content.style.transform = 'translateY(-' + targetY + 'px)';
-      state.currentPage = n;
-      updatePageIndicator();
-      saveProgress();
-    } else {
-      state.pageFlipBusy = true;
-      var direction = n > state.currentPage ? 1 : -1;
-      var dur = 300;
-
-      content.style.transition = 'transform ' + (dur * 0.4) + 'ms ease-in';
-      content.style.transform = 'translateX(' + (-direction * 60) + 'px) translateY(-' + currentY + 'px)';
-
-      setTimeout(function() {
-        content.style.transition = 'none';
-        content.style.transform = 'translateX(' + (direction * 60) + 'px) translateY(-' + targetY + 'px)';
-        content.offsetHeight;
-        content.style.transition = 'transform ' + (dur * 0.5) + 'ms ease-out';
-        content.style.transform = 'translateX(0) translateY(-' + targetY + 'px)';
-
-        state.currentPage = n;
-        updatePageIndicator();
-        saveProgress();
-
-        setTimeout(function() { state.pageFlipBusy = false; }, dur * 0.5 + 30);
-      }, dur * 0.4);
-    }
-  }
-
-  function updatePageIndicator() {
-    var el = document.getElementById('pageIndicator');
-    if (!el) return;
-    el.textContent = (state.currentPage + 1) + ' / ' + state.totalPages;
-  }
-
-  function updatePageModeUI() {
-    var btn = document.getElementById('pageModeToggle');
-    if (btn) btn.textContent = state.pageMode ? '左右翻页' : '上下滑动';
-    var ind = document.getElementById('pageIndicator');
-    if (ind) ind.style.display = state.pageMode ? 'flex' : 'none';
-  }
-
-  window.togglePageMode = function() {
-    if (state.pageMode) { exitPageMode(); } else { enterPageMode(); }
-    if (state.barsVisible) { stopAutoClose(); startAutoClose(); }
-  };
-
   /* ===== READING PROGRESS ===== */
   function saveProgress(pct) {
     if (pct === undefined) {
-      if (state.pageMode) {
-        pct = state.totalPages > 1 ? Math.round((state.currentPage / (state.totalPages - 1)) * 100) : 0;
-      } else {
-        var st = window.scrollY;
-        var dh = document.documentElement.scrollHeight - window.innerHeight;
-        pct = dh > 0 ? Math.min(Math.round((st / dh) * 100), 100) : 0;
-      }
+      var st = window.scrollY;
+      var dh = document.documentElement.scrollHeight - window.innerHeight;
+      pct = dh > 0 ? Math.min(Math.round((st / dh) * 100), 100) : 0;
     }
     localStorage.setItem('reader-pos-' + chapterId, pct);
     if (pct >= 95) localStorage.setItem('reader-done-' + chapterId, '1');
@@ -408,19 +224,11 @@
 
   function restoreProgress() {
     var pct = parseInt(localStorage.getItem('reader-pos-' + chapterId)) || 0;
-    if (state.pageMode) {
-      if (pct > 0 && pct < 95) {
-        var page = Math.floor((pct / 100) * (state.totalPages - 1));
-        state.currentPage = page;
-        goToPage(page, false);
-      }
-    } else {
-      if (pct > 0 && pct < 95) {
-        setTimeout(function() {
-          var target = (pct / 100) * (document.documentElement.scrollHeight - window.innerHeight);
-          window.scrollTo({ top: target });
-        }, 200);
-      }
+    if (pct > 0 && pct < 95) {
+      setTimeout(function() {
+        var target = (pct / 100) * (document.documentElement.scrollHeight - window.innerHeight);
+        window.scrollTo({ top: target });
+      }, 200);
     }
     updateProgressFill(pct);
   }
@@ -434,13 +242,12 @@
 
   function initReadingProgress() {
     updateProgressFill(parseInt(localStorage.getItem('reader-pos-' + chapterId)) || 0);
-    window.addEventListener('scroll', function() { if (!state.pageMode) saveProgress(); }, { passive: true });
+    window.addEventListener('scroll', function() { saveProgress(); }, { passive: true });
     window.addEventListener('beforeunload', function() { saveProgress(); });
   }
 
-  /* ===== DIRECTORY PANEL (同步阅读进度) ===== */
+  /* ===== DIRECTORY PANEL ===== */
   function getChapterStorageId(href) {
-    // 与 chapterId 生成逻辑保持一致：基于 /novel/{href} 的路径
     var path = '/novel/' + href;
     return path.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-');
   }
@@ -545,11 +352,6 @@
               '<button id="fontFamilyToggle" class="mode-toggle-btn" onclick="toggleFontFamily()"><span id="fontFamilyLabel">' + (fontFamilyLabels[state.fontFamily] || '方正悠黑') + '</span></button>' +
             '</div>' +
           '</div>' +
-          '<div class="setting-group"><div class="setting-label">阅读模式</div>' +
-            '<div class="mode-toggle-row">' +
-              '<button id="pageModeToggle" class="mode-toggle-btn" onclick="togglePageMode()">上下滑动</button>' +
-            '</div>' +
-          '</div>' +
         '</div>' +
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
@@ -561,7 +363,6 @@
     if (!ov) { initSettingsPanel(); ov = document.getElementById('settingsOverlay'); }
     var circles = ov.querySelectorAll('.theme-circle');
     circles.forEach(function(c) { c.classList.toggle('active', c.dataset.theme === state.theme); });
-    updatePageModeUI();
     var fl = document.getElementById('fontFamilyLabel');
     if (fl) fl.textContent = fontFamilyLabels[state.fontFamily] || '方正悠黑';
     if (ov) { ov.classList.add('visible'); document.body.style.overflow = 'hidden'; }
