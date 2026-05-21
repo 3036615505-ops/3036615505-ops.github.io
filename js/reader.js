@@ -213,18 +213,20 @@
 
   /* ===== TAP AREA (上下滚动) ===== */
   function initTapArea() {
-    var tap = document.getElementById('readerTapArea');
-    if (!tap) return;
+    document.addEventListener('click', function(e) {
+      if (e.defaultPrevented) return;
+      if (window.getSelection && String(window.getSelection()).trim()) return;
+      if (e.target.closest('.reader-topbar, .reader-bottombar, .chapter-bottom-nav, .modal-panel, .modal-backdrop, .quote-mark, a, button, input, textarea, select')) return;
 
-    tap.addEventListener('click', function(e) {
       var dirOv = document.getElementById('dirOverlay');
       if (dirOv && dirOv.classList.contains('visible')) { closeDirectory(); return; }
       var setOv = document.getElementById('settingsOverlay');
       if (setOv && setOv.classList.contains('visible')) { closeSettings(); return; }
+      var quotesOv = document.getElementById('quotesOverlay');
+      if (quotesOv && quotesOv.classList.contains('visible')) { closeQuotes(); return; }
 
-      var rect = tap.getBoundingClientRect();
-      var y = e.clientY - rect.top;
-      var h = rect.height;
+      var y = e.clientY;
+      var h = window.innerHeight;
 
       if (y > h * 0.30 && y < h * 0.65) {
         state.barsVisible ? hideBars() : showBars();

@@ -1494,13 +1494,7 @@ body.reading-page {
 
 /* 点击区域 */
 .reader-tap-area {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 100;
-  pointer-events: auto;
+  display: none;
 }
 
 /* 阅读内容 */
@@ -2283,13 +2277,6 @@ body.reading-page {
   }
 
   .reading-wrapper .reading-progress-line {
-    max-width: 420px;
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
-  }
-
-  .reading-wrapper .reader-tap-area {
     max-width: 420px;
     left: 50%;
     right: auto;
