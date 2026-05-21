@@ -42,9 +42,20 @@
 }
 
 @keyframes leafSway {
-  0%, 100% { transform: rotate(0deg); }
-  25%      { transform: rotate(8deg); }
-  75%      { transform: rotate(-8deg); }
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  25%      { transform: rotate(6deg) translateY(-2px); }
+  75%      { transform: rotate(-6deg) translateY(2px); }
+}
+
+@keyframes loadingLeafOrbit {
+  0%   { transform: rotate(0deg) translateY(-34px) rotate(0deg); opacity: 0.18; }
+  35%  { opacity: 0.85; }
+  100% { transform: rotate(360deg) translateY(-34px) rotate(-360deg); opacity: 0.18; }
+}
+
+@keyframes loadingPulse {
+  0%, 100% { transform: scale(1); opacity: 0.72; }
+  50%      { transform: scale(1.08); opacity: 1; }
 }
 
 .page-transition {
@@ -52,7 +63,7 @@
   top: 0; left: 0; right: 0; bottom: 0;
   z-index: 9999;
   pointer-events: none;
-  background: var(--bg);
+  background: radial-gradient(circle at 50% 38%, rgba(255,255,255,0.55), transparent 34%), var(--site-bg);
   opacity: 0;
   transition: opacity 0.25s ease;
   display: flex;
@@ -66,16 +77,77 @@
 }
 
 .transition-inner {
+  width: 128px;
+  height: 128px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   opacity: 0;
   transition: opacity 0.2s;
+  position: relative;
+}
+
+.transition-inner::before {
+  content: '';
+  position: absolute;
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  background: rgba(255, 250, 242, 0.74);
+  border: 1px solid rgba(184,134,78,0.12);
+  box-shadow: 0 16px 40px rgba(76, 48, 18, 0.10);
+}
+
+.transition-inner svg {
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 6px 14px rgba(184,134,78,0.16));
 }
 
 .page-transition.active .transition-inner {
   opacity: 1;
+}
+
+.page-transition.active .transition-inner svg {
   animation: leafSway 1.2s ease-in-out infinite;
+}
+
+.transition-leaves {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  animation: loadingPulse 1.8s ease-in-out infinite;
+}
+
+.transition-leaves .leaf {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 11px;
+  height: 15px;
+  margin-left: -5.5px;
+  margin-top: -7.5px;
+  border-radius: 70% 30% 70% 30%;
+  transform-origin: 50% 50%;
+  opacity: 0.7;
+}
+
+.transition-leaves .gold { background: var(--leaf-gold); animation: loadingLeafOrbit 1.6s linear infinite; }
+.transition-leaves .green { background: var(--leaf-green); animation: loadingLeafOrbit 1.6s linear -0.53s infinite; }
+.transition-leaves .brown { background: var(--leaf-brown); animation: loadingLeafOrbit 1.6s linear -1.06s infinite; }
+
+.transition-text {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  z-index: 2;
 }
 
 .page-transition.active .leaf-path {

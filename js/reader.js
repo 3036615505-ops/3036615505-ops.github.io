@@ -131,10 +131,12 @@
     ov.id = 'pageTransition';
     ov.innerHTML =
       '<div class="transition-inner">' +
+        '<div class="transition-leaves"><span class="leaf gold"></span><span class="leaf green"></span><span class="leaf brown"></span></div>' +
         '<svg viewBox="0 0 40 40" fill="none" width="40" height="40">' +
           '<path class="leaf-path" d="M20 4c0 0-8 4-10 12s4 16 10 20c6-4 12-12 10-20S20 4 20 4z" stroke="var(--accent)" stroke-width="1.2" fill="none" stroke-linecap="round"/>' +
           '<path class="leaf-vein" d="M20 8v24M20 14l-4 4M20 14l4 4M20 20l-5 3M20 20l5 3" stroke="var(--accent)" stroke-width="0.8" opacity="0.5" stroke-linecap="round"/>' +
         '</svg>' +
+        '<div class="transition-text">梧桐叶正落下</div>' +
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
 
