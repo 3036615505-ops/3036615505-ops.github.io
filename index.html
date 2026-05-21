@@ -123,15 +123,14 @@
       requestAnimationFrame(function() {
         var temp = document.createElement('div');
         temp.className = 'quote-inner';
-        temp.style.cssText = 'position:absolute;visibility:hidden;padding:28px 0 24px;text-align:center;width:' + quoteOuter.offsetWidth + 'px';
-        temp.style.font = getComputedStyle(quoteInner).font;
-        document.body.appendChild(temp);
+        temp.style.cssText = 'position:absolute;visibility:hidden;overflow:hidden;padding:28px 0 24px;text-align:center;width:' + quoteOuter.offsetWidth + 'px';
+        quoteOuter.appendChild(temp);
         var maxH = 0;
         quotes.forEach(function(q, i) {
           temp.innerHTML = renderQuote(i);
           if (temp.offsetHeight > maxH) maxH = temp.offsetHeight;
         });
-        document.body.removeChild(temp);
+        quoteOuter.removeChild(temp);
         quoteOuter.style.height = maxH + 'px';
       });
 
