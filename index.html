@@ -14,19 +14,14 @@
   <!-- 首页 Hero -->
   <div class="home-hero">
     <div class="floating-leaves">
-      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span>
     </div>
     <h1>临渊羡鱼</h1>
     <div class="subtitle">青春 · 校园 · 成长</div>
   </div>
 
-  <!-- 引用 -->
-  <div class="home-quote">
-    <blockquote>
-      梧桐树又落了几片叶子，落在他们刚走过的路上。蝉在远处拉长了声调叫，好像夏天还没走，好像暑假还没结束。但那一天其实已经是秋天了。
-    </blockquote>
-    <div class="quote-source">—— 第一章·临渊羡鱼</div>
-  </div>
+  <!-- 引用（多章轮播） -->
+  <div class="home-quote" id="homeQuote"></div>
 
   <!-- 继续阅读卡片 -->
   <div class="home-reading-card" id="homeReadingCard">
@@ -65,25 +60,62 @@
 
   <!-- 页面切换动画 -->
   <div class="page-transition" id="pageTransition">
-    <svg class="leaf-icon" viewBox="0 0 24 24" fill="none">
-      <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5s1.75 3.75 1.75 3.75" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
+    <div class="transition-book">
+      <div class="transition-page">
+        <svg viewBox="0 0 40 40" fill="none">
+          <path class="leaf-path" d="M20 4c0 0-8 4-10 12s4 16 10 20c6-4 12-12 10-20S20 4 20 4z" stroke="var(--accent)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+          <path class="leaf-vein" d="M20 8v24M20 14l-4 4M20 14l4 4M20 20l-5 3M20 20l5 3" stroke="var(--accent)" stroke-width="0.8" opacity="0.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
   </div>
 
   <script>
   (function() {
+    // ===== 引用数据（新增章节时在此添加） =====
+    var quotes = [
+      {
+        // 第一章
+        source: '第一章·临渊羡鱼',
+        // 段落用数组表示，每段之间会渲染空行
+        paragraphs: [
+          '梧桐树又落了几片叶子，落在他们刚走过的路上。',
+          '蝉在远处拉长了声调叫，好像夏天还没走，好像暑假还没结束。',
+          '但那一天其实已经是秋天了。'
+        ]
+      },
+      {
+        // 第二章
+        source: '第二章·前桌',
+        paragraphs: [
+          '忽然觉得，来上学这件事好像也没那么讨厌了。'
+        ]
+      }
+      // 新增章节时在此添加更多引用
+    ];
+
+    // 随机选一句引用
+    var q = quotes[Math.floor(Math.random() * quotes.length)];
+    var quoteEl = document.getElementById('homeQuote');
+    if (quoteEl && q) {
+      var html = '<blockquote>';
+      q.paragraphs.forEach(function(p) {
+        html += '<p>' + p + '</p>';
+      });
+      html += '</blockquote>';
+      html += '<div class="quote-source">—— ' + q.source + '</div>';
+      quoteEl.innerHTML = html;
+    }
+
     // ===== 页面切换动画 =====
     var transition = document.getElementById('pageTransition');
-    var links = document.querySelectorAll('a[href]');
-    links.forEach(function(link) {
+    document.querySelectorAll('a[href]').forEach(function(link) {
       link.addEventListener('click', function(e) {
         var href = link.getAttribute('href');
         if (!href || href.startsWith('#') || href.startsWith('javascript')) return;
         e.preventDefault();
         if (transition) transition.classList.add('active');
-        setTimeout(function() {
-          window.location.href = href;
-        }, 280);
+        setTimeout(function() { window.location.href = href; }, 320);
       });
     });
 
@@ -124,7 +156,6 @@
       });
     });
 
-    // 更新书架封面进度角标
     document.querySelectorAll('.book-item').forEach(function(item) {
       var novelId = item.dataset.novelId;
       if (!novelId || !chapterInfo[novelId]) return;
@@ -152,7 +183,6 @@
       cover.appendChild(badge);
     });
 
-    // 继续阅读卡片
     if (totalRead > 0) {
       var card = document.getElementById('homeReadingCard');
       if (card) {
@@ -160,22 +190,14 @@
         var readPct = Math.round(totalRead / totalWords * 100);
         document.getElementById('homeReadPct').textContent = readPct + '%';
         document.getElementById('homeReadFill').style.width = readPct + '%';
-
-        // 章节进度点
         var dotsEl = document.getElementById('homeChapterDots');
         if (dotsEl) {
-          var html = '';
-          chapterDots.forEach(function(d) {
-            html += '<div class="ch-dot ' + d + '"></div>';
-          });
-          dotsEl.innerHTML = html;
+          var dhtml = '';
+          chapterDots.forEach(function(d) { dhtml += '<div class="ch-dot ' + d + '"></div>'; });
+          dotsEl.innerHTML = dhtml;
         }
-
-        // 继续阅读按钮
         var btn = document.getElementById('homeContinueBtn');
-        if (btn && lastReadChapter) {
-          btn.href = 'novel/' + lastReadChapter;
-        }
+        if (btn && lastReadChapter) btn.href = 'novel/' + lastReadChapter;
       }
     }
   })();

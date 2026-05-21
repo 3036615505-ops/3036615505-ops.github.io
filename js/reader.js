@@ -8,24 +8,30 @@
   var state = {
     fontSize: localStorage.getItem('reader-fontsize') || 'large',
     theme: localStorage.getItem('reader-theme') || 'wheat',
+    fontFamily: localStorage.getItem('reader-fontfamily') || 'fzyouhei',
     pageMode: localStorage.getItem('reader-pagemode') === 'true',
     barsVisible: false,
     settingsVisible: false,
     autoCloseTimer: null,
     currentPage: 0,
     totalPages: 0,
-    pageFlipBusy: false
+    pageFlipBusy: false,
+    pageBreaks: []
   };
 
   var fontSizes = ['small', 'medium', 'large'];
   var fontSizeLabels = { small: '小', medium: '中', large: '大' };
   var fontSizeValues = { small: 19, medium: 22, large: 25 };
 
+  var fontFamilies = ['fzyouhei', 'system'];
+  var fontFamilyLabels = { fzyouhei: '方正悠黑', system: '系统字体' };
+
   var chapterId = window.location.pathname.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-');
 
   /* ===== INIT ===== */
   function init() {
     applyFontSize(state.fontSize);
+    applyFontFamily(state.fontFamily);
     applyTheme(state.theme);
     initPageTransition();
     initTapArea();
@@ -45,11 +51,7 @@
           var wrapper = document.querySelector('.reading-wrapper');
           if (wrapper) wrapper.style.height = window.innerHeight + 'px';
           recalcPages();
-          var content = document.querySelector('.chapter-content');
-          if (content) {
-            content.style.transition = 'none';
-            content.style.transform = 'translateY(-' + (state.currentPage * window.innerHeight) + 'px)';
-          }
+          goToPage(state.currentPage, false);
         }
       }, 250);
     });
@@ -75,6 +77,28 @@
     if (state.pageMode) recalcPages();
   };
 
+  /* ===== FONT FAMILY ===== */
+  function applyFontFamily(family) {
+    state.fontFamily = family;
+    localStorage.setItem('reader-fontfamily', family);
+    var content = document.querySelector('.chapter-content');
+    if (!content) return;
+    if (family === 'fzyouhei') {
+      content.style.fontFamily = '"FZYouHei", "方正悠黑", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif';
+    } else {
+      content.style.fontFamily = '-apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+    }
+    var label = document.getElementById('fontFamilyLabel');
+    if (label) label.textContent = fontFamilyLabels[family] || '方正悠黑';
+    if (state.pageMode) recalcPages();
+  }
+
+  window.toggleFontFamily = function() {
+    var idx = fontFamilies.indexOf(state.fontFamily);
+    idx = (idx + 1) % fontFamilies.length;
+    applyFontFamily(fontFamilies[idx]);
+  };
+
   /* ===== THEME ===== */
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
@@ -97,14 +121,20 @@
 
   /* ===== PAGE TRANSITION ===== */
   function initPageTransition() {
-    // 创建过渡遮罩
     var ov = document.createElement('div');
     ov.className = 'page-transition';
     ov.id = 'pageTransition';
-    ov.innerHTML = '<svg class="leaf-icon" viewBox="0 0 24 24" fill="none"><path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5s1.75 3.75 1.75 3.75" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    ov.innerHTML =
+      '<div class="transition-book">' +
+        '<div class="transition-page">' +
+          '<svg viewBox="0 0 40 40" fill="none">' +
+            '<path class="leaf-path" d="M20 4c0 0-8 4-10 12s4 16 10 20c6-4 12-12 10-20S20 4 20 4z" stroke="var(--accent)" stroke-width="1.2" fill="none" stroke-linecap="round"/>' +
+            '<path class="leaf-vein" d="M20 8v24M20 14l-4 4M20 14l4 4M20 20l-5 3M20 20l5 3" stroke="var(--accent)" stroke-width="0.8" opacity="0.5" stroke-linecap="round"/>' +
+          '</svg>' +
+        '</div>' +
+      '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
 
-    // 拦截所有链接点击
     document.addEventListener('click', function(e) {
       var link = e.target.closest('a[href]');
       if (!link) return;
@@ -112,7 +142,7 @@
       if (!href || href.startsWith('#') || href.startsWith('javascript') || link.getAttribute('onclick')) return;
       e.preventDefault();
       ov.classList.add('active');
-      setTimeout(function() { window.location.href = href; }, 280);
+      setTimeout(function() { window.location.href = href; }, 320);
     });
   }
 
@@ -145,7 +175,7 @@
     if (state.autoCloseTimer) { clearTimeout(state.autoCloseTimer); state.autoCloseTimer = null; }
   }
 
-  /* ===== TAP AREA (vertical zones) ===== */
+  /* ===== TAP AREA ===== */
   function initTapArea() {
     var tap = document.getElementById('readerTapArea');
     if (!tap) return;
@@ -163,7 +193,6 @@
       var w = rect.width;
 
       if (state.pageMode) {
-        // Page mode: left/center/right (horizontal)
         if (x > w * 0.30 && x < w * 0.70) {
           state.barsVisible ? hideBars() : showBars();
         } else if (x <= w * 0.30) {
@@ -174,7 +203,6 @@
           goToPage(state.currentPage + 1);
         }
       } else {
-        // Scroll mode: top/center/bottom (vertical)
         if (y > h * 0.30 && y < h * 0.65) {
           state.barsVisible ? hideBars() : showBars();
         } else if (y <= h * 0.30) {
@@ -208,13 +236,11 @@
       if (document.getElementById('settingsOverlay') && document.getElementById('settingsOverlay').classList.contains('visible')) return;
 
       if (state.pageMode) {
-        // Page mode: horizontal swipe flips pages
         if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
           if (state.barsVisible) hideBars();
           dx < 0 ? goToPage(state.currentPage + 1) : goToPage(state.currentPage - 1);
         }
       } else {
-        // Scroll mode: horizontal swipe changes chapters
         if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 70) {
           if (state.barsVisible) hideBars();
           if (dx < 0) {
@@ -229,7 +255,7 @@
     }, { passive: true });
   }
 
-  /* ===== PAGE MODE ===== */
+  /* ===== PAGE MODE (段落边界翻页) ===== */
   function enterPageMode() {
     state.pageMode = true;
     document.body.classList.add('page-mode');
@@ -256,17 +282,40 @@
     if (content) content.style.transform = '';
     updatePageModeUI();
     localStorage.setItem('reader-pagemode', 'false');
-    // Restore scroll position from reading progress
     restoreProgress();
   }
 
+  /* 计算段落边界的分页点 */
   function recalcPages() {
     var content = document.querySelector('.chapter-content');
     if (!content) return;
-    var contentH = content.scrollHeight;
+
     var pageH = window.innerHeight;
-    state.totalPages = Math.max(1, Math.ceil(contentH / pageH));
+    var children = content.children;
+    state.pageBreaks = [0]; // 第一页从0开始
+
+    var currentY = 0;
+    var pageStartY = 0;
+
+    for (var i = 0; i < children.length; i++) {
+      var child = children[i];
+      var rect = child.getBoundingClientRect();
+      var contentRect = content.getBoundingClientRect();
+      var childTop = rect.top - contentRect.top + content.scrollTop;
+      var childBottom = childTop + rect.height;
+
+      // 如果这个元素超出了当前页的范围，在这里分页
+      if (childBottom - pageStartY > pageH && childTop - pageStartY > pageH * 0.15) {
+        // 在这个段落之前分页
+        state.pageBreaks.push(childTop);
+        pageStartY = childTop;
+      }
+      currentY = childBottom;
+    }
+
+    state.totalPages = state.pageBreaks.length;
     if (state.currentPage >= state.totalPages) state.currentPage = state.totalPages - 1;
+    if (state.currentPage < 0) state.currentPage = 0;
     updatePageIndicator();
   }
 
@@ -290,40 +339,35 @@
     var content = document.querySelector('.chapter-content');
     if (!content) return;
 
-    var pageH = window.innerHeight;
-    var currentPage = state.currentPage;
-    var targetPage = n;
+    var targetY = state.pageBreaks[n] || 0;
+    var currentY = state.pageBreaks[state.currentPage] || 0;
 
-    if (!animate || currentPage === targetPage) {
+    if (!animate || currentY === targetY) {
       content.style.transition = 'none';
-      content.style.transform = 'translateY(-' + (targetPage * pageH) + 'px)';
-      state.currentPage = targetPage;
+      content.style.transform = 'translateY(-' + targetY + 'px)';
+      state.currentPage = n;
       updatePageIndicator();
       saveProgress();
     } else {
       state.pageFlipBusy = true;
-      var direction = targetPage > currentPage ? 1 : -1;
-      var currentY = currentPage * pageH;
-      var targetY = targetPage * pageH;
-      var dur = 320;
+      var direction = n > state.currentPage ? 1 : -1;
+      var dur = 300;
 
       content.style.transition = 'transform ' + (dur * 0.4) + 'ms ease-in';
-      content.style.transform = 'translateX(' + (-direction * 100) + '%) translateY(-' + currentY + 'px)';
+      content.style.transform = 'translateX(' + (-direction * 60) + 'px) translateY(-' + currentY + 'px)';
 
       setTimeout(function() {
         content.style.transition = 'none';
-        content.style.transform = 'translateX(' + (direction * 100) + '%) translateY(-' + targetY + 'px)';
-        content.offsetHeight; // force reflow
+        content.style.transform = 'translateX(' + (direction * 60) + 'px) translateY(-' + targetY + 'px)';
+        content.offsetHeight;
         content.style.transition = 'transform ' + (dur * 0.5) + 'ms ease-out';
         content.style.transform = 'translateX(0) translateY(-' + targetY + 'px)';
 
-        state.currentPage = targetPage;
+        state.currentPage = n;
         updatePageIndicator();
         saveProgress();
 
-        setTimeout(function() {
-          state.pageFlipBusy = false;
-        }, dur * 0.5 + 30);
+        setTimeout(function() { state.pageFlipBusy = false; }, dur * 0.5 + 30);
       }, dur * 0.4);
     }
   }
@@ -342,11 +386,7 @@
   }
 
   window.togglePageMode = function() {
-    if (state.pageMode) {
-      exitPageMode();
-    } else {
-      enterPageMode();
-    }
+    if (state.pageMode) { exitPageMode(); } else { enterPageMode(); }
     if (state.barsVisible) { stopAutoClose(); startAutoClose(); }
   };
 
@@ -367,21 +407,14 @@
   }
 
   function restoreProgress() {
+    var pct = parseInt(localStorage.getItem('reader-pos-' + chapterId)) || 0;
     if (state.pageMode) {
-      var pct = parseInt(localStorage.getItem('reader-pos-' + chapterId)) || 0;
       if (pct > 0 && pct < 95) {
         var page = Math.floor((pct / 100) * (state.totalPages - 1));
         state.currentPage = page;
-        var content = document.querySelector('.chapter-content');
-        if (content) {
-          content.style.transition = 'none';
-          content.style.transform = 'translateY(-' + (page * window.innerHeight) + 'px)';
-        }
-        updatePageIndicator();
-        saveProgress();
+        goToPage(page, false);
       }
     } else {
-      var pct = parseInt(localStorage.getItem('reader-pos-' + chapterId)) || 0;
       if (pct > 0 && pct < 95) {
         setTimeout(function() {
           var target = (pct / 100) * (document.documentElement.scrollHeight - window.innerHeight);
@@ -389,7 +422,7 @@
         }, 200);
       }
     }
-    updateProgressFill(parseInt(localStorage.getItem('reader-pos-' + chapterId)) || 0);
+    updateProgressFill(pct);
   }
 
   function updateProgressFill(pct) {
@@ -401,13 +434,17 @@
 
   function initReadingProgress() {
     updateProgressFill(parseInt(localStorage.getItem('reader-pos-' + chapterId)) || 0);
-    window.addEventListener('scroll', function() {
-      if (!state.pageMode) saveProgress();
-    }, { passive: true });
+    window.addEventListener('scroll', function() { if (!state.pageMode) saveProgress(); }, { passive: true });
     window.addEventListener('beforeunload', function() { saveProgress(); });
   }
 
-  /* ===== CENTERED DIRECTORY PANEL ===== */
+  /* ===== DIRECTORY PANEL (同步阅读进度) ===== */
+  function getChapterStorageId(href) {
+    // 与 chapterId 生成逻辑保持一致：基于 /novel/{href} 的路径
+    var path = '/novel/' + href;
+    return path.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-');
+  }
+
   function initDirectoryPanel() {
     if (document.getElementById('dirOverlay')) return;
     var ov = document.createElement('div');
@@ -434,28 +471,34 @@
     var path = window.location.pathname;
     var file = path.substring(path.lastIndexOf('/') + 1) || 'chapter-01.html';
     var chapters = [
-      { num: 1, title: '第一章·临渊羡鱼', href: 'chapter-01.html', words: 2722, id: 'chapter-01-html' },
-      { num: 2, title: '第二章·前桌', href: 'chapter-02.html', words: 2257, id: 'chapter-02-html' }
+      { num: 1, title: '第一章·临渊羡鱼', href: 'chapter-01.html', words: 2722 },
+      { num: 2, title: '第二章·前桌', href: 'chapter-02.html', words: 2257 }
     ];
 
     var html = '';
     chapters.forEach(function(ch) {
-      var done = localStorage.getItem('reader-done-' + ch.id) === '1';
-      var pct = parseInt(localStorage.getItem('reader-pos-' + ch.id)) || 0;
+      var id = getChapterStorageId(ch.href);
+      var done = localStorage.getItem('reader-done-' + id) === '1';
+      var pct = parseInt(localStorage.getItem('reader-pos-' + id)) || 0;
       var active = ch.href === file;
+
       html += '<a href="' + ch.href + '" class="dir-item' + (active ? ' active' : '') + (done ? ' done' : '') + '">';
       html += '<span class="dir-item-num">第' + ch.num + '章</span>';
       html += '<span class="dir-item-title">' + ch.title + '</span>';
       html += '<span class="dir-item-info">';
-      if (pct > 0 && pct < 95) html += '<span class="dir-item-progress">' + pct + '%</span>';
-      html += '<span class="dir-item-words">' + ch.words + '字</span></span>';
-      html += '</a>';
+      if (done) {
+        html += '<span class="dir-item-done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
+      } else if (pct > 0) {
+        html += '<span class="dir-item-progress">' + pct + '%</span>';
+      }
+      html += '<span class="dir-item-words">' + ch.words + '字</span>';
+      html += '</span></a>';
     });
     list.innerHTML = html;
   }
 
   window.openDirectory = function() {
-    populateDirectory(); // refresh progress
+    populateDirectory();
     var ov = document.getElementById('dirOverlay');
     if (ov) { ov.classList.add('visible'); document.body.style.overflow = 'hidden'; }
     if (state.barsVisible) hideBars();
@@ -497,6 +540,11 @@
               '<button class="fontsize-btn" onclick="changeFontSize(1)">A+</button>' +
             '</div>' +
           '</div>' +
+          '<div class="setting-group"><div class="setting-label">字体</div>' +
+            '<div class="mode-toggle-row">' +
+              '<button id="fontFamilyToggle" class="mode-toggle-btn" onclick="toggleFontFamily()"><span id="fontFamilyLabel">' + (fontFamilyLabels[state.fontFamily] || '方正悠黑') + '</span></button>' +
+            '</div>' +
+          '</div>' +
           '<div class="setting-group"><div class="setting-label">阅读模式</div>' +
             '<div class="mode-toggle-row">' +
               '<button id="pageModeToggle" class="mode-toggle-btn" onclick="togglePageMode()">上下滑动</button>' +
@@ -511,10 +559,11 @@
   window.openSettings = function() {
     var ov = document.getElementById('settingsOverlay');
     if (!ov) { initSettingsPanel(); ov = document.getElementById('settingsOverlay'); }
-    // Refresh theme circles
     var circles = ov.querySelectorAll('.theme-circle');
     circles.forEach(function(c) { c.classList.toggle('active', c.dataset.theme === state.theme); });
     updatePageModeUI();
+    var fl = document.getElementById('fontFamilyLabel');
+    if (fl) fl.textContent = fontFamilyLabels[state.fontFamily] || '方正悠黑';
     if (ov) { ov.classList.add('visible'); document.body.style.overflow = 'hidden'; }
     if (state.barsVisible) { stopAutoClose(); startAutoClose(); }
   };
