@@ -111,8 +111,8 @@
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
 
-    window.addEventListener('pageshow', function(e) {
-      if (ov.classList.contains('active')) ov.classList.remove('active');
+    window.addEventListener('pageshow', function() {
+      document.querySelectorAll('.page-transition.active').forEach(function(el) { el.classList.remove('active'); });
     });
 
     document.addEventListener('click', function(e) {

@@ -21,7 +21,7 @@
   </div>
 
   <!-- 引用（多章轮播） -->
-  <div class="home-quote" id="homeQuote"></div>
+  <div class="home-quote" id="homeQuote"><div class="quote-inner" id="quoteInner"></div></div>
 
   <!-- 继续阅读卡片 -->
   <div class="home-reading-card" id="homeReadingCard">
@@ -92,13 +92,14 @@
       // 新增章节时在此添加更多引用
     ];
 
-    // 引用轮播（5s 切换，淡入淡出）
-    var quoteEl = document.getElementById('homeQuote');
+    // 引用轮播（5s 切换，淡入淡出 + 位移）
+    var quoteOuter = document.getElementById('homeQuote');
+    var quoteInner = document.getElementById('quoteInner');
     var currentIdx = Math.floor(Math.random() * quotes.length);
 
     function renderQuote(idx) {
       var q = quotes[idx];
-      if (!q) return;
+      if (!q) return '';
       var html = '<blockquote>';
       q.paragraphs.forEach(function(p) { html += '<p>' + p + '</p>'; });
       html += '</blockquote>';
@@ -106,13 +107,14 @@
       return html;
     }
 
-    if (quoteEl && quotes.length > 0) {
-      quoteEl.innerHTML = renderQuote(currentIdx);
+    if (quoteOuter && quoteInner && quotes.length > 0) {
+      quoteInner.innerHTML = renderQuote(currentIdx);
 
-      // 预计算所有金句的最大高度，避免切换时布局跳动
+      // 预计算最大高度，固定容器
       var temp = document.createElement('div');
-      temp.style.cssText = 'position:absolute;visibility:hidden;padding:28px 28px 24px;width:' + quoteEl.offsetWidth + 'px';
-      temp.style.font = getComputedStyle(quoteEl).font;
+      temp.style.cssText = 'position:absolute;visibility:hidden;padding:28px 28px 24px;text-align:center';
+      temp.style.width = quoteOuter.offsetWidth + 'px';
+      temp.style.font = getComputedStyle(quoteOuter).font;
       document.body.appendChild(temp);
       var maxH = 0;
       quotes.forEach(function(q, i) {
@@ -120,26 +122,31 @@
         if (temp.offsetHeight > maxH) maxH = temp.offsetHeight;
       });
       document.body.removeChild(temp);
-      quoteEl.style.minHeight = maxH + 'px';
+      quoteOuter.style.minHeight = maxH + 'px';
 
       if (quotes.length > 1) {
         setInterval(function() {
-          quoteEl.style.opacity = '0';
+          quoteInner.style.opacity = '0';
+          quoteInner.style.transform = 'translateY(-10px)';
           setTimeout(function() {
             var next;
             do { next = Math.floor(Math.random() * quotes.length); } while (next === currentIdx && quotes.length > 1);
             currentIdx = next;
-            quoteEl.innerHTML = renderQuote(currentIdx);
-            quoteEl.style.opacity = '1';
-          }, 400);
+            quoteInner.innerHTML = renderQuote(currentIdx);
+            quoteInner.style.transform = 'translateY(10px)';
+            // force reflow
+            quoteInner.offsetHeight;
+            quoteInner.style.opacity = '1';
+            quoteInner.style.transform = 'translateY(0)';
+          }, 500);
         }, 5000);
       }
     }
 
     // ===== 页面切换动画 =====
     var transition = document.getElementById('pageTransition');
-    window.addEventListener('pageshow', function(e) {
-      if (transition && transition.classList.contains('active')) transition.classList.remove('active');
+    window.addEventListener('pageshow', function() {
+      document.querySelectorAll('.page-transition.active').forEach(function(el) { el.classList.remove('active'); });
     });
     document.querySelectorAll('a[href]').forEach(function(link) {
       link.addEventListener('click', function(e) {
