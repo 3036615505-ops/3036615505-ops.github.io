@@ -47,13 +47,6 @@
   function refreshProgressControls(pct) {
     pct = clampProgress(pct);
     updateProgressFill(pct);
-    var slider = document.getElementById('chapterProgressSlider');
-    if (slider) {
-      slider.value = pct;
-      slider.style.setProperty('--progress-pct', pct + '%');
-    }
-    var value = document.getElementById('chapterProgressValue');
-    if (value) value.textContent = pct + '%';
   }
 
 
@@ -291,6 +284,45 @@
 
   function initReadingProgress() {
     refreshProgressControls(clampProgress(localStorage.getItem('reader-pos-' + chapterId)));
+
+    var progressBar = document.querySelector('.reader-progress-bar');
+    if (progressBar) {
+      var dragging = false;
+
+      function updateFromPointer(e) {
+        var rect = progressBar.getBoundingClientRect();
+        var pct = clampProgress(Math.round(((e.clientX - rect.left) / rect.width) * 100));
+        scrollToProgress(pct);
+        saveProgress(pct);
+      }
+
+      progressBar.addEventListener('pointerdown', function(e) {
+        e.preventDefault();
+        dragging = true;
+        stopAutoClose();
+        if (progressBar.setPointerCapture) progressBar.setPointerCapture(e.pointerId);
+        progressBar.classList.add('dragging');
+        updateFromPointer(e);
+      });
+
+      progressBar.addEventListener('pointermove', function(e) {
+        if (!dragging) return;
+        e.preventDefault();
+        updateFromPointer(e);
+      });
+
+      function endDrag(e) {
+        if (!dragging) return;
+        dragging = false;
+        progressBar.classList.remove('dragging');
+        if (progressBar.releasePointerCapture) progressBar.releasePointerCapture(e.pointerId);
+        if (state.barsVisible) startAutoClose();
+      }
+
+      progressBar.addEventListener('pointerup', endDrag);
+      progressBar.addEventListener('pointercancel', endDrag);
+    }
+
     window.addEventListener('scroll', function() { saveProgress(); }, { passive: true });
     window.addEventListener('beforeunload', function() { saveProgress(); });
   }
@@ -386,10 +418,6 @@
           '</button>' +
         '</div>' +
         '<div class="modal-body">' +
-          '<div class="setting-group progress-setting"><div class="setting-row-head"><div class="setting-label">当前章节进度</div><span class="progress-value" id="chapterProgressValue">0%</span></div>' +
-            '<input type="range" min="0" max="100" value="0" class="chapter-progress-slider" id="chapterProgressSlider" aria-label="当前章节进度">' +
-            '<div class="progress-hints"><span>开头</span><span>本章末尾</span></div>' +
-          '</div>' +
           '<div class="setting-group"><div class="setting-label">阅读背景</div>' +
             '<div class="theme-row">' + themeHTML + '</div>' +
           '</div>' +
@@ -409,18 +437,6 @@
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
     ov.querySelector('.modal-backdrop').addEventListener('click', closeSettings);
-
-    var slider = document.getElementById('chapterProgressSlider');
-    if (slider) {
-      slider.addEventListener('input', function() {
-        refreshProgressControls(slider.value);
-      });
-      slider.addEventListener('change', function() {
-        var pct = clampProgress(slider.value);
-        scrollToProgress(pct);
-        saveProgress(pct);
-      });
-    }
   }
 
   window.openSettings = function() {
@@ -430,7 +446,6 @@
     circles.forEach(function(c) { c.classList.toggle('active', c.dataset.theme === state.theme); });
     var fl = document.getElementById('fontFamilyLabel');
     if (fl) fl.textContent = fontFamilyLabels[state.fontFamily] || '方正悠黑';
-    refreshProgressControls(getCurrentProgressPct());
     if (ov) { ov.classList.add('visible'); document.body.style.overflow = 'hidden'; }
     if (state.barsVisible) { stopAutoClose(); startAutoClose(); }
   };
