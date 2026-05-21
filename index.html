@@ -167,12 +167,24 @@
     // ===== 页面切换动画 =====
     var transition = document.getElementById('pageTransition');
 
+    function startPageTransition(href) {
+      if (!transition) {
+        window.location.href = href;
+        return;
+      }
+      transition.classList.add('active');
+      sessionStorage.setItem('page-transitioning', '1');
+      setTimeout(function() { window.location.href = href; }, 320);
+    }
+
     // 入场动画（从站内跳转过来时显示）
     if (sessionStorage.getItem('page-transitioning')) {
       sessionStorage.removeItem('page-transitioning');
       if (transition) {
-        transition.classList.add('active');
-        setTimeout(function() { transition.classList.remove('active'); }, 600);
+        requestAnimationFrame(function() {
+          transition.classList.add('active');
+          setTimeout(function() { transition.classList.remove('active'); }, 850);
+        });
       }
     }
 
@@ -180,18 +192,17 @@
     function resetOverlay() {
       document.querySelectorAll('.page-transition.active').forEach(function(el) { el.classList.remove('active'); });
     }
-    window.addEventListener('pageshow', resetOverlay);
-    window.addEventListener('focus', resetOverlay);
-    document.addEventListener('visibilitychange', function() { if (!document.hidden) resetOverlay(); });
+    window.addEventListener('pageshow', function() { setTimeout(resetOverlay, 900); });
+    window.addEventListener('focus', function() { setTimeout(resetOverlay, 900); });
+    document.addEventListener('visibilitychange', function() { if (!document.hidden) setTimeout(resetOverlay, 900); });
 
     // 点击跳转
     document.querySelectorAll('a[href]').forEach(function(link) {
       link.addEventListener('click', function(e) {
         var href = link.getAttribute('href');
-        if (!href || href.startsWith('#') || href.startsWith('javascript')) return;
+        if (!href || href.startsWith('#') || href.startsWith('javascript') || link.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         e.preventDefault();
-        sessionStorage.setItem('page-transitioning', '1');
-        window.location.href = href;
+        startPageTransition(href);
       });
     });
 
