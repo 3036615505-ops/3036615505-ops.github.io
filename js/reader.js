@@ -14,6 +14,14 @@
     autoCloseTimer: null
   };
 
+  var transitionLines = [
+    '风从走廊尽头吹过来',
+    '有些话还没说，故事已经往前了',
+    '夕阳落下去的时候，影子会变长',
+    '下一页有人会抬头看你一眼',
+    '梧桐影子轻轻翻过一页'
+  ];
+
   var fontSizes = ['small', 'medium', 'large'];
   var fontSizeLabels = { small: '小', medium: '中', large: '大' };
   var fontSizeValues = { small: 19, medium: 22, large: 25 };
@@ -61,6 +69,8 @@
     initReadingProgress();
     initDirectoryPanel();
     initSettingsPanel();
+    initQuoteCollecting();
+    recordFootprints();
     restoreProgress();
   }
 
@@ -109,6 +119,7 @@
     document.documentElement.setAttribute('data-theme', theme);
     state.theme = theme;
     localStorage.setItem('reader-theme', theme);
+    recordThemeUse(theme);
     document.querySelectorAll('.theme-circle').forEach(function(el) {
       el.classList.toggle('active', el.dataset.theme === theme);
     });
@@ -136,7 +147,7 @@
           '<path class="leaf-path" d="M20 4c0 0-8 4-10 12s4 16 10 20c6-4 12-12 10-20S20 4 20 4z" stroke="var(--accent)" stroke-width="1.2" fill="none" stroke-linecap="round"/>' +
           '<path class="leaf-vein" d="M20 8v24M20 14l-4 4M20 14l4 4M20 20l-5 3M20 20l5 3" stroke="var(--accent)" stroke-width="0.8" opacity="0.5" stroke-linecap="round"/>' +
         '</svg>' +
-        '<div class="transition-text">梧桐叶正落下</div>' +
+        '<div class="transition-text">' + getTransitionLine() + '</div>' +
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
 
@@ -164,6 +175,7 @@
       var href = link.getAttribute('href');
       if (!href || href.startsWith('#') || href.startsWith('javascript') || link.getAttribute('onclick') || link.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       e.preventDefault();
+      ov.querySelector('.transition-text').textContent = pickTransitionLine();
       ov.classList.add('active');
       sessionStorage.setItem('page-transitioning', '1');
       setTimeout(function() { window.location.href = href; }, 120);
@@ -402,11 +414,270 @@
     if (ov) { ov.classList.remove('visible'); document.body.style.overflow = ''; }
   };
 
+  function initQuoteCollecting() {
+    decorateParagraphs();
+    initQuotesPanel();
+    initToast();
+  }
+
+  function decorateParagraphs() {
+    var content = document.querySelector('.chapter-content');
+    if (!content) return;
+    var file = getCurrentFileName();
+    var title = getCurrentChapterTitle();
+    var index = 0;
+    content.querySelectorAll('p').forEach(function(p) {
+      var text = (p.textContent || '').trim();
+      if (!text) return;
+      index += 1;
+      p.dataset.quoteIndex = String(index);
+      p.dataset.chapterFile = file;
+      p.dataset.chapterTitle = title;
+      p.classList.add('collectable-paragraph');
+      if (p.querySelector('.quote-mark')) return;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'quote-mark';
+      btn.setAttribute('aria-label', '收藏这一句');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7H5a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1H8z"/><path d="M19 7h-3a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1h-3z" transform="translate(-3 0)"/></svg>';
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        toggleQuote(p);
+      });
+      p.appendChild(btn);
+      refreshParagraphQuoteState(p);
+    });
+  }
+
+  function initQuotesPanel() {
+    if (document.getElementById('quotesOverlay')) return;
+    var ov = document.createElement('div');
+    ov.id = 'quotesOverlay';
+    ov.className = 'modal-overlay';
+    ov.innerHTML =
+      '<div class="modal-backdrop"></div>' +
+      '<div class="modal-panel quotes-modal">' +
+        '<div class="modal-header"><span>摘句簿</span>' +
+          '<button class="modal-close" onclick="closeQuotes()">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+          '</button>' +
+        '</div>' +
+        '<div class="modal-body" id="quotesList"></div>' +
+      '</div>';
+    (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
+    ov.querySelector('.modal-backdrop').addEventListener('click', closeQuotes);
+  }
+
+  window.openQuotes = function() {
+    renderQuotesPanel();
+    var ov = document.getElementById('quotesOverlay');
+    if (ov) { ov.classList.add('visible'); document.body.style.overflow = 'hidden'; }
+    if (state.barsVisible) hideBars();
+  };
+
+  window.closeQuotes = function() {
+    var ov = document.getElementById('quotesOverlay');
+    if (ov) { ov.classList.remove('visible'); document.body.style.overflow = ''; }
+  };
+
+  function renderQuotesPanel() {
+    var list = document.getElementById('quotesList');
+    if (!list) return;
+    var quotes = getStoredQuotes();
+    if (!quotes.length) {
+      list.innerHTML = '<div class="quotes-empty">还没有收进摘句。等你在某一段前停下来，这里就会亮起来。</div>';
+      return;
+    }
+    list.innerHTML = quotes.slice().reverse().map(function(item) {
+      return '<article class="quote-entry">' +
+        '<div class="quote-entry-text">' + escapeHtml(item.text) + '</div>' +
+        '<div class="quote-entry-meta">' + escapeHtml(item.chapterTitle) + '</div>' +
+        '<div class="quote-entry-actions">' +
+          '<a href="' + item.chapterFile + '#quote-' + item.index + '" class="quote-action">回到这一页</a>' +
+          '<button type="button" class="quote-action" onclick="copyQuote(\'' + escapeJs(item.id) + '\')">复制</button>' +
+          '<button type="button" class="quote-action danger" onclick="removeQuote(\'' + escapeJs(item.id) + '\')">移出</button>' +
+        '</div>' +
+      '</article>';
+    }).join('');
+  }
+
+  window.copyQuote = function(id) {
+    var quote = getStoredQuotes().find(function(item) { return item.id === id; });
+    if (!quote) return;
+    var text = quote.text + ' ——《' + quote.chapterTitle + '》';
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function() {
+        showToast('这一句已经抄好');
+      }, function() {
+        showToast('没抄走，再试一次');
+      });
+    } else {
+      showToast('当前环境不支持复制');
+    }
+  };
+
+  window.removeQuote = function(id) {
+    var quotes = getStoredQuotes().filter(function(item) { return item.id !== id; });
+    saveStoredQuotes(quotes);
+    refreshAllParagraphQuoteStates();
+    renderQuotesPanel();
+    showToast('这一句轻轻放回页边了');
+  };
+
+  function toggleQuote(p) {
+    var text = (p.textContent || '').trim();
+    if (!text) return;
+    var quotes = getStoredQuotes();
+    var file = p.dataset.chapterFile || getCurrentFileName();
+    var index = p.dataset.quoteIndex || '0';
+    var id = file + '::' + index;
+    var existing = quotes.findIndex(function(item) { return item.id === id; });
+    if (existing >= 0) {
+      quotes.splice(existing, 1);
+      saveStoredQuotes(quotes);
+      refreshParagraphQuoteState(p);
+      renderQuotesPanel();
+      showToast('这一句轻轻放回页边了');
+      return;
+    }
+    quotes.push({
+      id: id,
+      text: text,
+      chapterFile: file,
+      chapterTitle: p.dataset.chapterTitle || getCurrentChapterTitle(),
+      index: index,
+      savedAt: Date.now()
+    });
+    saveStoredQuotes(quotes);
+    refreshParagraphQuoteState(p);
+    renderQuotesPanel();
+    showToast('已收进摘句簿');
+  }
+
+  function refreshParagraphQuoteState(p) {
+    var btn = p.querySelector('.quote-mark');
+    if (!btn) return;
+    var id = (p.dataset.chapterFile || getCurrentFileName()) + '::' + (p.dataset.quoteIndex || '0');
+    var active = getStoredQuotes().some(function(item) { return item.id === id; });
+    btn.classList.toggle('active', active);
+    p.classList.toggle('quoted', active);
+    p.id = 'quote-' + (p.dataset.quoteIndex || '0');
+  }
+
+  function refreshAllParagraphQuoteStates() {
+    document.querySelectorAll('.collectable-paragraph').forEach(refreshParagraphQuoteState);
+  }
+
+  function getStoredQuotes() {
+    var raw = localStorage.getItem('reader-quotes');
+    if (!raw) return [];
+    try { return JSON.parse(raw) || []; } catch (err) { return []; }
+  }
+
+  function saveStoredQuotes(quotes) {
+    localStorage.setItem('reader-quotes', JSON.stringify(quotes));
+    mergeFootprints(function(data) {
+      data.quotes = quotes.map(function(item) { return item.id; });
+      return data;
+    });
+  }
+
+  function initToast() {
+    if (document.getElementById('readerToast')) return;
+    var toast = document.createElement('div');
+    toast.id = 'readerToast';
+    toast.className = 'reader-toast';
+    (document.querySelector('.reading-wrapper') || document.body).appendChild(toast);
+  }
+
+  function showToast(text) {
+    var toast = document.getElementById('readerToast');
+    if (!toast) return;
+    toast.textContent = text;
+    toast.classList.add('visible');
+    clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(function() { toast.classList.remove('visible'); }, 1600);
+  }
+
+  function recordFootprints() {
+    mergeFootprints(function(data) {
+      var today = getTodayToken();
+      if (!Array.isArray(data.days)) data.days = [];
+      if (data.days.indexOf(today) === -1) data.days.push(today);
+      data.lastChapterTitle = getCurrentChapterTitle();
+      data.lastChapterFile = getCurrentFileName();
+      if (!Array.isArray(data.quotes)) data.quotes = [];
+      if (!data.themeCounts || typeof data.themeCounts !== 'object') data.themeCounts = {};
+      return data;
+    });
+  }
+
+  function recordThemeUse(theme) {
+    mergeFootprints(function(data) {
+      if (!data.themeCounts || typeof data.themeCounts !== 'object') data.themeCounts = {};
+      data.themeCounts[theme] = (data.themeCounts[theme] || 0) + 1;
+      data.lastTheme = theme;
+      return data;
+    });
+  }
+
+  function mergeFootprints(mutator) {
+    var data = readFootprints();
+    data = mutator(data) || data;
+    localStorage.setItem('reader-footprints', JSON.stringify(data));
+  }
+
+  function readFootprints() {
+    var raw = localStorage.getItem('reader-footprints');
+    if (!raw) return {};
+    try { return JSON.parse(raw) || {}; } catch (err) { return {}; }
+  }
+
+  function getTodayToken() {
+    var d = new Date();
+    return [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('-');
+  }
+
+  function getCurrentFileName() {
+    var path = window.location.pathname;
+    return path.substring(path.lastIndexOf('/') + 1) || 'chapter-01.html';
+  }
+
+  function getCurrentChapterTitle() {
+    var el = document.querySelector('.chapter-content h1');
+    return el ? el.textContent.trim() : document.title;
+  }
+
+  function getTransitionLine() {
+    var saved = sessionStorage.getItem('page-transition-text');
+    if (saved) {
+      sessionStorage.removeItem('page-transition-text');
+      return saved;
+    }
+    return transitionLines[Math.floor(Math.random() * transitionLines.length)];
+  }
+
+  function pickTransitionLine() {
+    var line = transitionLines[Math.floor(Math.random() * transitionLines.length)];
+    sessionStorage.setItem('page-transition-text', line);
+    return line;
+  }
+
+  function escapeHtml(text) {
+    return String(text).replace(/[&<>"']/g, function(ch) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+    });
+  }
+
+  function escapeJs(text) {
+    return String(text).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  }
+
   /* ===== SETTINGS PANEL ===== */
   function initSettingsPanel() {
     if (document.getElementById('settingsOverlay')) return;
     var themes = ['light','wheat','green','dark'];
-    var themeNames = ['亮白','暖纸','护眼','暗夜'];
+    var themeNames = ['晴窗','信笺','梧阴','夜读'];
     var ov = document.createElement('div');
     ov.id = 'settingsOverlay';
     ov.className = 'modal-overlay';
@@ -423,7 +694,7 @@
           '</button>' +
         '</div>' +
         '<div class="modal-body">' +
-          '<div class="setting-group"><div class="setting-label">阅读背景</div>' +
+          '<div class="setting-group"><div class="setting-label">阅读模式</div>' +
             '<div class="theme-row">' + themeHTML + '</div>' +
           '</div>' +
           '<div class="setting-group"><div class="setting-label">字号</div>' +

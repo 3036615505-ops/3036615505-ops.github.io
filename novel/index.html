@@ -35,6 +35,14 @@
     <div class="desc-text">南城的梧桐树还在长，一群人的青春悠远漫长....</div>
   </div>
 
+  <div class="detail-links">
+    <a href="characters.html" class="detail-link-card">
+      <span class="detail-link-kicker">人物簿</span>
+      <span class="detail-link-title">翻开他们的名字</span>
+      <span class="detail-link-desc">用几句很轻的话，先认识这些会慢慢走近的人。</span>
+    </a>
+  </div>
+
   <div class="start-reading">
     <a href="chapter-01.html" class="btn-primary" id="continueBtn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
@@ -54,6 +62,15 @@
     <div class="overview-chapters" id="overviewChapters"></div>
   </div>
 
+  <div class="reading-footprints mini" id="novelFootprints" style="display:none">
+    <div class="footprints-header">
+      <span class="footprints-title">阅读足迹</span>
+      <span class="footprints-kicker" id="novelFootprintsKicker">故事刚刚有回声</span>
+    </div>
+    <div class="footprints-copy" id="novelFootprintsCopy"></div>
+    <div class="footprints-metrics" id="novelFootprintsMetrics"></div>
+  </div>
+
   <div class="chapter-section">
     <div class="chapter-section-header">
       <h2>目录</h2>
@@ -61,14 +78,26 @@
     </div>
     <div class="chapter-list">
       <a href="chapter-01.html" class="chapter-item">
-        <span class="chapter-num">第1章</span>
-        <span class="chapter-title">第一章·临渊羡鱼</span>
-        <span class="chapter-words">2722 字</span>
+        <div class="chapter-topline">
+          <span class="chapter-num">第1章</span>
+          <span class="chapter-words">2722 字</span>
+        </div>
+        <div class="chapter-main">
+          <span class="chapter-title">第一章·临渊羡鱼</span>
+          <span class="chapter-status-slot"></span>
+        </div>
+        <div class="chapter-blurb">所有的事都还没开始，一切都还来得及。</div>
       </a>
       <a href="chapter-02.html" class="chapter-item">
-        <span class="chapter-num">第2章</span>
-        <span class="chapter-title">第二章·前桌</span>
-        <span class="chapter-words">2257 字</span>
+        <div class="chapter-topline">
+          <span class="chapter-num">第2章</span>
+          <span class="chapter-words">2257 字</span>
+        </div>
+        <div class="chapter-main">
+          <span class="chapter-title">第二章·前桌</span>
+          <span class="chapter-status-slot"></span>
+        </div>
+        <div class="chapter-blurb">有些位置只是前后桌，有些位置会慢慢变得不同。</div>
       </a>
     </div>
   </div>
@@ -95,6 +124,29 @@
 
   <script>
   (function() {
+    var transitionLines = [
+      '风从走廊尽头吹过来',
+      '有些话还没说，故事已经往前了',
+      '夕阳落下去的时候，影子会变长',
+      '下一页有人会抬头看你一眼',
+      '梧桐影子轻轻翻过一页'
+    ];
+
+    function pickTransitionLine() {
+      var line = transitionLines[Math.floor(Math.random() * transitionLines.length)];
+      sessionStorage.setItem('page-transition-text', line);
+      return line;
+    }
+
+    function getTransitionLine() {
+      var saved = sessionStorage.getItem('page-transition-text');
+      if (saved) {
+        sessionStorage.removeItem('page-transition-text');
+        return saved;
+      }
+      return transitionLines[Math.floor(Math.random() * transitionLines.length)];
+    }
+
     // ===== 页面切换动画 =====
     var transition = document.getElementById('pageTransition');
 
@@ -104,6 +156,7 @@
         return;
       }
       transition.classList.add('active');
+      transition.querySelector('.transition-text').textContent = pickTransitionLine();
       sessionStorage.setItem('page-transitioning', '1');
       setTimeout(function() { window.location.href = href; }, 120);
     }
@@ -114,6 +167,8 @@
       if (transition) {
         requestAnimationFrame(function() {
           transition.classList.add('active');
+          var textEl = transition.querySelector('.transition-text');
+          if (textEl) textEl.textContent = getTransitionLine();
           setTimeout(function() { transition.classList.remove('active'); }, 650);
         });
       }
@@ -167,7 +222,8 @@
         var badge = document.createElement('span');
         badge.className = 'chapter-status done';
         badge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-        item.appendChild(badge);
+        var slot = item.querySelector('.chapter-status-slot');
+        (slot || item).appendChild(badge);
         totalRead += words;
         lastReadChapter = href;
         lastReadPct = 100;
@@ -180,7 +236,8 @@
         var badge = document.createElement('span');
         badge.className = 'chapter-status reading';
         badge.textContent = pct + '%';
-        item.appendChild(badge);
+        var slot = item.querySelector('.chapter-status-slot');
+        (slot || item).appendChild(badge);
 
         totalRead += Math.round(words * pct / 100);
         if (!lastReadChapter || pct > lastReadPct) {
@@ -212,6 +269,19 @@
         }
       }
 
+      var footprints = readFootprints();
+      var footprintsEl = document.getElementById('novelFootprints');
+      if (footprintsEl) {
+        footprintsEl.style.display = 'block';
+        document.getElementById('novelFootprintsKicker').textContent = getFootprintsKicker(readPct, footprints.daysCount);
+        document.getElementById('novelFootprintsCopy').textContent = getFootprintsCopy(readPct, footprints.lastChapterTitle);
+        document.getElementById('novelFootprintsMetrics').innerHTML = [
+          renderMetric('已读', readPct + '%'),
+          renderMetric('摘句', footprints.quotesCount + ' 句'),
+          renderMetric('相伴', footprints.daysCount + ' 天')
+        ].join('');
+      }
+
       var statsEl = document.querySelector('.stats');
       if (statsEl) {
         statsEl.textContent = statsEl.textContent + ' · 已读 ' + readPct + '%';
@@ -227,6 +297,42 @@
         spanEl.textContent = '继续阅读';
         btnEl.appendChild(spanEl);
       }
+    }
+
+    function readFootprints() {
+      var raw = localStorage.getItem('reader-footprints');
+      if (!raw) return { daysCount: 0, quotesCount: 0, lastChapterTitle: '' };
+      try {
+        var data = JSON.parse(raw);
+        return {
+          daysCount: Array.isArray(data.days) ? data.days.length : 0,
+          quotesCount: Array.isArray(data.quotes) ? data.quotes.length : 0,
+          lastChapterTitle: data.lastChapterTitle || ''
+        };
+      } catch (err) {
+        return { daysCount: 0, quotesCount: 0, lastChapterTitle: '' };
+      }
+    }
+
+    function getFootprintsKicker(readPct, daysCount) {
+      if (readPct >= 100) return '你已经把这一段路走完了';
+      if (daysCount >= 3) return '这是一起把页角翻过去的第 ' + daysCount + ' 天';
+      if (readPct >= 50) return '故事已经慢慢有了回声';
+      return '故事刚刚有回声';
+    }
+
+    function getFootprintsCopy(readPct, lastChapterTitle) {
+      if (lastChapterTitle) {
+        return '上一次停在《' + lastChapterTitle + '》，风还留在那一页。';
+      }
+      if (readPct > 0) {
+        return '你已经陪他们走过一段午后。';
+      }
+      return '等你翻开第一页，梧桐影子就会慢慢落下来。';
+    }
+
+    function renderMetric(label, value) {
+      return '<div class="footprint-pill"><span>' + label + '</span><strong>' + value + '</strong></div>';
     }
   })();
   </script>

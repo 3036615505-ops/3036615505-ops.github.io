@@ -39,6 +39,15 @@
     </a>
   </div>
 
+  <div class="reading-footprints" id="homeFootprints" style="display:none">
+    <div class="footprints-header">
+      <span class="footprints-title">阅读足迹</span>
+      <span class="footprints-kicker" id="homeFootprintsKicker">故事还在慢慢发光</span>
+    </div>
+    <div class="footprints-copy" id="homeFootprintsCopy"></div>
+    <div class="footprints-metrics" id="homeFootprintsMetrics"></div>
+  </div>
+
   <!-- 书架 -->
   <div class="bookshelf-section">
     <div class="bookshelf-section-title">书架</div>
@@ -78,6 +87,52 @@
 
   <script>
   (function() {
+    var transitionLines = [
+      '风从走廊尽头吹过来',
+      '有些话还没说，故事已经往前了',
+      '夕阳落下去的时候，影子会变长',
+      '下一页有人会抬头看你一眼',
+      '梧桐影子轻轻翻过一页'
+    ];
+
+    function pickTransitionLine() {
+      var line = transitionLines[Math.floor(Math.random() * transitionLines.length)];
+      sessionStorage.setItem('page-transition-text', line);
+      return line;
+    }
+
+    function getTransitionLine() {
+      var saved = sessionStorage.getItem('page-transition-text');
+      if (saved) {
+        sessionStorage.removeItem('page-transition-text');
+        return saved;
+      }
+      return transitionLines[Math.floor(Math.random() * transitionLines.length)];
+    }
+
+    function readFootprints() {
+      var raw = localStorage.getItem('reader-footprints');
+      if (!raw) return { daysCount: 0, quotesCount: 0, lastChapterTitle: '', themeLabel: '' };
+      try {
+        var data = JSON.parse(raw);
+        var counts = data.themeCounts || {};
+        var topTheme = Object.keys(counts).sort(function(a, b) { return (counts[b] || 0) - (counts[a] || 0); })[0] || '';
+        var themeMap = { light: '晴窗', wheat: '信笺', green: '梧阴', dark: '夜读' };
+        return {
+          daysCount: Array.isArray(data.days) ? data.days.length : 0,
+          quotesCount: Array.isArray(data.quotes) ? data.quotes.length : 0,
+          lastChapterTitle: data.lastChapterTitle || '',
+          themeLabel: themeMap[topTheme] || ''
+        };
+      } catch (err) {
+        return { daysCount: 0, quotesCount: 0, lastChapterTitle: '', themeLabel: '' };
+      }
+    }
+
+    function renderMetric(label, value) {
+      return '<div class="footprint-pill"><span>' + label + '</span><strong>' + value + '</strong></div>';
+    }
+
     // ===== 引用数据（新增章节时在此添加） =====
     var quotes = [
       {
@@ -175,6 +230,7 @@
         return;
       }
       transition.classList.add('active');
+      transition.querySelector('.transition-text').textContent = pickTransitionLine();
       sessionStorage.setItem('page-transitioning', '1');
       setTimeout(function() { window.location.href = href; }, 120);
     }
@@ -185,6 +241,8 @@
       if (transition) {
         requestAnimationFrame(function() {
           transition.classList.add('active');
+          var textEl = transition.querySelector('.transition-text');
+          if (textEl) textEl.textContent = getTransitionLine();
           setTimeout(function() { transition.classList.remove('active'); }, 650);
         });
       }
@@ -287,6 +345,19 @@
         }
         var btn = document.getElementById('homeContinueBtn');
         if (btn && lastReadChapter) btn.href = 'novel/' + lastReadChapter;
+
+        var footprints = readFootprints();
+        var fp = document.getElementById('homeFootprints');
+        if (fp) {
+          fp.style.display = 'block';
+          document.getElementById('homeFootprintsKicker').textContent = readPct >= 100 ? '这一段路你已经走完了' : (footprints.daysCount >= 3 ? '这是一起翻页的第 ' + footprints.daysCount + ' 天' : '故事还在慢慢发光');
+          document.getElementById('homeFootprintsCopy').textContent = footprints.lastChapterTitle ? '你上次停在《' + footprints.lastChapterTitle + '》，那一页的风还没有散。' : '等你翻开第一页，南城的风就会慢慢落下来。';
+          document.getElementById('homeFootprintsMetrics').innerHTML = [
+            renderMetric('已读', readPct + '%'),
+            renderMetric('摘句', footprints.quotesCount + ' 句'),
+            renderMetric('偏爱', footprints.themeLabel || '信笺')
+          ].join('');
+        }
       }
     }
   })();

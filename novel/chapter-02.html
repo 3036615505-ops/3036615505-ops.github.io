@@ -91,6 +91,11 @@
 <p>他这么跟自己说。虽然自己也不太信。</p>
   </article>
 
+  <div class="chapter-afterglow">
+    <div class="afterglow-kicker">这一章留下来的</div>
+    <p>有些靠近还没有名字，只是座位往前挪了一排，视线就开始学着在同一个方向停一会儿。</p>
+  </div>
+
   <div class="chapter-bottom-nav">
     <a href="chapter-01.html">上一章</a>
     <span>下一章</span>
@@ -109,9 +114,13 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
         目录
       </a>
+      <button onclick="openQuotes();return false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7H5a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1H8z"/><path d="M19 7h-3a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1h-3z" transform="translate(-3 0)"/></svg>
+        摘句
+      </button>
       <button onclick="toggleNightMode()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-        夜间
+        夜读
       </button>
       <button onclick="openSettings()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
