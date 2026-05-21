@@ -1,5 +1,6 @@
 /* ===== 字体 ===== */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap');
 
 /* ===== 动画 ===== */
 @keyframes contentFadeIn {
@@ -7,18 +8,88 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes leafDrift {
+  0%   { transform: translateY(-20px) rotate(0deg) translateX(0); opacity: 0; }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.6; }
+  100% { transform: translateY(calc(100vh + 40px)) rotate(360deg) translateX(60px); opacity: 0; }
+}
+
+@keyframes gentleFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== 页面切换动画 ===== */
+.page-transition {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: var(--bg);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.page-transition.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.page-transition .leaf-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.page-transition.active .leaf-icon {
+  opacity: 1;
+  animation: gentleFloat 1s ease-in-out infinite;
+}
+
 /* ===== CSS 变量 ===== */
 :root {
-  --bg: #faf7f2;
+  --bg: #f8f4ed;
   --bg-card: #ffffff;
+  --bg-warm: #f5efe4;
   --text: #3d3228;
-  --text-secondary: #8c7b6b;
-  --text-muted: #bfb3a4;
+  --text-secondary: #7a6b5a;
+  --text-muted: #b5a695;
   --accent: #b8864e;
   --accent-hover: #9a6d3e;
-  --border: #ebe6de;
+  --accent-light: rgba(184,134,78,0.08);
+  --border: #e8e0d4;
+  --border-light: #f0e8dc;
   --shadow: 0 1px 3px rgba(60, 40, 20, 0.05);
   --shadow-hover: 0 4px 16px rgba(60, 40, 20, 0.1);
+  --radius: 14px;
+
+  /* 梧桐意象色 */
+  --leaf-green: #8a9e6c;
+  --leaf-gold: #c4a24e;
+  --leaf-brown: #9e7c4a;
+  --bark: #6d4a2e;
+  --autumn: #d4a050;
 
   /* 阅读页默认 - 暖纸色 */
   --reading-bg: #f5efe0;
@@ -70,33 +141,181 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  animation: pageIn 0.35s ease-out;
 }
 
 a { color: inherit; text-decoration: none; }
 
+/* ===== 梧桐叶装饰（纯 CSS） ===== */
+.leaf-deco {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  opacity: 0.12;
+}
+
+.leaf-deco::before {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--leaf-gold);
+  clip-path: ellipse(50% 35% at 50% 50%);
+  transform: rotate(-30deg);
+}
+
+.leaf-deco.gold::before { background: var(--leaf-gold); }
+.leaf-deco.green::before { background: var(--leaf-green); }
+.leaf-deco.brown::before { background: var(--leaf-brown); }
+
 /* ===== 首页 ===== */
-.home-header {
+.home-hero {
+  position: relative;
+  padding: 48px 24px 36px;
   text-align: center;
-  padding: 40px 20px 24px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f8f4ed 0%, #f0e8d8 100%);
 }
 
-.home-header h1 {
-  font-family: "Noto Serif SC", serif;
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: 2px;
+.home-hero::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
 }
 
-.home-header .subtitle {
+/* 梧桐叶飘落装饰 */
+.home-hero .floating-leaves {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.home-hero .floating-leaves span {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  opacity: 0;
+  animation: leafDrift linear infinite;
+}
+
+.home-hero .floating-leaves span::before {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--leaf-gold);
+  clip-path: ellipse(50% 35% at 50% 50%);
+}
+
+.home-hero .floating-leaves span:nth-child(1) { left: 10%; animation-duration: 12s; animation-delay: 0s; }
+.home-hero .floating-leaves span:nth-child(1)::before { transform: rotate(-20deg); background: var(--leaf-gold); }
+.home-hero .floating-leaves span:nth-child(2) { left: 30%; animation-duration: 15s; animation-delay: 3s; }
+.home-hero .floating-leaves span:nth-child(2)::before { transform: rotate(40deg); background: var(--leaf-green); }
+.home-hero .floating-leaves span:nth-child(3) { left: 55%; animation-duration: 10s; animation-delay: 6s; }
+.home-hero .floating-leaves span:nth-child(3)::before { transform: rotate(-50deg); background: var(--leaf-gold); }
+.home-hero .floating-leaves span:nth-child(4) { left: 75%; animation-duration: 14s; animation-delay: 2s; }
+.home-hero .floating-leaves span:nth-child(4)::before { transform: rotate(30deg); background: var(--leaf-brown); }
+.home-hero .floating-leaves span:nth-child(5) { left: 90%; animation-duration: 11s; animation-delay: 5s; }
+.home-hero .floating-leaves span:nth-child(5)::before { transform: rotate(-10deg); background: var(--leaf-green); }
+
+.home-hero h1 {
+  font-family: "ZCOOL XiaoWei", "Noto Serif SC", serif;
+  font-size: 32px;
+  font-weight: 400;
+  color: var(--bark);
+  letter-spacing: 6px;
+  position: relative;
+  z-index: 1;
+  animation: fadeIn 0.8s ease-out;
+}
+
+.home-hero .subtitle {
   font-size: 13px;
   color: var(--text-muted);
-  margin-top: 6px;
+  margin-top: 8px;
+  letter-spacing: 4px;
+  position: relative;
+  z-index: 1;
+  animation: fadeIn 0.8s ease-out 0.1s both;
 }
 
-/* 书架 */
+/* 首页引用 */
+.home-quote {
+  padding: 28px 28px 24px;
+  text-align: center;
+  background: var(--bg-card);
+  position: relative;
+}
+
+.home-quote::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 24px;
+  right: 24px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+}
+
+.home-quote blockquote {
+  font-family: "Noto Serif SC", serif;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 2;
+  font-style: normal;
+  position: relative;
+  padding: 0 12px;
+}
+
+.home-quote blockquote::before {
+  content: '\201C';
+  position: absolute;
+  left: -8px;
+  top: -8px;
+  font-size: 28px;
+  color: var(--border);
+  font-family: "Noto Serif SC", serif;
+}
+
+.home-quote .quote-source {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  letter-spacing: 1px;
+}
+
+/* 书架区域 */
+.bookshelf-section {
+  padding: 24px 20px 16px;
+  background: var(--bg-card);
+  margin-top: 8px;
+}
+
+.bookshelf-section-title {
+  font-size: 13px;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bookshelf-section-title::before,
+.bookshelf-section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-light);
+}
+
 .bookshelf {
-  padding: 0 16px 40px;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -117,7 +336,7 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   flex-direction: column;
   gap: 8px;
-  transition: transform 0.2s ease;
+  transition: transform 0.25s ease;
 }
 
 .book-item:active {
@@ -127,9 +346,9 @@ a { color: inherit; text-decoration: none; }
 .book-cover {
   width: 100%;
   aspect-ratio: 3/4.2;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 6px 20px rgba(60, 40, 20, 0.14);
+  box-shadow: 0 8px 24px rgba(60, 40, 20, 0.14), 0 2px 4px rgba(60, 40, 20, 0.06);
   position: relative;
   display: flex;
   align-items: center;
@@ -137,15 +356,29 @@ a { color: inherit; text-decoration: none; }
   padding: 16px;
 }
 
+/* 封面光泽 */
 .book-cover::after {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 40%;
-  background: linear-gradient(rgba(255,255,255,0.12), transparent);
-  border-radius: 6px 6px 0 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%);
+  border-radius: 8px 8px 0 0;
+  pointer-events: none;
+}
+
+/* 封面左侧书脊阴影 */
+.book-cover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 4px;
+  background: rgba(0,0,0,0.08);
+  z-index: 2;
   pointer-events: none;
 }
 
@@ -159,17 +392,52 @@ a { color: inherit; text-decoration: none; }
 }
 
 .book-cover-text {
-  font-family: "Noto Serif SC", serif;
+  font-family: "ZCOOL XiaoWei", "Noto Serif SC", serif;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(255,255,255,0.92);
   text-align: center;
-  line-height: 1.4;
+  line-height: 1.5;
   position: relative;
   z-index: 1;
+  letter-spacing: 2px;
 }
 
-/* 封面配色 - 从小说意象提取 */
+/* 书架封面阅读进度角标 */
+.book-progress-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 8px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  line-height: 1.4;
+  z-index: 3;
+}
+
+.book-progress-badge.completed {
+  background: rgba(107,142,90,0.85);
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.book-progress-badge.completed svg {
+  width: 13px;
+  height: 13px;
+  stroke: #fff;
+}
+
+/* 封面配色 - 梧桐树意象 */
 .book-cover.linyuan  { background: linear-gradient(155deg, #d4ad70 0%, #b8874a 35%, #8b5e2e 70%, #6d4320 100%); }
 .book-cover.qianzhuo { background: linear-gradient(155deg, #8dab85 0%, #658a5d 35%, #4e6b46 70%, #3a5034 100%); }
 .book-cover.moqi     { background: linear-gradient(155deg, #c4ad8e 0%, #a78b6b 35%, #85694d 70%, #664a32 100%); }
@@ -189,12 +457,113 @@ a { color: inherit; text-decoration: none; }
   color: var(--text-muted);
 }
 
+/* 首页阅读卡片 */
+.home-reading-card {
+  margin: 8px 16px 0;
+  padding: 20px;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 8px rgba(60,40,20,0.06);
+  display: none;
+  animation: slideUp 0.4s ease-out;
+}
+
+.home-reading-card.visible {
+  display: block;
+}
+
+.reading-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.reading-card-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+}
+
+.reading-card-pct {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.reading-card-bar {
+  height: 4px;
+  background: var(--border-light);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.reading-card-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--autumn));
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.reading-card-chapters {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.reading-card-chapters .ch-dot {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-light);
+}
+
+.reading-card-chapters .ch-dot.done {
+  background: var(--leaf-green);
+}
+
+.reading-card-chapters .ch-dot.reading {
+  background: var(--accent);
+}
+
+.reading-card-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(184,134,78,0.25);
+  transition: transform 0.15s, opacity 0.2s;
+}
+
+.reading-card-btn:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
 /* 页脚 */
 .home-footer {
   text-align: center;
-  padding: 0 20px 32px;
+  padding: 32px 20px 40px;
   font-size: 12px;
   color: var(--text-muted);
+  letter-spacing: 2px;
+  position: relative;
+}
+
+.home-footer::before {
+  content: '';
+  display: block;
+  width: 24px;
+  height: 1px;
+  background: var(--border);
+  margin: 0 auto 16px;
 }
 
 /* ===== 小说详情页 ===== */
@@ -207,7 +576,7 @@ a { color: inherit; text-decoration: none; }
   position: sticky;
   top: 0;
   z-index: 100;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .detail-back {
@@ -215,6 +584,12 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   padding: 8px;
   color: var(--text-secondary);
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.detail-back:active {
+  background: var(--accent-light);
 }
 
 .detail-back svg {
@@ -235,6 +610,7 @@ a { color: inherit; text-decoration: none; }
   background: var(--bg-card);
   display: flex;
   gap: 16px;
+  animation: slideUp 0.4s ease-out;
 }
 
 .detail-cover {
@@ -243,7 +619,7 @@ a { color: inherit; text-decoration: none; }
   border-radius: 8px;
   overflow: hidden;
   flex-shrink: 0;
-  box-shadow: 0 6px 24px rgba(60, 40, 20, 0.16);
+  box-shadow: 0 8px 24px rgba(60, 40, 20, 0.16);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -260,6 +636,18 @@ a { color: inherit; text-decoration: none; }
   height: 40%;
   background: linear-gradient(rgba(255,255,255,0.12), transparent);
   border-radius: 6px 6px 0 0;
+  pointer-events: none;
+}
+
+.detail-cover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 3px;
+  background: rgba(0,0,0,0.06);
+  z-index: 2;
   pointer-events: none;
 }
 
@@ -289,10 +677,11 @@ a { color: inherit; text-decoration: none; }
 }
 
 .detail-meta h1 {
-  font-family: "Noto Serif SC", serif;
-  font-size: 20px;
-  font-weight: 700;
+  font-family: "ZCOOL XiaoWei", "Noto Serif SC", serif;
+  font-size: 22px;
+  font-weight: 400;
   line-height: 1.3;
+  letter-spacing: 2px;
 }
 
 .detail-meta .author {
@@ -311,9 +700,11 @@ a { color: inherit; text-decoration: none; }
   padding: 16px 24px;
   background: var(--bg-card);
   margin-top: 1px;
+  animation: slideUp 0.4s ease-out 0.05s both;
 }
 
 .detail-desc .desc-text {
+  font-family: "Noto Serif SC", serif;
   font-size: 14px;
   color: var(--text-secondary);
   line-height: 1.8;
@@ -340,6 +731,7 @@ a { color: inherit; text-decoration: none; }
   padding: 16px 24px;
   background: var(--bg-card);
   margin-top: 1px;
+  animation: slideUp 0.4s ease-out 0.08s both;
 }
 
 .btn-primary {
@@ -348,13 +740,14 @@ a { color: inherit; text-decoration: none; }
   justify-content: center;
   gap: 6px;
   padding: 14px;
-  border-radius: 24px;
-  background: linear-gradient(155deg, #c4945a, #9a6d3e);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #c4945a, #9a6d3e);
   color: #fff;
   font-size: 16px;
   font-weight: 600;
   transition: opacity 0.2s, transform 0.15s;
-  box-shadow: 0 2px 8px rgba(140, 100, 30, 0.18);
+  box-shadow: 0 4px 16px rgba(140, 100, 30, 0.2);
+  letter-spacing: 1px;
 }
 
 .btn-primary:active {
@@ -362,10 +755,75 @@ a { color: inherit; text-decoration: none; }
   transform: scale(0.98);
 }
 
+/* 阅读进度总览 */
+.reading-overview {
+  padding: 16px 24px 20px;
+  background: var(--bg-card);
+  margin-top: 1px;
+  animation: slideUp 0.4s ease-out 0.1s both;
+}
+
+.overview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.overview-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.overview-pct {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.overview-bar {
+  height: 5px;
+  background: var(--border-light);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.overview-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--autumn));
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+/* 总览中的章节进度缩略 */
+.overview-chapter-row {
+  display: flex;
+  gap: 6px;
+}
+
+.overview-chapter-row .dot {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border-light);
+  transition: background 0.3s;
+}
+
+.overview-chapter-row .dot.done {
+  background: var(--leaf-green);
+}
+
+.overview-chapter-row .dot.reading {
+  background: var(--accent);
+}
+
 /* 目录 */
 .chapter-section {
   background: var(--bg-card);
   margin-top: 8px;
+  animation: slideUp 0.4s ease-out 0.12s both;
 }
 
 .chapter-section-header {
@@ -373,7 +831,7 @@ a { color: inherit; text-decoration: none; }
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .chapter-section-header h2 {
@@ -394,10 +852,14 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   align-items: center;
   padding: 15px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-light);
   font-size: 15px;
-  transition: color 0.15s;
+  transition: color 0.15s, background 0.15s;
   gap: 8px;
+  position: relative;
+  margin: 0 -24px;
+  padding-left: 24px;
+  padding-right: 24px;
 }
 
 .chapter-item:last-child {
@@ -405,7 +867,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .chapter-item:active {
-  color: var(--accent);
+  background: var(--accent-light);
 }
 
 .chapter-num {
@@ -432,11 +894,69 @@ a { color: inherit; text-decoration: none; }
   opacity: 0.45;
 }
 
+.chapter-item.done .chapter-title {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-muted);
+}
+
 .chapter-progress {
   font-size: 11px;
   color: var(--accent);
   flex-shrink: 0;
   margin-left: 4px;
+}
+
+/* 章节进度状态标签 */
+.chapter-status {
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 6px;
+  flex-shrink: 0;
+  padding: 1px 7px;
+  border-radius: 6px;
+  line-height: 1.5;
+}
+
+.chapter-status.reading {
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+.chapter-status.done {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: #e8f0e4;
+  border-radius: 50%;
+  margin-left: 6px;
+}
+
+.chapter-status.done svg {
+  width: 12px;
+  height: 12px;
+  stroke: #6b8e5a;
+}
+
+/* 章节列表内进度条 */
+.chapter-progress-wrap {
+  position: absolute;
+  bottom: 0;
+  left: 24px;
+  right: 24px;
+  height: 2px;
+  background: var(--border-light);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.chapter-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--autumn));
+  border-radius: 1px;
+  transition: width 0.3s;
 }
 
 /* ===== 阅读页 ===== */
@@ -459,7 +979,7 @@ body.reading-page {
   top: 0;
   left: 0;
   height: 2px;
-  background: linear-gradient(to right, var(--accent), #cea05a);
+  background: linear-gradient(to right, var(--accent), var(--autumn));
   z-index: 300;
   transition: width 0.2s ease;
   opacity: 0.55;
@@ -526,7 +1046,7 @@ body.reading-page {
 /* 阅读内容 */
 .chapter-content {
   padding: 24px 20px 48px;
-  font-family: "FZYouHei", "方正悠黑", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  font-family: "Noto Serif SC", "Songti SC", Georgia, serif;
   font-size: var(--font-size-base);
   line-height: 2.0;
   color: var(--reading-text);
@@ -711,7 +1231,7 @@ body.reading-page {
 .modal-panel {
   position: relative;
   background: var(--bg-card);
-  border-radius: 14px;
+  border-radius: 16px;
   width: 88vw;
   max-width: 360px;
   max-height: 70vh;
@@ -732,7 +1252,7 @@ body.reading-page {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-light);
   font-size: 16px;
   font-weight: 600;
   flex-shrink: 0;
@@ -770,11 +1290,11 @@ body.reading-page {
   padding: 14px 20px;
   gap: 10px;
   transition: background 0.15s, opacity 0.3s;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .dir-item:active {
-  background: rgba(0,0,0,0.03);
+  background: var(--accent-light);
 }
 
 .dir-item.active {

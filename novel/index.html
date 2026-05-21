@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#faf7f2">
+  <meta name="theme-color" content="#f8f4ed">
   <meta name="description" content="临渊羡鱼 - 目录">
   <title>临渊羡鱼 - 目录</title>
   <link rel="stylesheet" href="../css/style.css">
@@ -36,10 +36,22 @@
   </div>
 
   <div class="start-reading">
-    <a href="chapter-01.html" class="btn-primary">
+    <a href="chapter-01.html" class="btn-primary" id="continueBtn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-      开始阅读
+      <span id="continueBtnText">开始阅读</span>
     </a>
+  </div>
+
+  <!-- 阅读进度总览 -->
+  <div class="reading-overview" id="readingOverview" style="display:none">
+    <div class="overview-header">
+      <span class="overview-title">阅读进度</span>
+      <span class="overview-pct" id="overviewPct">0%</span>
+    </div>
+    <div class="overview-bar">
+      <div class="overview-fill" id="overviewFill"></div>
+    </div>
+    <div class="overview-chapters" id="overviewChapters"></div>
   </div>
 
   <div class="chapter-section">
@@ -62,8 +74,29 @@
   </div>
 
   </div>
+
+  <!-- 页面切换动画 -->
+  <div class="page-transition" id="pageTransition">
+    <svg class="leaf-icon" viewBox="0 0 24 24" fill="none">
+      <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5s1.75 3.75 1.75 3.75" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
   <script>
   (function() {
+    // ===== 页面切换动画 =====
+    var transition = document.getElementById('pageTransition');
+    document.querySelectorAll('a[href]').forEach(function(link) {
+      link.addEventListener('click', function(e) {
+        var href = link.getAttribute('href');
+        if (!href || href.startsWith('#') || href.startsWith('javascript')) return;
+        e.preventDefault();
+        if (transition) transition.classList.add('active');
+        setTimeout(function() { window.location.href = href; }, 280);
+      });
+    });
+
+    // ===== 章节阅读进度 =====
     function getChapterId(href) {
       var path = '/novel/' + href;
       return path.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-');
@@ -71,6 +104,10 @@
     var items = document.querySelectorAll('.chapter-item');
     var totalRead = 0, totalWords = 0;
     var wordMap = { 'chapter-01.html': 2722, 'chapter-02.html': 2257 };
+    var chapterData = [];
+    var lastReadChapter = null;
+    var lastReadPct = 0;
+
     items.forEach(function(item) {
       var href = item.getAttribute('href');
       if (!href) return;
@@ -78,26 +115,76 @@
       var pct = parseInt(localStorage.getItem('reader-pos-' + id)) || 0;
       var done = localStorage.getItem('reader-done-' + id) === '1';
       var words = wordMap[href] || 0;
-      if (pct > 0 || done) {
-        if (done) {
-          item.classList.add('done');
-          totalRead += words;
-        } else if (pct > 0 && pct < 95) {
-          var badge = document.createElement('span');
-          badge.className = 'chapter-progress';
-          badge.textContent = pct + '%';
-          var wordsSpan = item.querySelector('.chapter-words');
-          if (wordsSpan) wordsSpan.after(badge);
-          totalRead += Math.round(words * pct / 100);
+      totalWords += words;
+
+      var titleEl = item.querySelector('.chapter-title');
+      var title = titleEl ? titleEl.textContent : '';
+      chapterData.push({ pct: done ? 100 : pct, title: title });
+
+      if (done) {
+        item.classList.add('done');
+        var badge = document.createElement('span');
+        badge.className = 'chapter-status done';
+        badge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        item.appendChild(badge);
+        totalRead += words;
+        lastReadChapter = href;
+        lastReadPct = 100;
+      } else if (pct > 0) {
+        var progressWrap = document.createElement('div');
+        progressWrap.className = 'chapter-progress-wrap';
+        progressWrap.innerHTML = '<div class="chapter-progress-fill" style="width:' + pct + '%"></div>';
+        item.appendChild(progressWrap);
+
+        var badge = document.createElement('span');
+        badge.className = 'chapter-status reading';
+        badge.textContent = pct + '%';
+        item.appendChild(badge);
+
+        totalRead += Math.round(words * pct / 100);
+        if (!lastReadChapter || pct > lastReadPct) {
+          lastReadChapter = href;
+          lastReadPct = pct;
         }
       }
-      totalWords += words;
     });
+
     if (totalRead > 0) {
+      var readPct = Math.round(totalRead / totalWords * 100);
+
+      var overviewEl = document.getElementById('readingOverview');
+      if (overviewEl) {
+        overviewEl.style.display = 'block';
+        document.getElementById('overviewPct').textContent = readPct + '%';
+        document.getElementById('overviewFill').style.width = readPct + '%';
+
+        var chaptersEl = document.getElementById('overviewChapters');
+        if (chaptersEl && chapterData.length > 0) {
+          var html = '<div class="overview-chapter-row">';
+          chapterData.forEach(function(ch) {
+            var cls = ch.pct >= 100 ? 'dot done' : (ch.pct > 0 ? 'dot reading' : 'dot');
+            var style = ch.pct > 0 && ch.pct < 100 ? ' style="background:linear-gradient(90deg,var(--accent) ' + ch.pct + '%,var(--border-light) ' + ch.pct + '%)"' : '';
+            html += '<div class="' + cls + '"' + style + ' title="' + ch.title + ' ' + ch.pct + '%"></div>';
+          });
+          html += '</div>';
+          chaptersEl.innerHTML = html;
+        }
+      }
+
       var statsEl = document.querySelector('.stats');
       if (statsEl) {
-        var readPct = Math.round(totalRead / totalWords * 100);
         statsEl.textContent = statsEl.textContent + ' · 已读 ' + readPct + '%';
+      }
+
+      var btnEl = document.querySelector('.btn-primary');
+      if (btnEl && lastReadChapter) {
+        btnEl.href = lastReadChapter;
+        var svgEl = btnEl.querySelector('svg');
+        btnEl.innerHTML = '';
+        if (svgEl) btnEl.appendChild(svgEl);
+        var spanEl = document.createElement('span');
+        spanEl.textContent = '继续阅读';
+        btnEl.appendChild(spanEl);
       }
     }
   })();
