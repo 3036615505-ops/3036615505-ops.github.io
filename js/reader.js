@@ -111,6 +111,10 @@
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
 
+    window.addEventListener('pageshow', function(e) {
+      if (ov.classList.contains('active')) ov.classList.remove('active');
+    });
+
     document.addEventListener('click', function(e) {
       var link = e.target.closest('a[href]');
       if (!link) return;
