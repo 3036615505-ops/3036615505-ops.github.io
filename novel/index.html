@@ -7,6 +7,7 @@
   <meta name="description" content="临渊羡鱼 - 目录">
   <title>临渊羡鱼 - 目录</title>
   <link rel="stylesheet" href="../css/style.css">
+  <script src="../js/chapters.js"></script>
 </head>
 <body>
   <div class="phone-frame">
@@ -193,13 +194,8 @@
     });
 
     // ===== 章节阅读进度 =====
-    function getChapterId(href) {
-      var path = '/novel/' + href;
-      return path.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-');
-    }
     var items = document.querySelectorAll('.chapter-item');
     var totalRead = 0, totalWords = 0;
-    var wordMap = { 'chapter-01.html': 2722, 'chapter-02.html': 2257 };
     var chapterData = [];
     var lastReadChapter = null;
     var lastReadPct = 0;
@@ -207,10 +203,11 @@
     items.forEach(function(item) {
       var href = item.getAttribute('href');
       if (!href) return;
-      var id = getChapterId(href);
+      var id = getChapterStorageId(href);
       var pct = parseInt(localStorage.getItem('reader-pos-' + id)) || 0;
       var done = localStorage.getItem('reader-done-' + id) === '1';
-      var words = wordMap[href] || 0;
+      var ch = CHAPTERS.find(function(c) { return c.file === href; });
+      var words = ch ? ch.words : 0;
       totalWords += words;
 
       var titleEl = item.querySelector('.chapter-title');

@@ -7,6 +7,7 @@
   <meta name="description" content="南城的梧桐树还在长">
   <title>临渊羡鱼</title>
   <link rel="stylesheet" href="css/style.css">
+  <script src="js/chapters.js"></script>
 </head>
 <body>
   <div class="phone-frame">
@@ -21,7 +22,13 @@
   </div>
 
   <!-- 引用（多章轮播） -->
-  <div class="home-quote" id="homeQuote"><div class="quote-inner" id="quoteInner"></div></div>
+  <div class="home-quote" id="homeQuote">
+    <button class="quote-pause-btn" id="quotePauseBtn" aria-label="暂停轮播" title="暂停">
+      <svg class="pause-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+      <svg class="play-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    </button>
+    <div class="quote-inner" id="quoteInner"></div>
+  </div>
 
   <!-- 继续阅读卡片 -->
   <div class="home-reading-card" id="homeReadingCard">
@@ -37,6 +44,7 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
       继续阅读
     </a>
+    <div class="reading-card-lastvisit" id="homeLastVisit" style="display:none"></div>
   </div>
 
   <div class="reading-footprints" id="homeFootprints" style="display:none">
@@ -203,21 +211,49 @@
         quoteOuter.style.height = maxH + 'px';
       });
 
+      var quoteTimer = null;
+      var quotePaused = false;
+
+      function tickQuote() {
+        quoteInner.style.opacity = '0';
+        quoteInner.style.transform = 'translateY(-6px)';
+        setTimeout(function() {
+          var next;
+          do { next = Math.floor(Math.random() * quotes.length); } while (next === currentIdx && quotes.length > 1);
+          currentIdx = next;
+          quoteInner.innerHTML = renderQuote(currentIdx);
+          quoteInner.style.transform = 'translateY(6px)';
+          quoteInner.offsetHeight;
+          quoteInner.style.opacity = '1';
+          quoteInner.style.transform = 'translateY(0)';
+        }, 550);
+      }
+
+      function startQuoteTimer() {
+        stopQuoteTimer();
+        quoteTimer = setInterval(tickQuote, 5000);
+      }
+
+      function stopQuoteTimer() {
+        if (quoteTimer) { clearInterval(quoteTimer); quoteTimer = null; }
+      }
+
       if (quotes.length > 1) {
-        setInterval(function() {
-          quoteInner.style.opacity = '0';
-          quoteInner.style.transform = 'translateY(-6px)';
-          setTimeout(function() {
-            var next;
-            do { next = Math.floor(Math.random() * quotes.length); } while (next === currentIdx && quotes.length > 1);
-            currentIdx = next;
-            quoteInner.innerHTML = renderQuote(currentIdx);
-            quoteInner.style.transform = 'translateY(6px)';
-            quoteInner.offsetHeight;
-            quoteInner.style.opacity = '1';
-            quoteInner.style.transform = 'translateY(0)';
-          }, 550);
-        }, 5000);
+        startQuoteTimer();
+
+        var pauseBtn = document.getElementById('quotePauseBtn');
+        if (pauseBtn) {
+          pauseBtn.addEventListener('click', function() {
+            quotePaused = !quotePaused;
+            if (quotePaused) {
+              stopQuoteTimer();
+              pauseBtn.classList.add('paused');
+            } else {
+              startQuoteTimer();
+              pauseBtn.classList.remove('paused');
+            }
+          });
+        }
       }
     }
 
@@ -267,51 +303,42 @@
     });
 
     // ===== 首页阅读进度 =====
-    var chapterInfo = {
-      linyuan: [
-        { href: 'chapter-01.html', words: 2722, key: '-novel-chapter-01-html', title: '第一章·临渊羡鱼' },
-        { href: 'chapter-02.html', words: 2257, key: '-novel-chapter-02-html', title: '第二章·前桌' }
-      ]
-    };
-
     var totalRead = 0, totalWords = 0;
     var lastReadChapter = null;
     var lastReadPct = 0;
     var chapterDots = [];
 
-    Object.keys(chapterInfo).forEach(function(novelId) {
-      var chapters = chapterInfo[novelId];
-      chapters.forEach(function(ch) {
+    CHAPTERS.forEach(function(ch) {
         totalWords += ch.words;
-        var pct = parseInt(localStorage.getItem('reader-pos-' + ch.key)) || 0;
-        var done = localStorage.getItem('reader-done-' + ch.key) === '1';
+        var key = getChapterStorageId(ch.file);
+        var pct = parseInt(localStorage.getItem('reader-pos-' + key)) || 0;
+        var done = localStorage.getItem('reader-done-' + key) === '1';
         if (done) {
           totalRead += ch.words;
           chapterDots.push('done');
-          lastReadChapter = ch.href;
+          lastReadChapter = ch.file;
           lastReadPct = 100;
         } else if (pct > 0) {
           totalRead += Math.round(ch.words * pct / 100);
           chapterDots.push('reading');
           if (!lastReadChapter || pct > lastReadPct) {
-            lastReadChapter = ch.href;
+            lastReadChapter = ch.file;
             lastReadPct = pct;
           }
         } else {
           chapterDots.push('');
         }
-      });
     });
 
     document.querySelectorAll('.book-item').forEach(function(item) {
       var novelId = item.dataset.novelId;
-      if (!novelId || !chapterInfo[novelId]) return;
-      var chapters = chapterInfo[novelId];
+      if (!novelId || novelId !== 'linyuan') return;
       var nRead = 0, nWords = 0;
-      chapters.forEach(function(ch) {
+      CHAPTERS.forEach(function(ch) {
         nWords += ch.words;
-        var pct = parseInt(localStorage.getItem('reader-pos-' + ch.key)) || 0;
-        var done = localStorage.getItem('reader-done-' + ch.key) === '1';
+        var key = getChapterStorageId(ch.file);
+        var pct = parseInt(localStorage.getItem('reader-pos-' + key)) || 0;
+        var done = localStorage.getItem('reader-done-' + key) === '1';
         if (done) nRead += ch.words;
         else if (pct > 0) nRead += Math.round(ch.words * pct / 100);
       });
@@ -337,6 +364,33 @@
         var readPct = Math.round(totalRead / totalWords * 100);
         document.getElementById('homeReadPct').textContent = readPct + '%';
         document.getElementById('homeReadFill').style.width = readPct + '%';
+
+        // 距上次阅读天数
+        (function() {
+          var fpRaw = localStorage.getItem('reader-footprints');
+          if (!fpRaw) return;
+          try {
+            var fp = JSON.parse(fpRaw);
+            var days = fp.days || [];
+            if (days.length > 0) {
+              days.sort();
+              var last = days[days.length - 1];
+              var parts = last.split('-');
+              var lastDate = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+              var today = new Date();
+              today.setHours(0, 0, 0, 0);
+              var diff = Math.floor((today - lastDate) / 86400000);
+              var el = document.getElementById('homeLastVisit');
+              if (el && diff > 0) {
+                el.textContent = '上次翻开是 ' + diff + ' 天前';
+                el.style.display = 'block';
+              } else if (el && diff === 0) {
+                el.textContent = '今天刚来过';
+                el.style.display = 'block';
+              }
+            }
+          } catch(e) {}
+        })();
         var dotsEl = document.getElementById('homeChapterDots');
         if (dotsEl) {
           var dhtml = '';

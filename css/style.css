@@ -571,6 +571,46 @@ a { color: inherit; text-decoration: none; }
   margin-top: 10px;
   letter-spacing: 1px;
 }
+/* 引用轮播暂停按钮 */
+.quote-pause-btn {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--card-border);
+  background: rgba(255,255,255,0.55);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.48;
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+.quote-pause-btn:active {
+  transform: scale(0.9);
+}
+
+.quote-pause-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.quote-pause-btn.paused .pause-icon {
+  display: none;
+}
+
+.quote-pause-btn.paused .play-icon {
+  display: block !important;
+}
+
+.quote-pause-btn:not(.paused) .play-icon {
+  display: none !important;
+}
 
 /* 书架区域 */
 .bookshelf-section {
@@ -835,6 +875,14 @@ a { color: inherit; text-decoration: none; }
   box-shadow: 0 4px 12px rgba(184,134,78,0.18);
 }
 
+/* 阅读卡片上次访问 */
+.reading-card-lastvisit {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 12px;
+  letter-spacing: 0.5px;
+}
 /* 阅读足迹卡片 */
 .reading-footprints {
   margin: 12px 16px 0;
@@ -2104,6 +2152,22 @@ body.reading-page {
   color: var(--text-muted);
 }
 
+/* 目录弹窗人物入口 */
+.dir-char-link {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-right: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(184,134,78,0.07);
+  border: 1px solid var(--reader-border);
+  transition: color 0.15s, background 0.15s;
+}
+
+.dir-char-link:active {
+  color: var(--accent);
+  background: rgba(184,134,78,0.14);
+}
 /* ===== 设置弹窗 ===== */
 .settings-modal .modal-panel,
 .modal-panel.settings-modal {

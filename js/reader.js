@@ -127,6 +127,8 @@
     if (meta) {
       meta.content = { light: '#ffffff', wheat: '#f5efe0', green: '#d5e4d0', dark: '#1c1c1c' }[theme] || '#f5efe0';
     }
+    var nightLabel = document.getElementById('nightModeLabel');
+    if (nightLabel) nightLabel.textContent = theme === 'dark' ? '日读' : '夜读';
   }
 
   window.setTheme = function(theme) { applyTheme(theme); };
@@ -173,7 +175,24 @@
       var link = e.target.closest('a[href]');
       if (!link) return;
       var href = link.getAttribute('href');
-      if (!href || href.startsWith('#') || href.startsWith('javascript') || link.getAttribute('onclick') || link.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if (!href || href.startsWith('javascript') || link.getAttribute('onclick') || link.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+	      // 同页锚点链接：不触发过渡动画，直接滚动
+	      if (href.startsWith('#')) {
+	        var target = document.getElementById(href.slice(1));
+	        if (target) { target.scrollIntoView({ behavior: 'smooth' }); }
+	        return;
+	      }
+	      var hashIdx = href.indexOf('#');
+	      if (hashIdx > 0) {
+	        var base = href.substring(0, hashIdx);
+	        var currentPage = window.location.pathname.split('/').pop() || '';
+	        if (base === currentPage) {
+	          var target = document.getElementById(href.slice(hashIdx + 1));
+	          if (target) { target.scrollIntoView({ behavior: 'smooth' }); }
+	          return;
+	        }
+	      }
       e.preventDefault();
       ov.querySelector('.transition-text').textContent = pickTransitionLine();
       ov.classList.add('active');
@@ -339,11 +358,6 @@
   }
 
   /* ===== DIRECTORY PANEL ===== */
-  function getChapterStorageId(href) {
-    var path = '/novel/' + href;
-    return path.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-');
-  }
-
   function initDirectoryPanel() {
     if (document.getElementById('dirOverlay')) return;
     var ov = document.createElement('div');
@@ -352,7 +366,7 @@
     ov.innerHTML =
       '<div class="modal-backdrop"></div>' +
       '<div class="modal-panel dir-modal">' +
-        '<div class="modal-header"><span>目录</span>' +
+        '<div class="modal-header"><span>目录</span><a href="characters.html" class="dir-char-link" onclick="closeDirectory()">人物</a>' +
           '<button class="modal-close" onclick="closeDirectory()">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
           '</button>' +
@@ -369,19 +383,14 @@
     if (!list) return;
     var path = window.location.pathname;
     var file = path.substring(path.lastIndexOf('/') + 1) || 'chapter-01.html';
-    var chapters = [
-      { num: 1, title: '第一章·临渊羡鱼', href: 'chapter-01.html', words: 2722 },
-      { num: 2, title: '第二章·前桌', href: 'chapter-02.html', words: 2257 }
-    ];
-
     var html = '';
-    chapters.forEach(function(ch) {
-      var id = getChapterStorageId(ch.href);
+    CHAPTERS.forEach(function(ch) {
+      var id = getChapterStorageId(ch.file);
       var done = localStorage.getItem('reader-done-' + id) === '1';
       var pct = parseInt(localStorage.getItem('reader-pos-' + id)) || 0;
-      var active = ch.href === file;
+      var active = ch.file === file;
 
-      html += '<a href="' + ch.href + '" class="dir-item' + (active ? ' active' : '') + (done ? ' done' : '') + '">';
+      html += '<a href="' + ch.file + '" class="dir-item' + (active ? ' active' : '') + (done ? ' done' : '') + '">';
       html += '<span class="dir-item-num">第' + ch.num + '章</span>';
       html += '<span class="dir-item-title">' + ch.title + '</span>';
       html += '<span class="dir-item-info">';
