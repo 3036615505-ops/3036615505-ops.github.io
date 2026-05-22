@@ -6,7 +6,7 @@
 
   /* ===== STATE ===== */
   var state = {
-    fontSize: localStorage.getItem('reader-fontsize') || 'large',
+    fontSize: localStorage.getItem('reader-fontsize') || 'medium',
     theme: localStorage.getItem('reader-theme') || 'wheat',
     fontFamily: localStorage.getItem('reader-fontfamily') || 'fzyouhei',
     barsVisible: false,
@@ -366,7 +366,7 @@
     ov.innerHTML =
       '<div class="modal-backdrop"></div>' +
       '<div class="modal-panel dir-modal">' +
-        '<div class="modal-header"><span>目录</span><a href="characters.html" class="dir-char-link" onclick="closeDirectory()">人物</a>' +
+        '<div class="modal-header"><div class="modal-header-left"><span>目录</span><a href="characters.html" class="dir-char-link" onclick="closeDirectory()">人物簿</a></div>' +
           '<button class="modal-close" onclick="closeDirectory()">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
           '</button>' +

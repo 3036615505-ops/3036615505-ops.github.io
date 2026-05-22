@@ -1557,6 +1557,12 @@ body.reading-page {
   right: 0;
   pointer-events: auto;
   touch-action: manipulation;
+  background: none;
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .reader-tap-zone.top {
@@ -2153,13 +2159,18 @@ body.reading-page {
 }
 
 /* 目录弹窗人物入口 */
+.modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .dir-char-link {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
-  margin-right: 8px;
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 999px;
-  background: rgba(184,134,78,0.07);
+  background: rgba(184,134,78,0.06);
   border: 1px solid var(--reader-border);
   transition: color 0.15s, background 0.15s;
 }
