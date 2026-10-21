@@ -2615,3 +2615,565 @@ body.reading-page {
 .book-cover-text {
   text-shadow: 0 1px 10px rgba(20, 12, 4, 0.45);
 }
+
+/* ============================================================
+   改版组件（2026-10-21）：窗台首页 / 光阴目录 / tab bar / 同学录 / 落款与印
+   ============================================================ */
+
+/* ---- 首页页头 ---- */
+.home-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 18px 0;
+}
+
+.home-title {
+  font-family: "ZCOOL XiaoWei", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 21px;
+  font-weight: 400;
+  color: var(--text);
+  letter-spacing: 3px;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.home-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 5px;
+  letter-spacing: 1px;
+}
+
+.leaf-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg-warm);
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 11px;
+  color: var(--accent-hover);
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+/* ---- 梧桐进度带 ---- */
+.tree-band {
+  position: relative;
+  margin: 14px 16px 0;
+  height: 112px;
+  background: #F6F1E2;
+  border: 0.5px solid var(--border-light);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .tree-band {
+  background: #201D16;
+  border-color: var(--border);
+}
+
+.tree-band-img {
+  position: absolute;
+  right: -8px;
+  bottom: -6px;
+  height: 124px;
+  width: 156px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+[data-theme="dark"] .tree-band-img {
+  filter: brightness(0.82) saturate(0.85);
+}
+
+.tree-leaf {
+  position: absolute;
+  transition: transform 0.5s ease;
+}
+
+.tree-leaf.lit {
+  filter: drop-shadow(0 0 3px rgba(138, 158, 108, 0.5));
+}
+
+.tree-caption {
+  position: absolute;
+  left: 14px;
+  bottom: 11px;
+}
+
+.tree-caption-main {
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.tree-caption-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 3px;
+  letter-spacing: 1px;
+}
+
+/* ---- 继续阅读卡（新内部结构；旧容器样式保留） ---- */
+.home-reading-card {
+  display: block;
+}
+
+.rc-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rc-cover {
+  width: 46px;
+  height: 62px;
+  border-radius: 8px;
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(60, 40, 20, 0.18);
+}
+
+.rc-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rc-chapter {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.rc-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+.rc-bar {
+  height: 4px;
+  background: var(--border-light);
+  border-radius: 2px;
+  margin-top: 9px;
+  overflow: hidden;
+}
+
+.rc-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.rc-btn {
+  background: var(--accent);
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 9px 15px;
+  border-radius: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.rc-btn:active {
+  background: var(--accent-hover);
+}
+
+/* ---- 光阴目录 ---- */
+.date-list-section {
+  padding: 16px 18px 0;
+}
+
+.date-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.date-list-title {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+}
+
+.date-list-total {
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.date-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 0 10px;
+  border-bottom: 0.5px solid var(--border-light);
+}
+
+.date-item:last-child {
+  border-bottom: none;
+}
+
+.date-item-leaf {
+  flex-shrink: 0;
+  display: flex;
+}
+
+.date-item-date {
+  width: 64px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 9px;
+}
+
+.date-item-title {
+  flex: 1;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.date-item-words {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 8px;
+}
+
+.date-item-new {
+  background: var(--accent);
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 999px;
+  margin-left: 8px;
+}
+
+/* ---- 底部 tab bar ---- */
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  background: rgba(255, 253, 248, 0.94);
+  border-top: 0.5px solid var(--border-light);
+  padding: 8px 0 calc(9px + env(safe-area-inset-bottom, 0px));
+  z-index: 100;
+  backdrop-filter: blur(18px);
+}
+
+[data-theme="dark"] .tab-bar {
+  background: rgba(30, 27, 21, 0.94);
+  border-top-color: var(--border);
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.tab-item svg {
+  margin: 0 auto;
+}
+
+.tab-item span {
+  display: block;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.tab-item.active {
+  color: var(--accent);
+}
+
+.tab-page-body {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .tab-bar {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: 420px;
+    border-radius: 18px 18px 0 0;
+  }
+}
+
+/* ---- 同学录人物卡 ---- */
+.char-hero {
+  padding: 2px 18px 0;
+}
+
+.char-hero-kicker {
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 2px;
+}
+
+.char-hero-title {
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 4px 0 0;
+}
+
+.character-list {
+  padding: 14px 14px 8px;
+}
+
+.character-card {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border-light);
+  border-radius: 8px;
+  padding: 14px 15px 13px;
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.character-card.primary {
+  border-left: 3px solid var(--accent);
+}
+
+.char-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.char-photo {
+  width: 48px;
+  height: 56px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 2px solid var(--bg-warm);
+  background: #FFFFFF;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(60, 40, 20, 0.06);
+}
+
+.char-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 28%;
+  display: block;
+}
+
+.char-photo.initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.char-photo.initial span {
+  font-family: "ZCOOL XiaoWei", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 19px;
+  color: var(--accent-hover);
+}
+
+.char-id h2 {
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0;
+}
+
+.char-tags {
+  display: flex;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.char-tag {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-warm);
+  color: var(--accent-hover);
+}
+
+.char-tag.role {
+  background: var(--border-light);
+  color: var(--text-secondary);
+}
+
+.char-quote {
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 13px;
+  color: var(--accent-hover);
+  margin: 12px 0 0;
+  border-left: 3px solid var(--accent);
+  padding-left: 10px;
+  line-height: 1.6;
+}
+
+.char-desc {
+  font-size: 11px;
+  line-height: 1.75;
+  color: var(--text-secondary);
+  margin: 9px 0 0;
+}
+
+.char-page-no {
+  position: absolute;
+  right: 13px;
+  bottom: 9px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* ---- 章节页：日期落款 + 角印 ---- */
+.chapter-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  letter-spacing: 3px;
+  margin: 6px 0 14px;
+}
+
+.chapter-seal {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  width: 28px;
+  height: 28px;
+  background: #A6402D;
+  border-radius: 4px;
+  transform: rotate(-4deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+}
+
+.chapter-seal span {
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 9px;
+  color: #FBF3E8;
+  writing-mode: vertical-rl;
+  letter-spacing: 1px;
+  line-height: 1.25;
+}
+
+/* ---- 阅读页纸纹 ---- */
+body.reading-page {
+  background-image: url('../assets/paper.jpg');
+  background-size: cover;
+}
+
+[data-theme="dark"] body.reading-page {
+  background-image: none;
+}
+
+/* ---- 剪贴本页 ---- */
+.quotes-hero {
+  padding: 20px 18px 0;
+}
+
+.quotes-hero-kicker {
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 2px;
+}
+
+.quotes-hero-title {
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 4px 0 0;
+}
+
+.quotes-hero-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 5px;
+  line-height: 1.7;
+}
+
+.quotes-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 16px 0;
+}
+
+.quotes-export-btn {
+  border: none;
+  background: var(--accent);
+  color: #FFFFFF;
+  font-size: 12px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.quotes-export-btn:active {
+  background: var(--accent-hover);
+}
+
+.quotes-list {
+  padding: 12px 14px 8px;
+}
+
+.quote-entry {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border-light);
+  border-radius: 8px;
+  padding: 14px 15px 12px;
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.quote-entry-text {
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--text);
+  border-left: 3px solid var(--accent);
+  padding-left: 10px;
+}
+
+.quote-entry-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 9px;
+}
+
+.quote-entry-actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.quote-entry-actions button,
+.quote-entry-actions a {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.quote-entry-actions .danger {
+  color: var(--text-muted);
+}
+
+.quotes-empty {
+  text-align: center;
+  padding: 60px 30px;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.9;
+}

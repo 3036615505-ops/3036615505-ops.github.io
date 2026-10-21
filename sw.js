@@ -2,18 +2,25 @@
  * sw.js — 临渊羡鱼 Service Worker
  * 策略：页面导航网络优先（保证更新可见）；静态资源缓存优先 + 后台更新（离线可读）
  */
-var CACHE = 'linyuan-v1';
+var CACHE = 'linyuan-v2';
 
 var PRECACHE = [
   '/',
   '/favicon.svg',
   '/manifest.json',
   '/assets/og-cover.jpg',
+  '/assets/cover.jpg',
+  '/assets/tree.jpg',
+  '/assets/paper.jpg',
+  '/assets/portrait-linshu.jpg',
+  '/assets/portrait-nanheng.jpg',
+  '/assets/portrait-jiangbuqiu.jpg',
   '/assets/fonts/zcool-xiaowei-subset.woff2',
   '/css/style.css',
   '/js/reader.js',
   '/js/chapters.js',
   '/js/theme.js',
+  '/quotes.html',
   '/novel/',
   '/novel/chapter-01.html',
   '/novel/chapter-02.html',

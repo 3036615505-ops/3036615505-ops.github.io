@@ -17,185 +17,194 @@
   <script src="js/chapters.js"></script>
   <script src="js/theme.js"></script>
 </head>
-<body>
-  <div class="phone-frame">
+<body class="tab-page-body">
+  <div class="phone-frame home-page">
 
-  <!-- 首页 Hero -->
-  <div class="home-hero">
-    <div class="floating-leaves">
-      <span></span><span></span><span></span>
-    </div>
-    <h1>临渊羡鱼</h1>
-    <div class="subtitle">青春 · 校园 · 成长</div>
-  </div>
-
-  <!-- 引用（多章轮播） -->
-  <div class="home-quote" id="homeQuote">
-    <button class="quote-pause-btn" id="quotePauseBtn" aria-label="暂停轮播" title="暂停">
-      <svg class="pause-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
-      <svg class="play-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-    </button>
-    <div class="quote-inner" id="quoteInner"></div>
-  </div>
-
-  <!-- 继续阅读卡片 -->
-  <div class="home-reading-card" id="homeReadingCard">
-    <div class="reading-card-header">
-      <span class="reading-card-label">阅读进度</span>
-      <span class="reading-card-pct" id="homeReadPct">0%</span>
-    </div>
-    <div class="reading-card-bar">
-      <div class="reading-card-fill" id="homeReadFill"></div>
-    </div>
-    <div class="reading-card-chapters" id="homeChapterDots"></div>
-    <a href="#" class="reading-card-btn" id="homeContinueBtn">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-      继续阅读
-    </a>
-    <div class="reading-card-lastvisit" id="homeLastVisit" style="display:none"></div>
-  </div>
-
-  <div class="reading-footprints" id="homeFootprints" style="display:none">
-    <div class="footprints-header">
-      <span class="footprints-title">阅读足迹</span>
-      <span class="footprints-kicker" id="homeFootprintsKicker">故事还在慢慢发光</span>
-    </div>
-    <div class="footprints-copy" id="homeFootprintsCopy"></div>
-    <div class="footprints-metrics" id="homeFootprintsMetrics"></div>
-  </div>
-
-  <!-- 书架 -->
-  <div class="bookshelf-section">
-    <div class="bookshelf-section-title">书架</div>
-    <div class="bookshelf">
-      <a href="novel/" class="book-item" data-novel-id="linyuan">
-        <div class="book-cover linyuan">
-          <span class="book-cover-text">临渊羡鱼</span>
-        </div>
-        <div class="book-title">临渊羡鱼</div>
-        <div class="book-author">叶南衡</div>
-      </a>
-    </div>
-  </div>
-
-  <!-- 人物簿入口 -->
-  <div class="home-link-row">
-    <a href="novel/characters.html" class="detail-link-card">
-      <span class="detail-link-kicker">人物簿</span>
-      <span class="detail-link-title">翻开他们的名字</span>
-      <span class="detail-link-desc">用几句很轻的话，先认识这些会慢慢走近的人。</span>
-    </a>
-  </div>
-
-  <!-- 页脚 -->
-  <div class="home-footer">南城的梧桐树还在长</div>
-
-  </div>
-
-  <!-- 页面切换动画 -->
-  <div class="page-transition" id="pageTransition">
-    <div class="transition-inner">
-      <div class="transition-leaves">
-        <span class="leaf gold"></span>
-        <span class="leaf green"></span>
-        <span class="leaf brown"></span>
-        <span class="leaf gold soft"></span>
-        <span class="leaf green soft"></span>
+    <header class="home-header">
+      <div>
+        <h1 class="home-title">临渊羡鱼</h1>
+        <div class="home-subtitle">南城的梧桐树还在长</div>
       </div>
-      <svg viewBox="0 0 40 40" fill="none" width="40" height="40">
-        <path class="leaf-path" d="M20 4c0 0-8 4-10 12s4 16 10 20c6-4 12-12 10-20S20 4 20 4z" stroke="var(--accent)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-        <path class="leaf-vein" d="M20 8v24M20 14l-4 4M20 14l4 4M20 20l-5 3M20 20l5 3" stroke="var(--accent)" stroke-width="0.8" opacity="0.5" stroke-linecap="round"/>
-      </svg>
-      <div class="transition-text">梧桐叶正落下</div>
-    </div>
+      <div class="leaf-pill">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C7 8 4 13 12 22c8-9 5-14 0-20z"/></svg>
+        <span id="leafPillText">0 / 8 叶</span>
+      </div>
+    </header>
+
+    <section class="tree-band" id="treeBand">
+      <img class="tree-band-img" src="assets/tree.jpg" alt="">
+      <div class="tree-leaves" id="treeLeaves"></div>
+      <div class="tree-caption">
+        <div class="tree-caption-main" id="treeCaption">梧桐还在等第一片叶</div>
+        <div class="tree-caption-sub">读完一章，树上多一片</div>
+      </div>
+    </section>
+
+    <section class="home-reading-card" id="homeReadingCard">
+      <div class="rc-row">
+        <div class="rc-cover" id="rcCover"></div>
+        <div class="rc-info">
+          <div class="rc-chapter" id="rcChapter">第一章 · 临渊羡鱼</div>
+          <div class="rc-meta" id="rcMeta">还未开始 · 2722 字</div>
+          <div class="rc-bar"><div class="rc-fill" id="rcFill" style="width:0%"></div></div>
+        </div>
+        <a href="novel/chapter-01.html" class="rc-btn" id="rcBtn">开始阅读</a>
+      </div>
+    </section>
+
+    <section class="home-quote" id="homeQuote">
+      <button class="quote-pause-btn" id="quotePauseBtn" aria-label="暂停轮播" title="暂停">
+        <svg class="pause-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+        <svg class="play-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      </button>
+      <div class="quote-inner" id="quoteInner"></div>
+    </section>
+
+    <section class="date-list-section">
+      <div class="date-list-header">
+        <span class="date-list-title">光阴 · 学期册</span>
+        <span class="date-list-total" id="dateListTotal">0 字</span>
+      </div>
+      <div class="date-list" id="dateList"></div>
+    </section>
+
+    <footer class="home-footer">南城的梧桐树还在长</footer>
+
   </div>
+
+  <nav class="tab-bar">
+    <a class="tab-item active" href="index.html">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+      <span>首页</span>
+    </a>
+    <a class="tab-item" href="novel/characters.html">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <span>人物</span>
+    </a>
+    <a class="tab-item" href="quotes.html">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 7H5a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1H8z"/><path d="M19 7h-3a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1h-3z" transform="translate(-3 0)"/></svg>
+      <span>剪贴本</span>
+    </a>
+  </nav>
 
   <script>
   (function() {
-    var transitionLines = [
-      '风从走廊尽头吹过来',
-      '有些话还没说，故事已经往前了',
-      '夕阳落下去的时候，影子会变长',
-      '下一页有人会抬头看你一眼',
-      '梧桐影子轻轻翻过一页'
+    var prefersReducedMotion = function() {
+      return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    };
+
+    var LEAF_SLOTS = [
+      { right: 64, top: 8 }, { right: 40, top: 18 }, { right: 30, top: 42 }, { right: 40, top: 64 },
+      { right: 64, top: 74 }, { right: 88, top: 64 }, { right: 98, top: 42 }, { right: 88, top: 18 }
     ];
 
-    function pickTransitionLine() {
-      var line = transitionLines[Math.floor(Math.random() * transitionLines.length)];
-      sessionStorage.setItem('page-transition-text', line);
-      return line;
+    function leafSvg(fill, stroke) {
+      var path = 'M12 2C7 8 4 13 12 22c8-9 5-14 0-20z';
+      if (fill) return '<svg width="11" height="11" viewBox="0 0 24 24" fill="' + fill + '"><path d="' + path + '"/></svg>';
+      return '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="' + stroke + '" stroke-width="2.2"><path d="' + path + '"/></svg>';
     }
 
-    function getTransitionLine() {
-      var saved = sessionStorage.getItem('page-transition-text');
-      if (saved) {
-        sessionStorage.removeItem('page-transition-text');
-        return saved;
+    // ===== 梧桐进度带：读完一章亮一片叶（绿=读完，金=在读） =====
+    (function() {
+      var box = document.getElementById('treeLeaves');
+      var litCount = 0;
+      var html = '';
+      LEAF_SLOTS.forEach(function(slot, i) {
+        var ch = CHAPTERS[i];
+        var state = '';
+        if (ch) {
+          var key = getChapterStorageId(ch.file);
+          var done = localStorage.getItem('reader-done-' + key) === '1';
+          var pct = parseInt(localStorage.getItem('reader-pos-' + key)) || 0;
+          if (done) state = 'done';
+          else if (pct > 0) state = 'reading';
+        }
+        var icon = state === 'done' ? leafSvg('#8A9E6C')
+          : state === 'reading' ? leafSvg('#C4A24E')
+          : leafSvg(null, '#CFC2A4');
+        if (state) litCount++;
+        html += '<span class="tree-leaf' + (state ? ' lit' : '') + '" style="right:' + slot.right + 'px; top:' + slot.top + 'px;">' + icon + '</span>';
+      });
+      if (box) box.innerHTML = html;
+      var pill = document.getElementById('leafPillText');
+      if (pill) pill.textContent = litCount + ' / ' + LEAF_SLOTS.length + ' 叶';
+      var caption = document.getElementById('treeCaption');
+      if (caption) caption.textContent = litCount > 0 ? '梧桐又长出 ' + litCount + ' 片叶' : '梧桐还在等第一片叶';
+    })();
+
+    // ===== 继续阅读卡（新读者显示第一章） =====
+    (function() {
+      var lastReadChapter = null, lastReadPct = 0;
+      CHAPTERS.forEach(function(ch) {
+        var key = getChapterStorageId(ch.file);
+        var pct = parseInt(localStorage.getItem('reader-pos-' + key)) || 0;
+        var done = localStorage.getItem('reader-done-' + key) === '1';
+        if (done) { lastReadChapter = ch; }
+        else if (pct > 0) { lastReadChapter = ch; lastReadPct = pct; }
+      });
+
+      var cover = document.getElementById('rcCover');
+      var nameEl = document.getElementById('rcChapter');
+      var metaEl = document.getElementById('rcMeta');
+      var fillEl = document.getElementById('rcFill');
+      var btn = document.getElementById('rcBtn');
+      if (cover) cover.style.backgroundImage = "url('assets/cover.jpg')";
+
+      if (lastReadChapter) {
+        var pct = lastReadPct || 100;
+        if (nameEl) nameEl.textContent = lastReadChapter.title;
+        if (metaEl) metaEl.textContent = '已读 ' + pct + '% · ' + lastReadChapter.words + ' 字';
+        if (fillEl) fillEl.style.width = pct + '%';
+        if (btn) { btn.href = 'novel/' + lastReadChapter.file; btn.textContent = '继续阅读'; }
       }
-      return transitionLines[Math.floor(Math.random() * transitionLines.length)];
-    }
+    })();
 
-    function readFootprints() {
-      var raw = localStorage.getItem('reader-footprints');
-      if (!raw) return { daysCount: 0, quotesCount: 0, lastChapterTitle: '', themeLabel: '' };
-      try {
-        var data = JSON.parse(raw);
-        var counts = data.themeCounts || {};
-        var topTheme = Object.keys(counts).sort(function(a, b) { return (counts[b] || 0) - (counts[a] || 0); })[0] || '';
-        var themeMap = { light: '晴窗', wheat: '信笺', green: '梧阴', dark: '夜读' };
-        return {
-          daysCount: Array.isArray(data.days) ? data.days.length : 0,
-          quotesCount: Array.isArray(data.quotes) ? data.quotes.length : 0,
-          lastChapterTitle: data.lastChapterTitle || '',
-          themeLabel: themeMap[topTheme] || ''
-        };
-      } catch (err) {
-        return { daysCount: 0, quotesCount: 0, lastChapterTitle: '', themeLabel: '' };
-      }
-    }
+    // ===== 光阴目录 =====
+    (function() {
+      var list = document.getElementById('dateList');
+      var totalEl = document.getElementById('dateListTotal');
+      if (!list) return;
+      var totalWords = CHAPTERS.reduce(function(s, c) { return s + c.words; }, 0);
+      if (totalEl) totalEl.textContent = totalWords + ' 字';
 
-    function renderMetric(label, value) {
-      return '<div class="footprint-pill"><span>' + label + '</span><strong>' + value + '</strong></div>';
-    }
+      var seen = parseInt(localStorage.getItem('reader-seen-chapters') || '0', 10);
+      var hasNew = CHAPTERS.length > seen;
+      localStorage.setItem('reader-seen-chapters', String(CHAPTERS.length));
 
-    // ===== 引用数据（新增章节时在此添加） =====
+      var html = '';
+      CHAPTERS.forEach(function(ch) {
+        var key = getChapterStorageId(ch.file);
+        var done = localStorage.getItem('reader-done-' + key) === '1';
+        var pct = parseInt(localStorage.getItem('reader-pos-' + key)) || 0;
+        var icon = done
+          ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="#8A9E6C"><path d="M12 2C7 8 4 13 12 22c8-9 5-14 0-20z"/></svg>'
+          : pct > 0
+            ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="#C4A24E"><path d="M12 2C7 8 4 13 12 22c8-9 5-14 0-20z"/></svg>'
+            : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#CFC2A4" stroke-width="2.2"><path d="M12 2C7 8 4 13 12 22c8-9 5-14 0-20z"/></svg>';
+        var state = done
+          ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7A9068" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+          : pct > 0 ? '<span style="font-size:11px;color:#C4A24E;">' + pct + '%</span>' : '';
+        var isLast = ch === CHAPTERS[CHAPTERS.length - 1];
+        var badge = (hasNew && isLast) ? '<span class="date-item-new">新</span>' : '';
+        html += '<a href="novel/' + ch.file + '" class="date-item">' +
+          '<span class="date-item-leaf">' + icon + '</span>' +
+          '<span class="date-item-date">' + (ch.date || '') + '</span>' +
+          '<span class="date-item-title">' + ch.title + '</span>' +
+          badge + state +
+          '<span class="date-item-words">' + ch.words + '字</span>' +
+        '</a>';
+      });
+      list.innerHTML = html;
+    })();
+
+    // ===== 金句轮播 =====
     var quotes = [
-      {
-        source: '第一章·临渊羡鱼',
-        paragraphs: [
-          '梧桐树又落了几片叶子，',
-          '落在他们刚走过的路上。',
-          '蝉在远处拉长了声调叫，',
-          '好像夏天还没走，好像暑假还没结束。',
-          '但那一天其实已经是秋天了。'
-        ]
-      },
-      {
-        source: '第一章·临渊羡鱼',
-        paragraphs: [
-          '尾音拖出去很长，',
-          '长过了这个九月。'
-        ]
-      },
-      {
-        source: '第一章·临渊羡鱼',
-        paragraphs: [
-          '那是高一开学的第一天。',
-          '临渊羡鱼还没成为他们的老地方，',
-          '院子里的梧桐树还没长过二楼的窗。',
-          '所有的事都还没开始，一切都还来得及。'
-        ]
-      },
-      {
-        source: '第二章·前桌',
-        paragraphs: [
-          '忽然觉得，',
-          '来上学这件事好像也没那么讨厌了。'
-        ]
-      }
+      { source: '第一章·临渊羡鱼', paragraphs: ['梧桐树又落了几片叶子，', '落在他们刚过的路上。', '蝉在远处拉长了声调叫，', '好像夏天还没走，好像暑假还没结束。', '但那一天其实已经是秋天了。'] },
+      { source: '第一章·临渊羡鱼', paragraphs: ['尾音拖出去很长，', '长过了这个九月。'] },
+      { source: '第一章·临渊羡鱼', paragraphs: ['那是高一开学的第一天。', '临渊羡鱼还没成为他们的老地方，', '院子里的梧桐树还没长过二楼的窗。', '所有的事都还没开始，一切都还来得及。'] },
+      { source: '第二章·前桌', paragraphs: ['忽然觉得，', '来上学这件事好像也没那么讨厌了。'] }
     ];
 
-    // 引用轮播（5s 切换，淡入淡出 + 位移）
     var quoteOuter = document.getElementById('homeQuote');
     var quoteInner = document.getElementById('quoteInner');
     var currentIdx = Math.floor(Math.random() * quotes.length);
@@ -212,22 +221,6 @@
 
     if (quoteOuter && quoteInner && quotes.length > 0) {
       quoteInner.innerHTML = renderQuote(currentIdx);
-
-      // 预计算最大高度，固定容器避免跳动
-      requestAnimationFrame(function() {
-        var temp = document.createElement('div');
-        temp.className = 'quote-inner';
-        temp.style.cssText = 'position:absolute;visibility:hidden;overflow:hidden;padding:28px 0 24px;text-align:center;width:' + quoteOuter.offsetWidth + 'px';
-        quoteOuter.appendChild(temp);
-        var maxH = 0;
-        quotes.forEach(function(q, i) {
-          temp.innerHTML = renderQuote(i);
-          if (temp.offsetHeight > maxH) maxH = temp.offsetHeight;
-        });
-        quoteOuter.removeChild(temp);
-        quoteOuter.style.height = maxH + 'px';
-      });
-
       var quoteTimer = null;
       var quotePaused = false;
 
@@ -246,66 +239,71 @@
         }, 550);
       }
 
-      function startQuoteTimer() {
-        stopQuoteTimer();
-        quoteTimer = setInterval(tickQuote, 5000);
-      }
-
-      function stopQuoteTimer() {
-        if (quoteTimer) { clearInterval(quoteTimer); quoteTimer = null; }
-      }
+      function startQuoteTimer() { stopQuoteTimer(); quoteTimer = setInterval(tickQuote, 5000); }
+      function stopQuoteTimer() { if (quoteTimer) { clearInterval(quoteTimer); quoteTimer = null; } }
 
       if (quotes.length > 1) {
         startQuoteTimer();
-
         var pauseBtn = document.getElementById('quotePauseBtn');
         if (pauseBtn) {
           pauseBtn.addEventListener('click', function() {
             quotePaused = !quotePaused;
-            if (quotePaused) {
-              stopQuoteTimer();
-              pauseBtn.classList.add('paused');
-            } else {
-              startQuoteTimer();
-              pauseBtn.classList.remove('paused');
-            }
+            if (quotePaused) { stopQuoteTimer(); pauseBtn.classList.add('paused'); }
+            else { startQuoteTimer(); pauseBtn.classList.remove('paused'); }
           });
         }
       }
     }
 
     // ===== 页面切换动画 =====
-    var transition = document.getElementById('pageTransition');
+    var transitionLines = [
+      '风从走廊尽头吹过来',
+      '有些话还没说，故事已经往前了',
+      '夕阳落下去的时候，影子会变长',
+      '下一页有人会抬头看你一眼',
+      '梧桐影子轻轻翻过一页'
+    ];
 
-    function prefersReducedMotion() {
-      return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function pickTransitionLine() {
+      var line = transitionLines[Math.floor(Math.random() * transitionLines.length)];
+      sessionStorage.setItem('page-transition-text', line);
+      return line;
+    }
+
+    function getTransitionLine() {
+      var saved = sessionStorage.getItem('page-transition-text');
+      if (saved) { sessionStorage.removeItem('page-transition-text'); return saved; }
+      return transitionLines[Math.floor(Math.random() * transitionLines.length)];
+    }
+
+    var transition = document.getElementById('pageTransition');
+    if (!transition) {
+      transition = document.createElement('div');
+      transition.className = 'page-transition';
+      transition.id = 'pageTransition';
+      transition.innerHTML = '<div class="transition-inner"><div class="transition-text">梧桐叶正落下</div></div>';
+      document.body.appendChild(transition);
     }
 
     function startPageTransition(href) {
-      if (!transition || prefersReducedMotion()) {
-        window.location.href = href;
-        return;
-      }
+      if (!transition || prefersReducedMotion()) { window.location.href = href; return; }
       transition.classList.add('active');
-      transition.querySelector('.transition-text').textContent = pickTransitionLine();
+      var t = transition.querySelector('.transition-text');
+      if (t) t.textContent = pickTransitionLine();
       sessionStorage.setItem('page-transitioning', '1');
       setTimeout(function() { window.location.href = href; }, 120);
     }
 
-    // 入场动画（从站内跳转过来时显示；系统减弱动态效果时跳过）
     if (sessionStorage.getItem('page-transitioning')) {
       sessionStorage.removeItem('page-transitioning');
       if (transition && !prefersReducedMotion()) {
         requestAnimationFrame(function() {
           transition.classList.add('active');
-          var textEl = transition.querySelector('.transition-text');
-          if (textEl) textEl.textContent = getTransitionLine();
           setTimeout(function() { transition.classList.remove('active'); }, 650);
         });
       }
     }
 
-    // 安全网：清除任何残留的遮罩
     function resetOverlay() {
       document.querySelectorAll('.page-transition.active').forEach(function(el) { el.classList.remove('active'); });
     }
@@ -313,7 +311,6 @@
     window.addEventListener('focus', function() { setTimeout(resetOverlay, 700); });
     document.addEventListener('visibilitychange', function() { if (!document.hidden) setTimeout(resetOverlay, 700); });
 
-    // 点击跳转
     document.querySelectorAll('a[href]').forEach(function(link) {
       link.addEventListener('click', function(e) {
         var href = link.getAttribute('href');
@@ -322,130 +319,6 @@
         startPageTransition(href);
       });
     });
-
-    // ===== 首页阅读进度 =====
-    // 注意：lastReadChapter 取"目录顺序中最靠后的有进度章节"，
-    // 不能用 pct 比较——读完的章节 pct=100 会把进行中的章节挤掉。
-    var totalRead = 0, totalWords = 0;
-    var lastReadChapter = null;
-    var chapterDots = [];
-
-    CHAPTERS.forEach(function(ch) {
-        totalWords += ch.words;
-        var key = getChapterStorageId(ch.file);
-        var pct = parseInt(localStorage.getItem('reader-pos-' + key)) || 0;
-        var done = localStorage.getItem('reader-done-' + key) === '1';
-        if (done) {
-          totalRead += ch.words;
-          chapterDots.push('done');
-          lastReadChapter = ch.file;
-        } else if (pct > 0) {
-          totalRead += Math.round(ch.words * pct / 100);
-          chapterDots.push('reading');
-          lastReadChapter = ch.file;
-        } else {
-          chapterDots.push('');
-        }
-    });
-
-    // ===== 新章节徽章：章节数比上次到访多时，书架封面亮出「新章」 =====
-    (function() {
-      var seen = parseInt(localStorage.getItem('reader-seen-chapters') || '0', 10);
-      if (CHAPTERS.length <= seen) return;
-      var item = document.querySelector('.book-item');
-      var cover = item && item.querySelector('.book-cover');
-      if (!cover) return;
-      var badge = document.createElement('div');
-      badge.className = 'book-new-badge';
-      badge.textContent = '新章';
-      cover.appendChild(badge);
-      localStorage.setItem('reader-seen-chapters', String(CHAPTERS.length));
-    })();
-
-    document.querySelectorAll('.book-item').forEach(function(item) {
-      var novelId = item.dataset.novelId;
-      if (!novelId || novelId !== 'linyuan') return;
-      var nRead = 0, nWords = 0;
-      CHAPTERS.forEach(function(ch) {
-        nWords += ch.words;
-        var key = getChapterStorageId(ch.file);
-        var pct = parseInt(localStorage.getItem('reader-pos-' + key)) || 0;
-        var done = localStorage.getItem('reader-done-' + key) === '1';
-        if (done) nRead += ch.words;
-        else if (pct > 0) nRead += Math.round(ch.words * pct / 100);
-      });
-      if (nRead <= 0) return;
-      var readPct = Math.round(nRead / nWords * 100);
-      var cover = item.querySelector('.book-cover');
-      if (!cover) return;
-      var badge = document.createElement('div');
-      badge.className = 'book-progress-badge';
-      if (readPct >= 100) {
-        badge.className = 'book-progress-badge completed';
-        badge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-      } else {
-        badge.textContent = readPct + '%';
-      }
-      cover.appendChild(badge);
-    });
-
-    if (totalRead > 0) {
-      var card = document.getElementById('homeReadingCard');
-      if (card) {
-        card.classList.add('visible');
-        var readPct = Math.round(totalRead / totalWords * 100);
-        document.getElementById('homeReadPct').textContent = readPct + '%';
-        document.getElementById('homeReadFill').style.width = readPct + '%';
-
-        // 距上次阅读天数
-        (function() {
-          var fpRaw = localStorage.getItem('reader-footprints');
-          if (!fpRaw) return;
-          try {
-            var fp = JSON.parse(fpRaw);
-            var days = fp.days || [];
-            if (days.length > 0) {
-              days.sort();
-              var last = days[days.length - 1];
-              var parts = last.split('-');
-              var lastDate = new Date(+parts[0], +parts[1] - 1, +parts[2]);
-              var today = new Date();
-              today.setHours(0, 0, 0, 0);
-              var diff = Math.floor((today - lastDate) / 86400000);
-              var el = document.getElementById('homeLastVisit');
-              if (el && diff > 0) {
-                el.textContent = '上次翻开是 ' + diff + ' 天前';
-                el.style.display = 'block';
-              } else if (el && diff === 0) {
-                el.textContent = '今天刚来过';
-                el.style.display = 'block';
-              }
-            }
-          } catch(e) {}
-        })();
-        var dotsEl = document.getElementById('homeChapterDots');
-        if (dotsEl) {
-          var dhtml = '';
-          chapterDots.forEach(function(d) { dhtml += '<div class="ch-dot ' + d + '"></div>'; });
-          dotsEl.innerHTML = dhtml;
-        }
-        var btn = document.getElementById('homeContinueBtn');
-        if (btn && lastReadChapter) btn.href = 'novel/' + lastReadChapter;
-
-        var footprints = readFootprints();
-        var fp = document.getElementById('homeFootprints');
-        if (fp) {
-          fp.style.display = 'block';
-          document.getElementById('homeFootprintsKicker').textContent = readPct >= 100 ? '这一段路你已经走完了' : (footprints.daysCount >= 3 ? '这是一起翻页的第 ' + footprints.daysCount + ' 天' : '故事还在慢慢发光');
-          document.getElementById('homeFootprintsCopy').textContent = footprints.lastChapterTitle ? '你上次停在《' + footprints.lastChapterTitle + '》，那一页的风还没有散。' : '等你翻开第一页，南城的风就会慢慢落下来。';
-          document.getElementById('homeFootprintsMetrics').innerHTML = [
-            renderMetric('已读', readPct + '%'),
-            renderMetric('摘句', footprints.quotesCount + ' 句'),
-            renderMetric('偏爱', footprints.themeLabel || '信笺')
-          ].join('');
-        }
-      }
-    }
   })();
   </script>
 </body>

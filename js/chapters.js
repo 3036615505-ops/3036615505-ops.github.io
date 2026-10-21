@@ -6,11 +6,14 @@
  *   file   章节文件名
  *   words  字数（目录与进度计算用）
  *   blurb  目录页的一句话简介
+ *   date   故事内日期（首页光阴目录与章节页落款用，如「九月二十七」）
+ *   seal   章末印章文字（两字，如「前桌」）
+ *   leaf   梧桐叶位（0-7，首页进度带点亮第几片叶；章节多时环形扩容）
  *   volume 卷名（可选；当出现 ≥2 个不同卷名时，目录自动按卷分组）
  */
 var CHAPTERS = [
-  { num: 1, title: '第一章·临渊羡鱼', file: 'chapter-01.html', words: 2722, blurb: '所有的事都还没开始，一切都还来得及。' },
-  { num: 2, title: '第二章·前桌', file: 'chapter-02.html', words: 2257, blurb: '有些位置只是前后桌，有些位置会慢慢变得不同。' }
+  { num: 1, title: '第一章·临渊羡鱼', file: 'chapter-01.html', words: 2722, blurb: '所有的事都还没开始，一切都还来得及。', date: '九月二十七', seal: '临渊', leaf: 0 },
+  { num: 2, title: '第二章·前桌', file: 'chapter-02.html', words: 2257, blurb: '有些位置只是前后桌，有些位置会慢慢变得不同。', date: '十月十日', seal: '前桌', leaf: 1 }
 ];
 
 function getChapterStorageId(href) {

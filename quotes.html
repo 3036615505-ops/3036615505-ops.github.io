@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f8f4ed">
+  <meta name="description" content="临渊羡鱼 - 剪贴本">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <title>临渊羡鱼 - 剪贴本</title>
+  <meta property="og:title" content="临渊羡鱼 · 剪贴本">
+  <meta property="og:description" content="你收进摘句簿的每一句">
+  <meta property="og:image" content="https://zephyrw.site/assets/og-cover.jpg">
+  <meta property="og:type" content="article">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/theme.js"></script>
+</head>
+<body class="tab-page-body">
+  <div class="phone-frame">
+
+    <div class="detail-header">
+      <a href="index.html" class="detail-back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </a>
+      <span class="detail-header-title">剪贴本</span>
+    </div>
+
+    <div class="quotes-hero">
+      <div class="quotes-hero-kicker">你收进摘句簿的</div>
+      <h1 class="quotes-hero-title">每一句</h1>
+      <div class="quotes-hero-sub">在阅读页轻点段旁的引号，句子就会落在这里。可以随时带走。</div>
+    </div>
+
+    <div class="quotes-actions">
+      <button class="quotes-export-btn" id="quotesExportBtn">导出 Markdown</button>
+    </div>
+
+    <div class="quotes-list" id="quotesList"></div>
+
+    <div class="home-footer">句子记住以后，故事就会自己发光</div>
+
+  </div>
+
+  <nav class="tab-bar">
+    <a class="tab-item" href="index.html">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+      <span>首页</span>
+    </a>
+    <a class="tab-item" href="novel/characters.html">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <span>人物</span>
+    </a>
+    <a class="tab-item active" href="quotes.html">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 7H5a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1H8z"/><path d="M19 7h-3a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1h-3z" transform="translate(-3 0)"/></svg>
+      <span>剪贴本</span>
+    </a>
+  </nav>
+
+  <script>
+  (function() {
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function(ch) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+      });
+    }
+
+    function getStoredQuotes() {
+      var raw = localStorage.getItem('reader-quotes');
+      if (!raw) return [];
+      try { return JSON.parse(raw) || []; } catch (err) { return []; }
+    }
+
+    function saveStoredQuotes(quotes) {
+      localStorage.setItem('reader-quotes', JSON.stringify(quotes));
+      var fpRaw = localStorage.getItem('reader-footprints');
+      var fp = {};
+      try { fp = JSON.parse(fpRaw) || {}; } catch (err) {}
+      fp.quotes = quotes.map(function(item) { return item.id; });
+      localStorage.setItem('reader-footprints', JSON.stringify(fp));
+    }
+
+    function render() {
+      var list = document.getElementById('quotesList');
+      if (!list) return;
+      var quotes = getStoredQuotes();
+      if (!quotes.length) {
+        list.innerHTML = '<div class="quotes-empty">还没有收进摘句。<br>等你在某一段前停下来，这里就会亮起来。</div>';
+        return;
+      }
+      list.innerHTML = quotes.slice().reverse().map(function(item) {
+        return '<article class="quote-entry">' +
+          '<div class="quote-entry-text">' + escapeHtml(item.text) + '</div>' +
+          '<div class="quote-entry-meta">—— 《' + escapeHtml(item.chapterTitle || '') + '》</div>' +
+          '<div class="quote-entry-actions">' +
+            '<a href="novel/' + escapeHtml(item.chapterFile || '') + '#quote-' + escapeHtml(item.index || '0') + '">回到这一页</a>' +
+            '<button type="button" data-copy="' + escapeHtml(item.id) + '">复制</button>' +
+            '<button type="button" class="danger" data-remove="' + escapeHtml(item.id) + '">移出</button>' +
+          '</div>' +
+        '</article>';
+      }).join('');
+    }
+
+    document.getElementById('quotesList').addEventListener('click', function(e) {
+      var copyId = e.target.getAttribute && e.target.getAttribute('data-copy');
+      var removeId = e.target.getAttribute && e.target.getAttribute('data-remove');
+      if (copyId) {
+        var q = getStoredQuotes().find(function(item) { return item.id === copyId; });
+        if (q && navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(q.text + ' ——《' + q.chapterTitle + '》');
+        }
+      } else if (removeId) {
+        saveStoredQuotes(getStoredQuotes().filter(function(item) { return item.id !== removeId; }));
+        render();
+      }
+    });
+
+    document.getElementById('quotesExportBtn').addEventListener('click', function() {
+      var quotes = getStoredQuotes();
+      if (!quotes.length) return;
+      var lines = ['# 临渊羡鱼 · 摘句簿', '', '> 导出于 ' + new Date().toLocaleString('zh-CN'), ''];
+      quotes.forEach(function(item) {
+        lines.push('「' + item.text + '」', '', '—— 《' + item.chapterTitle + '》', '');
+      });
+      var blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = '临渊羡鱼-摘句.md';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() { URL.revokeObjectURL(a.href); document.body.removeChild(a); }, 1000);
+    });
+
+    render();
+  })();
+  </script>
+</body>
+</html>
