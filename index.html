@@ -2,10 +2,16 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f8f4ed">
   <meta name="description" content="南城的梧桐树还在长">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <title>临渊羡鱼</title>
+  <meta property="og:title" content="临渊羡鱼">
+  <meta property="og:description" content="南城的梧桐树还在长——青春 · 校园 · 成长">
+  <meta property="og:image" content="https://zephyrw.site/assets/og-cover.jpg">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="css/style.css">
   <script src="js/chapters.js"></script>
 </head>
@@ -260,8 +266,12 @@
     // ===== 页面切换动画 =====
     var transition = document.getElementById('pageTransition');
 
+    function prefersReducedMotion() {
+      return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+
     function startPageTransition(href) {
-      if (!transition) {
+      if (!transition || prefersReducedMotion()) {
         window.location.href = href;
         return;
       }
@@ -271,10 +281,10 @@
       setTimeout(function() { window.location.href = href; }, 120);
     }
 
-    // 入场动画（从站内跳转过来时显示）
+    // 入场动画（从站内跳转过来时显示；系统减弱动态效果时跳过）
     if (sessionStorage.getItem('page-transitioning')) {
       sessionStorage.removeItem('page-transitioning');
-      if (transition) {
+      if (transition && !prefersReducedMotion()) {
         requestAnimationFrame(function() {
           transition.classList.add('active');
           var textEl = transition.querySelector('.transition-text');
@@ -303,9 +313,10 @@
     });
 
     // ===== 首页阅读进度 =====
+    // 注意：lastReadChapter 取"目录顺序中最靠后的有进度章节"，
+    // 不能用 pct 比较——读完的章节 pct=100 会把进行中的章节挤掉。
     var totalRead = 0, totalWords = 0;
     var lastReadChapter = null;
-    var lastReadPct = 0;
     var chapterDots = [];
 
     CHAPTERS.forEach(function(ch) {
@@ -317,14 +328,10 @@
           totalRead += ch.words;
           chapterDots.push('done');
           lastReadChapter = ch.file;
-          lastReadPct = 100;
         } else if (pct > 0) {
           totalRead += Math.round(ch.words * pct / 100);
           chapterDots.push('reading');
-          if (!lastReadChapter || pct > lastReadPct) {
-            lastReadChapter = ch.file;
-            lastReadPct = pct;
-          }
+          lastReadChapter = ch.file;
         } else {
           chapterDots.push('');
         }

@@ -1,6 +1,13 @@
 /* ===== 字体 ===== */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap');
+/* ZCOOL XiaoWei 自托管子集（仅含站点已用字符，约 420KB；替代 Google Fonts，国内可达） */
+@font-face {
+  font-family: 'ZCOOL XiaoWei';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/zcool-xiaowei-subset.woff2') format('woff2');
+}
+/* 正文 serif 走系统字体栈：Noto Serif SC（部分安卓/Linux）→ Songti SC（macOS）→ SimSun（Windows） */
 
 /* ===== 动画 ===== */
 @keyframes contentFadeIn {
@@ -278,6 +285,7 @@ body {
   color: var(--text);
   line-height: 1.5;
   min-height: 100vh;
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
   animation: pageIn 0.35s ease-out;
@@ -326,7 +334,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .character-hero h1 {
-  font-family: "ZCOOL XiaoWei", "Noto Serif SC", serif;
+  font-family: "ZCOOL XiaoWei", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 28px;
   font-weight: 400;
   letter-spacing: 2px;
@@ -335,7 +343,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .character-hero p {
-  font-family: "Noto Serif SC", serif;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 14px;
   line-height: 1.9;
   color: var(--text-secondary);
@@ -387,7 +395,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .character-card h2 {
-  font-family: "Noto Serif SC", serif;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 22px;
   font-weight: 600;
   margin-bottom: 8px;
@@ -410,6 +418,7 @@ a { color: inherit; text-decoration: none; }
 .phone-frame {
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   background: linear-gradient(180deg, rgba(255,252,246,0.70) 0%, rgba(255,248,239,0.82) 28%, rgba(247,239,226,0.94) 100%);
 }
 
@@ -480,7 +489,7 @@ a { color: inherit; text-decoration: none; }
 .home-hero .floating-leaves span:nth-child(3)::before { transform: rotate(-45deg); background: var(--leaf-brown); }
 
 .home-hero h1 {
-  font-family: "ZCOOL XiaoWei", "Noto Serif SC", serif;
+  font-family: "ZCOOL XiaoWei", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 36px;
   font-weight: 400;
   color: var(--bark);
@@ -546,7 +555,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .home-quote blockquote {
-  font-family: "Noto Serif SC", serif;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 14px;
   color: var(--text-secondary);
   line-height: 2.05;
@@ -718,7 +727,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .book-cover-text {
-  font-family: "ZCOOL XiaoWei", "Noto Serif SC", serif;
+  font-family: "ZCOOL XiaoWei", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 18px;
   font-weight: 400;
   color: rgba(255,255,255,0.92);
@@ -920,7 +929,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .footprints-copy {
-  font-family: "Noto Serif SC", serif;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 13px;
   line-height: 1.9;
   color: var(--text-secondary);
@@ -1098,7 +1107,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .detail-meta h1 {
-  font-family: "ZCOOL XiaoWei", "Noto Serif SC", serif;
+  font-family: "ZCOOL XiaoWei", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 22px;
   font-weight: 400;
   line-height: 1.3;
@@ -1128,7 +1137,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .detail-desc .desc-text {
-  font-family: "Noto Serif SC", serif;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 14px;
   color: var(--text-secondary);
   line-height: 1.8;
@@ -1182,7 +1191,7 @@ a { color: inherit; text-decoration: none; }
 
 .detail-link-title {
   display: block;
-  font-family: "Noto Serif SC", serif;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 17px;
   color: var(--text);
   margin-bottom: 6px;
@@ -1370,7 +1379,7 @@ a { color: inherit; text-decoration: none; }
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 16px;
-  font-family: "Noto Serif SC", serif;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   color: var(--text);
 }
 
@@ -1383,7 +1392,7 @@ a { color: inherit; text-decoration: none; }
 
 .chapter-blurb {
   margin-top: 10px;
-  font-family: "Noto Serif SC", serif;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 13px;
   line-height: 1.8;
   color: var(--text-secondary);
@@ -1460,6 +1469,7 @@ body.reading-page {
 .reading-wrapper {
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
   background: var(--reading-bg);
   transition: background 0.3s;
@@ -1659,7 +1669,7 @@ body.reading-page {
 }
 
 .chapter-afterglow p {
-  font-family: "Noto Serif SC", serif;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 13px;
   line-height: 1.9;
   color: var(--text-secondary);
@@ -1901,7 +1911,7 @@ body.reading-page {
 
 .quotes-empty {
   padding: 28px 16px;
-  font-family: "Noto Serif SC", serif;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 14px;
   line-height: 1.9;
   color: var(--text-muted);
@@ -1917,7 +1927,7 @@ body.reading-page {
 }
 
 .quote-entry-text {
-  font-family: "Noto Serif SC", serif;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 14px;
   line-height: 1.8;
   color: var(--reading-text);
@@ -2341,6 +2351,7 @@ body.reading-page {
     max-width: 420px;
     margin: 0 auto;
     min-height: 100vh;
+  min-height: 100dvh;
     background: var(--bg);
     box-shadow: 0 0 80px rgba(40, 20, 0, 0.18), 0 0 0 1px rgba(0,0,0,0.04);
     position: relative;
@@ -2350,6 +2361,7 @@ body.reading-page {
     max-width: 420px;
     margin: 0 auto;
     min-height: 100vh;
+  min-height: 100dvh;
     background: var(--reading-bg);
     box-shadow: 0 0 80px rgba(40, 20, 0, 0.18), 0 0 0 1px rgba(0,0,0,0.04);
     position: relative;
@@ -2385,5 +2397,34 @@ body.reading-page {
     left: 50%;
     right: auto;
     transform: translateX(-50%);
+  }
+}
+
+/* ===== 场景分隔（替代正文中的空段落） ===== */
+.chapter-content .scene-break {
+  margin: 1.8em 0;
+  text-align: center;
+  font-size: 0.85em;
+  opacity: 0.4;
+}
+
+.chapter-content .scene-break::before {
+  content: "· · ·";
+  letter-spacing: 0.4em;
+}
+
+/* ===== 减弱动态效果（系统偏好） ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .floating-leaves {
+    display: none !important;
   }
 }

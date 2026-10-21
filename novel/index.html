@@ -2,10 +2,27 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f8f4ed">
   <meta name="description" content="临渊羡鱼 - 目录">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
   <title>临渊羡鱼 - 目录</title>
+  <meta property="og:title" content="临渊羡鱼">
+  <meta property="og:description" content="南城的梧桐树还在长——青春 · 校园 · 成长">
+  <meta property="og:image" content="https://zephyrw.site/assets/og-cover.jpg">
+  <meta property="og:type" content="book">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Book",
+    "name": "临渊羡鱼",
+    "description": "南城的梧桐树还在长，一群人的青春悠远漫长。",
+    "inLanguage": "zh-CN",
+    "genre": ["青春", "校园", "成长"],
+    "author": { "@type": "Person", "name": "叶南衡" }
+  }
+  </script>
   <link rel="stylesheet" href="../css/style.css">
   <script src="../js/chapters.js"></script>
 </head>
@@ -28,7 +45,7 @@
     <div class="detail-meta">
       <h1>临渊羡鱼</h1>
       <div class="author">南城的梧桐树还在长</div>
-      <div class="stats">连载中 · 2 章 · 4979 字</div>
+      <div class="stats" id="novelStats">连载中</div>
     </div>
   </div>
 
@@ -75,32 +92,9 @@
   <div class="chapter-section">
     <div class="chapter-section-header">
       <h2>目录</h2>
-      <span>共 2 章</span>
+      <span id="chapterCount">共 2 章</span>
     </div>
-    <div class="chapter-list">
-      <a href="chapter-01.html" class="chapter-item">
-        <div class="chapter-topline">
-          <span class="chapter-num">第1章</span>
-          <span class="chapter-words">2722 字</span>
-        </div>
-        <div class="chapter-main">
-          <span class="chapter-title">第一章·临渊羡鱼</span>
-          <span class="chapter-status-slot"></span>
-        </div>
-        <div class="chapter-blurb">所有的事都还没开始，一切都还来得及。</div>
-      </a>
-      <a href="chapter-02.html" class="chapter-item">
-        <div class="chapter-topline">
-          <span class="chapter-num">第2章</span>
-          <span class="chapter-words">2257 字</span>
-        </div>
-        <div class="chapter-main">
-          <span class="chapter-title">第二章·前桌</span>
-          <span class="chapter-status-slot"></span>
-        </div>
-        <div class="chapter-blurb">有些位置只是前后桌，有些位置会慢慢变得不同。</div>
-      </a>
-    </div>
+    <div class="chapter-list" id="chapterList"></div>
   </div>
 
   </div>
@@ -151,8 +145,12 @@
     // ===== 页面切换动画 =====
     var transition = document.getElementById('pageTransition');
 
+    function prefersReducedMotion() {
+      return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+
     function startPageTransition(href) {
-      if (!transition) {
+      if (!transition || prefersReducedMotion()) {
         window.location.href = href;
         return;
       }
@@ -162,10 +160,10 @@
       setTimeout(function() { window.location.href = href; }, 120);
     }
 
-    // 入场动画（从站内跳转过来时显示）
+    // 入场动画（从站内跳转过来时显示；系统减弱动态效果时跳过）
     if (sessionStorage.getItem('page-transitioning')) {
       sessionStorage.removeItem('page-transitioning');
-      if (transition) {
+      if (transition && !prefersReducedMotion()) {
         requestAnimationFrame(function() {
           transition.classList.add('active');
           var textEl = transition.querySelector('.transition-text');
@@ -193,12 +191,47 @@
       });
     });
 
+    // ===== 目录渲染（唯一数据源：js/chapters.js 的 CHAPTERS） =====
+    // 加新章节只需改 chapters.js，本页目录/章节数/总字数自动更新
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function(ch) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+      });
+    }
+
+    function renderChapterList() {
+      var list = document.getElementById('chapterList');
+      if (!list) return;
+      var html = '';
+      CHAPTERS.forEach(function(ch) {
+        html += '<a href="' + ch.file + '" class="chapter-item">' +
+          '<div class="chapter-topline">' +
+            '<span class="chapter-num">第' + ch.num + '章</span>' +
+            '<span class="chapter-words">' + ch.words + ' 字</span>' +
+          '</div>' +
+          '<div class="chapter-main">' +
+            '<span class="chapter-title">' + escapeHtml(ch.title) + '</span>' +
+            '<span class="chapter-status-slot"></span>' +
+          '</div>' +
+          (ch.blurb ? '<div class="chapter-blurb">' + escapeHtml(ch.blurb) + '</div>' : '') +
+        '</a>';
+      });
+      list.innerHTML = html;
+
+      var countEl = document.getElementById('chapterCount');
+      if (countEl) countEl.textContent = '共 ' + CHAPTERS.length + ' 章';
+      var statsEl = document.getElementById('novelStats');
+      var total = CHAPTERS.reduce(function(s, c) { return s + c.words; }, 0);
+      if (statsEl) statsEl.textContent = '连载中 · ' + CHAPTERS.length + ' 章 · ' + total + ' 字';
+    }
+
+    renderChapterList();
+
     // ===== 章节阅读进度 =====
     var items = document.querySelectorAll('.chapter-item');
     var totalRead = 0, totalWords = 0;
     var chapterData = [];
     var lastReadChapter = null;
-    var lastReadPct = 0;
 
     items.forEach(function(item) {
       var href = item.getAttribute('href');
@@ -223,7 +256,6 @@
         (slot || item).appendChild(badge);
         totalRead += words;
         lastReadChapter = href;
-        lastReadPct = 100;
       } else if (pct > 0) {
         var progressWrap = document.createElement('div');
         progressWrap.className = 'chapter-progress-wrap';
@@ -237,10 +269,7 @@
         (slot || item).appendChild(badge);
 
         totalRead += Math.round(words * pct / 100);
-        if (!lastReadChapter || pct > lastReadPct) {
-          lastReadChapter = href;
-          lastReadPct = pct;
-        }
+        lastReadChapter = href;
       }
     });
 

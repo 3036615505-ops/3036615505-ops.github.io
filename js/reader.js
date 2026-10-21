@@ -70,6 +70,7 @@
     initDirectoryPanel();
     initSettingsPanel();
     initQuoteCollecting();
+    initModalKeys();
     recordFootprints();
     restoreProgress();
   }
@@ -102,7 +103,7 @@
     if (family === 'fzyouhei') {
       content.style.fontFamily = '"FZYouHei","方正悠黑","PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif';
     } else {
-      content.style.fontFamily = '"Noto Serif SC","STSong","SimSun",serif';
+      content.style.fontFamily = '"Noto Serif SC","Songti SC","STSong","SimSun",serif';
     }
     var label = document.getElementById('fontFamilyLabel');
     if (label) label.textContent = fontFamilyLabels[family] || '方正悠黑';
@@ -138,6 +139,10 @@
   };
 
   /* ===== PAGE TRANSITION ===== */
+  function prefersReducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
   function initPageTransition() {
     var ov = document.createElement('div');
     ov.className = 'page-transition';
@@ -153,9 +158,10 @@
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
 
-    // 入场动画（从站内跳转过来时显示）
+    // 入场动画（从站内跳转过来时显示；系统减弱动态效果时跳过）
     if (sessionStorage.getItem('page-transitioning')) {
       sessionStorage.removeItem('page-transitioning');
+      if (prefersReducedMotion()) return;
       requestAnimationFrame(function() {
         ov.classList.add('active');
         setTimeout(function() { ov.classList.remove('active'); }, 650);
@@ -194,6 +200,7 @@
 	        }
 	      }
       e.preventDefault();
+      if (prefersReducedMotion()) { window.location.href = href; return; }
       ov.querySelector('.transition-text').textContent = pickTransitionLine();
       ov.classList.add('active');
       sessionStorage.setItem('page-transitioning', '1');
@@ -353,8 +360,31 @@
       progressBar.addEventListener('pointercancel', endDrag);
     }
 
-    window.addEventListener('scroll', function() { saveProgress(); }, { passive: true });
+    var scrollScheduled = false;
+    window.addEventListener('scroll', function() {
+      // rAF 节流：滚动时每帧最多写一次 localStorage + 更新一次 DOM
+      if (scrollScheduled) return;
+      scrollScheduled = true;
+      requestAnimationFrame(function() {
+        scrollScheduled = false;
+        saveProgress();
+      });
+    }, { passive: true });
     window.addEventListener('beforeunload', function() { saveProgress(); });
+  }
+
+  /* ===== 键盘：Escape 逐层关闭（设置 -> 摘句簿 -> 目录 -> 工具栏） ===== */
+  function initModalKeys() {
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Escape' && e.key !== 'Esc') return;
+      var settings = document.getElementById('settingsOverlay');
+      var quotes = document.getElementById('quotesOverlay');
+      var dir = document.getElementById('dirOverlay');
+      if (settings && settings.classList.contains('visible')) { closeSettings(); }
+      else if (quotes && quotes.classList.contains('visible')) { closeQuotes(); }
+      else if (dir && dir.classList.contains('visible')) { closeDirectory(); }
+      else if (state.barsVisible) { hideBars(); }
+    });
   }
 
   /* ===== DIRECTORY PANEL ===== */
@@ -365,7 +395,7 @@
     ov.className = 'modal-overlay';
     ov.innerHTML =
       '<div class="modal-backdrop"></div>' +
-      '<div class="modal-panel dir-modal">' +
+      '<div class="modal-panel dir-modal" role="dialog" aria-modal="true" aria-label="目录">' +
         '<div class="modal-header"><div class="modal-header-left"><span>目录</span><a href="characters.html" class="dir-char-link" onclick="closeDirectory()">人物簿</a></div>' +
           '<button class="modal-close" onclick="closeDirectory()">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
@@ -459,7 +489,7 @@
     ov.className = 'modal-overlay';
     ov.innerHTML =
       '<div class="modal-backdrop"></div>' +
-      '<div class="modal-panel quotes-modal">' +
+      '<div class="modal-panel quotes-modal" role="dialog" aria-modal="true" aria-label="摘句簿">' +
         '<div class="modal-header"><span>摘句簿</span>' +
           '<button class="modal-close" onclick="closeQuotes()">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
@@ -690,7 +720,7 @@
     });
     ov.innerHTML =
       '<div class="modal-backdrop"></div>' +
-      '<div class="modal-panel settings-modal">' +
+      '<div class="modal-panel settings-modal" role="dialog" aria-modal="true" aria-label="设置">' +
         '<div class="modal-header"><span>设置</span>' +
           '<button class="modal-close" onclick="closeSettings()">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
