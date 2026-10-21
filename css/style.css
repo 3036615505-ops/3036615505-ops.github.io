@@ -258,12 +258,34 @@
 }
 
 [data-theme="dark"] {
+  /* 阅读页 */
   --reading-bg: #181715;
   --reading-text: #bdb3a3;
   --reader-surface: rgba(31,30,28,0.94);
   --reader-surface-soft: rgba(45,43,39,0.80);
   --reader-border: rgba(255,246,232,0.08);
   --reader-shadow: 0 16px 40px rgba(0,0,0,0.36);
+
+  /* 全站 shell（首页/目录/人物簿也进入深夜） */
+  --bg: #14120e;
+  --bg-card: #221f18;
+  --bg-warm: #1b1913;
+  --text: #e9decb;
+  --text-secondary: #b5a68c;
+  --text-muted: #8d7f68;
+  --accent: #d4a050;
+  --accent-hover: #e2b268;
+  --accent-light: rgba(212,160,80,0.12);
+  --border: #332e22;
+  --border-light: #2a2519;
+  --shadow: 0 1px 3px rgba(0,0,0,0.32);
+  --shadow-hover: 0 4px 16px rgba(0,0,0,0.42);
+  --site-bg: linear-gradient(180deg, #1b1812 0%, #16130d 46%, #100e09 100%);
+  --card-warm: rgba(37, 33, 25, 0.88);
+  --card-warm-solid: #252118;
+  --card-border: rgba(212, 160, 80, 0.14);
+  --card-shadow: 0 10px 32px rgba(0,0,0,0.36);
+  --card-shadow-soft: 0 4px 16px rgba(0,0,0,0.26);
 }
 
 /* 字号 */
@@ -2427,4 +2449,169 @@ body.reading-page {
   .floating-leaves {
     display: none !important;
   }
+}
+
+/* ===== 全站深色：硬编码浅色表面覆盖 ===== */
+[data-theme="dark"] .phone-frame::before {
+  background:
+    radial-gradient(circle at top center, rgba(212,160,80,0.05), transparent 40%),
+    radial-gradient(circle at 20% 18%, rgba(196,162,78,0.07), transparent 22%),
+    radial-gradient(circle at 80% 12%, rgba(138,158,108,0.07), transparent 18%);
+}
+
+[data-theme="dark"] .home-hero {
+  background: linear-gradient(180deg, rgba(41,36,27,0.92) 0%, rgba(28,25,18,0.78) 100%);
+}
+
+[data-theme="dark"] .home-reading-card {
+  background: linear-gradient(180deg, rgba(40,36,27,0.95), rgba(28,25,18,0.9));
+}
+
+[data-theme="dark"] .reading-footprints {
+  background: linear-gradient(180deg, rgba(40,36,27,0.96), rgba(29,26,19,0.9));
+}
+
+[data-theme="dark"] .character-hero {
+  background: linear-gradient(180deg, rgba(41,36,27,0.94), rgba(28,25,18,0.88));
+}
+
+[data-theme="dark"] .character-card.primary {
+  background: linear-gradient(180deg, rgba(43,38,28,0.96), rgba(31,28,20,0.9));
+}
+
+[data-theme="dark"] .detail-header {
+  background: rgba(26,23,17,0.86);
+}
+
+[data-theme="dark"] .detail-link-card {
+  background: linear-gradient(135deg, rgba(40,36,27,0.94), rgba(30,27,20,0.86));
+}
+
+[data-theme="dark"] .chapter-item {
+  background: linear-gradient(180deg, rgba(38,34,26,0.55), rgba(28,25,19,0.88));
+}
+
+[data-theme="dark"] .chapter-afterglow {
+  background: linear-gradient(180deg, rgba(40,36,27,0.92), rgba(29,26,19,0.84));
+}
+
+@media (min-width: 768px) {
+  [data-theme="dark"] body { background: #0c0a07; }
+}
+
+/* ===== 章末分享按钮 ===== */
+.afterglow-share {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 15px;
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: rgba(255, 250, 242, 0.6);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+[data-theme="dark"] .afterglow-share { background: rgba(255, 246, 232, 0.06); }
+
+.afterglow-share svg { width: 13px; height: 13px; }
+.afterglow-share:active { background: var(--accent-light); }
+
+/* ===== 首次手势提示（轻扫翻章） ===== */
+.swipe-hint {
+  position: fixed;
+  left: 50%;
+  bottom: 104px;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(54, 38, 24, 0.85);
+  color: #f5efe0;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  z-index: 150;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  white-space: nowrap;
+}
+
+.swipe-hint.show { opacity: 1; }
+
+/* ===== 新章节徽章（书架封面） ===== */
+.book-new-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  z-index: 2;
+}
+
+/* ===== 首页人物簿入口 ===== */
+.home-link-row { margin: 0 16px 22px; }
+
+/* ===== 摘句簿导出按钮 ===== */
+.modal-export {
+  margin-left: auto;
+  margin-right: 6px;
+  padding: 5px 13px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.modal-export:active { background: var(--accent-hover); }
+
+/* ===== 宽屏阅读（桌面端可选） ===== */
+@media (min-width: 768px) {
+  [data-readwidth="wide"] .reading-wrapper { max-width: 760px; }
+
+  [data-readwidth="wide"] .reading-wrapper .reader-topbar { max-width: 736px; }
+
+  [data-readwidth="wide"] .reading-wrapper .reader-bottombar { max-width: 736px; }
+
+  [data-readwidth="wide"] .reading-wrapper .reading-progress-line { max-width: 760px; }
+}
+
+/* ===== 目录分组标题（按卷） ===== */
+.dir-volume {
+  padding: 14px 20px 6px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+/* ===== 目录页分组标题（按卷） ===== */
+.chapter-volume {
+  padding: 16px 4px 8px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+/* ===== 封面插画（2026-10 生成：梧桐叶 · 两杯焦糖玛奇朵 · 九月午后） ===== */
+.book-cover.linyuan,
+.detail-cover.linyuan {
+  background-image:
+    radial-gradient(ellipse 92% 48% at 50% 50%, rgba(28, 18, 6, 0.48) 0%, rgba(28, 18, 6, 0.16) 76%, transparent 100%),
+    url('../assets/cover.jpg');
+  background-size: cover, cover;
+  background-position: center, center;
+}
+
+/* 封面书名投影（插图模式下增强可读性） */
+.book-cover-text {
+  text-shadow: 0 1px 10px rgba(20, 12, 4, 0.45);
 }

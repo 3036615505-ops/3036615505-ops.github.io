@@ -1,0 +1,17 @@
+{
+  "name": "临渊羡鱼",
+  "short_name": "临渊羡鱼",
+  "description": "南城的梧桐树还在长 —— 青春 · 校园 · 成长",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8f4ed",
+  "theme_color": "#f8f4ed",
+  "icons": [
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

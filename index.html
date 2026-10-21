@@ -12,8 +12,10 @@
   <meta property="og:image" content="https://zephyrw.site/assets/og-cover.jpg">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
+  <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="css/style.css">
   <script src="js/chapters.js"></script>
+  <script src="js/theme.js"></script>
 </head>
 <body>
   <div class="phone-frame">
@@ -74,6 +76,15 @@
         <div class="book-author">叶南衡</div>
       </a>
     </div>
+  </div>
+
+  <!-- 人物簿入口 -->
+  <div class="home-link-row">
+    <a href="novel/characters.html" class="detail-link-card">
+      <span class="detail-link-kicker">人物簿</span>
+      <span class="detail-link-title">翻开他们的名字</span>
+      <span class="detail-link-desc">用几句很轻的话，先认识这些会慢慢走近的人。</span>
+    </a>
   </div>
 
   <!-- 页脚 -->
@@ -336,6 +347,20 @@
           chapterDots.push('');
         }
     });
+
+    // ===== 新章节徽章：章节数比上次到访多时，书架封面亮出「新章」 =====
+    (function() {
+      var seen = parseInt(localStorage.getItem('reader-seen-chapters') || '0', 10);
+      if (CHAPTERS.length <= seen) return;
+      var item = document.querySelector('.book-item');
+      var cover = item && item.querySelector('.book-cover');
+      if (!cover) return;
+      var badge = document.createElement('div');
+      badge.className = 'book-new-badge';
+      badge.textContent = '新章';
+      cover.appendChild(badge);
+      localStorage.setItem('reader-seen-chapters', String(CHAPTERS.length));
+    })();
 
     document.querySelectorAll('.book-item').forEach(function(item) {
       var novelId = item.dataset.novelId;

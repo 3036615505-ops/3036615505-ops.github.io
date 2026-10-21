@@ -5,10 +5,12 @@
   'use strict';
 
   /* ===== STATE ===== */
+  var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   var state = {
     fontSize: localStorage.getItem('reader-fontsize') || 'medium',
-    theme: localStorage.getItem('reader-theme') || 'wheat',
+    theme: localStorage.getItem('reader-theme') || (systemDark ? 'dark' : 'wheat'),
     fontFamily: localStorage.getItem('reader-fontfamily') || 'fzyouhei',
+    readWidth: localStorage.getItem('reader-readwidth') || 'normal',
     barsVisible: false,
     settingsVisible: false,
     autoCloseTimer: null
@@ -62,6 +64,7 @@
   function init() {
     applyFontSize(state.fontSize);
     applyFontFamily(state.fontFamily);
+    applyReadWidth(state.readWidth);
     applyTheme(state.theme);
     initPageTransition();
     initTapArea();
@@ -71,6 +74,7 @@
     initSettingsPanel();
     initQuoteCollecting();
     initModalKeys();
+    initSwipeHint();
     recordFootprints();
     restoreProgress();
   }
@@ -114,6 +118,38 @@
     idx = (idx + 1) % fontFamilies.length;
     applyFontFamily(fontFamilies[idx]);
   };
+
+  /* ===== 宽屏阅读（桌面端生效） ===== */
+  function applyReadWidth(mode) {
+    state.readWidth = mode;
+    localStorage.setItem('reader-readwidth', mode);
+    if (mode === 'wide') {
+      document.documentElement.setAttribute('data-readwidth', 'wide');
+    } else {
+      document.documentElement.removeAttribute('data-readwidth');
+    }
+    var label = document.getElementById('readWidthLabel');
+    if (label) label.textContent = mode === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关';
+  }
+
+  window.toggleReadWidth = function() {
+    applyReadWidth(state.readWidth === 'wide' ? 'normal' : 'wide');
+  };
+
+  /* ===== 首次手势提示（仅触屏设备，显示一次） ===== */
+  function initSwipeHint() {
+    if (!('ontouchstart' in window)) return;
+    if (!document.querySelector('.chapter-content')) return;
+    if (localStorage.getItem('reader-swipe-hint')) return;
+    localStorage.setItem('reader-swipe-hint', '1');
+    var hint = document.createElement('div');
+    hint.className = 'swipe-hint';
+    hint.textContent = '← 轻扫左右，翻章 →';
+    document.body.appendChild(hint);
+    setTimeout(function() { hint.classList.add('show'); }, 1200);
+    setTimeout(function() { hint.classList.remove('show'); }, 5200);
+    setTimeout(function() { if (hint.parentNode) hint.parentNode.removeChild(hint); }, 6200);
+  }
 
   /* ===== THEME ===== */
   function applyTheme(theme) {
@@ -413,24 +449,37 @@
     if (!list) return;
     var path = window.location.pathname;
     var file = path.substring(path.lastIndexOf('/') + 1) || 'chapter-01.html';
-    var html = '';
-    CHAPTERS.forEach(function(ch) {
-      var id = getChapterStorageId(ch.file);
-      var done = localStorage.getItem('reader-done-' + id) === '1';
-      var pct = parseInt(localStorage.getItem('reader-pos-' + id)) || 0;
-      var active = ch.file === file;
 
-      html += '<a href="' + ch.file + '" class="dir-item' + (active ? ' active' : '') + (done ? ' done' : '') + '">';
-      html += '<span class="dir-item-num">第' + ch.num + '章</span>';
-      html += '<span class="dir-item-title">' + ch.title + '</span>';
-      html += '<span class="dir-item-info">';
-      if (done) {
-        html += '<span class="dir-item-done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
-      } else if (pct > 0) {
-        html += '<span class="dir-item-progress">' + pct + '%</span>';
-      }
-      html += '<span class="dir-item-words">' + ch.words + '字</span>';
-      html += '</span></a>';
+    // 按卷分组：仅当 CHAPTERS 中出现 ≥2 个不同 volume 时才渲染分组标题
+    var volumes = [];
+    CHAPTERS.forEach(function(ch) {
+      var v = ch.volume || '';
+      if (volumes.indexOf(v) === -1) volumes.push(v);
+    });
+    var grouped = volumes.length > 1;
+
+    var html = '';
+    volumes.forEach(function(v) {
+      if (grouped) html += '<div class="dir-volume">' + escapeHtml(v) + '</div>';
+      CHAPTERS.forEach(function(ch) {
+        if ((ch.volume || '') !== v) return;
+        var id = getChapterStorageId(ch.file);
+        var done = localStorage.getItem('reader-done-' + id) === '1';
+        var pct = parseInt(localStorage.getItem('reader-pos-' + id)) || 0;
+        var active = ch.file === file;
+
+        html += '<a href="' + ch.file + '" class="dir-item' + (active ? ' active' : '') + (done ? ' done' : '') + '">';
+        html += '<span class="dir-item-num">第' + ch.num + '章</span>';
+        html += '<span class="dir-item-title">' + escapeHtml(ch.title) + '</span>';
+        html += '<span class="dir-item-info">';
+        if (done) {
+          html += '<span class="dir-item-done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
+        } else if (pct > 0) {
+          html += '<span class="dir-item-progress">' + pct + '%</span>';
+        }
+        html += '<span class="dir-item-words">' + ch.words + '字</span>';
+        html += '</span></a>';
+      });
     });
     list.innerHTML = html;
   }
@@ -491,6 +540,7 @@
       '<div class="modal-backdrop"></div>' +
       '<div class="modal-panel quotes-modal" role="dialog" aria-modal="true" aria-label="摘句簿">' +
         '<div class="modal-header"><span>摘句簿</span>' +
+          '<button type="button" class="modal-export" onclick="exportQuotes()">导出</button>' +
           '<button class="modal-close" onclick="closeQuotes()">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
           '</button>' +
@@ -555,6 +605,49 @@
     refreshAllParagraphQuoteStates();
     renderQuotesPanel();
     showToast('这一句轻轻放回页边了');
+  };
+
+  /* ===== 摘句导出（Markdown 下载，把句子还给读者） ===== */
+  window.exportQuotes = function() {
+    var quotes = getStoredQuotes();
+    if (!quotes.length) { showToast('还没有收进摘句'); return; }
+    var lines = ['# 临渊羡鱼 · 摘句簿', '', '> 导出于 ' + new Date().toLocaleString('zh-CN') , ''];
+    quotes.forEach(function(item) {
+      lines.push('「' + item.text + '」');
+      lines.push('');
+      lines.push('—— 《' + item.chapterTitle + '》');
+      lines.push('');
+    });
+    var blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '临渊羡鱼-摘句.md';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() {
+      URL.revokeObjectURL(a.href);
+      document.body.removeChild(a);
+    }, 1000);
+    showToast('摘句簿已导出');
+  };
+
+  /* ===== 章末分享 ===== */
+  window.shareChapter = function() {
+    var title = document.title;
+    var url = window.location.href;
+    if (navigator.share) {
+      navigator.share({ title: title, text: '临渊羡鱼 —— ' + title, url: url }).catch(function() {});
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function() {
+        showToast('链接已复制，去分享吧');
+      }, function() {
+        showToast('复制失败，请手动复制地址栏');
+      });
+    } else {
+      showToast('请手动复制地址栏链接');
+    }
   };
 
   function toggleQuote(p) {
@@ -742,6 +835,11 @@
               '<button id="fontFamilyToggle" class="mode-toggle-btn" onclick="toggleFontFamily()"><span id="fontFamilyLabel">' + (fontFamilyLabels[state.fontFamily] || '方正悠黑') + '</span></button>' +
             '</div>' +
           '</div>' +
+          '<div class="setting-group"><div class="setting-label">版式</div>' +
+            '<div class="mode-toggle-row">' +
+              '<button id="readWidthToggle" class="mode-toggle-btn" onclick="toggleReadWidth()"><span id="readWidthLabel">' + (state.readWidth === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关') + '</span></button>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
@@ -755,6 +853,8 @@
     circles.forEach(function(c) { c.classList.toggle('active', c.dataset.theme === state.theme); });
     var fl = document.getElementById('fontFamilyLabel');
     if (fl) fl.textContent = fontFamilyLabels[state.fontFamily] || '方正悠黑';
+    var rw = document.getElementById('readWidthLabel');
+    if (rw) rw.textContent = state.readWidth === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关';
     if (ov) { ov.classList.add('visible'); document.body.style.overflow = 'hidden'; }
     if (state.barsVisible) { stopAutoClose(); startAutoClose(); }
   };
@@ -765,6 +865,12 @@
   };
 
   /* ===== START ===== */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('/sw.js').catch(function() {});
+    });
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

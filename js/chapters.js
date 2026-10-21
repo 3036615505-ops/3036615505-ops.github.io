@@ -6,6 +6,7 @@
  *   file   章节文件名
  *   words  字数（目录与进度计算用）
  *   blurb  目录页的一句话简介
+ *   volume 卷名（可选；当出现 ≥2 个不同卷名时，目录自动按卷分组）
  */
 var CHAPTERS = [
   { num: 1, title: '第一章·临渊羡鱼', file: 'chapter-01.html', words: 2722, blurb: '所有的事都还没开始，一切都还来得及。' },

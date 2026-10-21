@@ -12,6 +12,7 @@
   <meta property="og:image" content="https://zephyrw.site/assets/og-cover.jpg">
   <meta property="og:type" content="book">
   <meta name="twitter:card" content="summary_large_image">
+  <link rel="manifest" href="../manifest.json">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -25,6 +26,7 @@
   </script>
   <link rel="stylesheet" href="../css/style.css">
   <script src="../js/chapters.js"></script>
+  <script src="../js/theme.js"></script>
 </head>
 <body>
   <div class="phone-frame">
@@ -202,19 +204,31 @@
     function renderChapterList() {
       var list = document.getElementById('chapterList');
       if (!list) return;
-      var html = '';
+      // 按卷分组：仅当 CHAPTERS 中出现 ≥2 个不同 volume 时才渲染分组标题
+      var volumes = [];
       CHAPTERS.forEach(function(ch) {
-        html += '<a href="' + ch.file + '" class="chapter-item">' +
-          '<div class="chapter-topline">' +
-            '<span class="chapter-num">第' + ch.num + '章</span>' +
-            '<span class="chapter-words">' + ch.words + ' 字</span>' +
-          '</div>' +
-          '<div class="chapter-main">' +
-            '<span class="chapter-title">' + escapeHtml(ch.title) + '</span>' +
-            '<span class="chapter-status-slot"></span>' +
-          '</div>' +
-          (ch.blurb ? '<div class="chapter-blurb">' + escapeHtml(ch.blurb) + '</div>' : '') +
-        '</a>';
+        var v = ch.volume || '';
+        if (volumes.indexOf(v) === -1) volumes.push(v);
+      });
+      var grouped = volumes.length > 1;
+
+      var html = '';
+      volumes.forEach(function(v) {
+        if (grouped) html += '<div class="chapter-volume">' + escapeHtml(v) + '</div>';
+        CHAPTERS.forEach(function(ch) {
+          if ((ch.volume || '') !== v) return;
+          html += '<a href="' + ch.file + '" class="chapter-item">' +
+            '<div class="chapter-topline">' +
+              '<span class="chapter-num">第' + ch.num + '章</span>' +
+              '<span class="chapter-words">' + ch.words + ' 字</span>' +
+            '</div>' +
+            '<div class="chapter-main">' +
+              '<span class="chapter-title">' + escapeHtml(ch.title) + '</span>' +
+              '<span class="chapter-status-slot"></span>' +
+            '</div>' +
+            (ch.blurb ? '<div class="chapter-blurb">' + escapeHtml(ch.blurb) + '</div>' : '') +
+          '</a>';
+        });
       });
       list.innerHTML = html;
 
