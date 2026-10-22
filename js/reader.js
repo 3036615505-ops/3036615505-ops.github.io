@@ -102,16 +102,15 @@
     var battEl = el.querySelector('#readerBattGlyph');
     var article = document.querySelector('.chapter-content');
 
-    /* ----- 章节内位置（按滚动比例折算成字数，与番茄的 n/总量 一致） ----- */
-    var totalChars = article ? (article.textContent || '').replace(/\s+/g, '').length : 0;
-
+    /* ----- 章节内页码（当前页 / 总页数，番茄同款按屏折算） ----- */
     function updatePos() {
-      if (!posEl || !totalChars) return;
+      if (!posEl) return;
       var sc = document.scrollingElement || document.documentElement;
-      var max = sc.scrollHeight - sc.clientHeight;
+      var viewH = window.innerHeight || sc.clientHeight || 1;
+      var total = Math.max(1, Math.ceil(sc.scrollHeight / viewH));
       var y = sc.scrollTop || window.scrollY || 0;
-      var ratio = max > 0 ? Math.min(1, Math.max(0, y / max)) : 0;
-      posEl.textContent = Math.round(ratio * totalChars) + '/' + totalChars;
+      var cur = Math.min(total, Math.floor(y / viewH) + 1);
+      posEl.textContent = cur + '/' + total;
     }
 
     var posScheduled = false;
@@ -155,6 +154,7 @@
     updatePos();
     updateClock();
     updateBattery();
+    window.addEventListener('resize', updatePos);
     setInterval(updateClock, 15000);
     setInterval(updateBattery, 60000);
 

@@ -1,8 +1,8 @@
 {
-  "versionCode": 7,
-  "versionName": "1.6",
+  "versionCode": 8,
+  "versionName": "1.7",
   "apkUrl": "https://zephyrw.site/app/linyuan-latest.apk",
   "size": 95422,
-  "notes": "1.6 版更新：\n· 更新检查不再有 6 小时冷却，每次启动都会检查（修复装完收不到下一个更新提示的问题）\n· 站点资源改为网络优先，改版第一次打开就生效",
+  "notes": "1.7 版更新：\n· 顶部彻底不留白，正文贴屏幕顶端（修复 MIUI 把状态栏当挖孔上报导致的色带）\n· 去掉顶部章节名行，阅读界面更干净\n· 左下角改为页码（当前页/总页数）",
   "publishedAt": "2026-10-23"
 }

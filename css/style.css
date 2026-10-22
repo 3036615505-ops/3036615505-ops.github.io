@@ -3242,21 +3242,9 @@ body.app-immersive .reader-topbar {
   padding-top: 10px;
 }
 
-/* 沉浸模式的常驻弱化章节名行（番茄同款）：
-   工具栏收起时，顶栏降级为「无背景、无边框、半透明」的一行章节名，
-   与页面底色无缝；点按仍可呼出完整工具栏。 */
-body.app-immersive #readerTopbar:not(.visible) {
-  transform: none;
-  background: var(--reading-bg);
-  border: none;
-  box-shadow: none;
-  opacity: 0.55;
-  padding-top: 10px;
-}
-
 body.app-immersive .chapter-content {
-  /* 顶部为常驻章节名行（约 44px）预留空间，正文从它下方开始 */
-  padding-top: 64px;
+  /* 沉浸模式下壳已把顶部让到 0；这里只留一点呼吸感，正文贴近屏幕顶端 */
+  padding-top: 32px;
 }
 
 [data-theme="dark"] #readerStatus { opacity: 0.55; }
