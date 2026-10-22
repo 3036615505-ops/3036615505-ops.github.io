@@ -3247,12 +3247,16 @@ body.app-immersive .reader-topbar {
    正文滚动时从它下方穿过并被完整遮住，不会出现文字与条子互相透出来的情况。 */
 body.app-immersive #readerTopbar:not(.visible) {
   transform: none;
+  /* 贴边通栏：留着圆角和 12px 边距的话，四周缝隙会漏出下面的正文 */
+  top: 0;
+  left: 0;
+  right: 0;
+  border-radius: 0;
   background: var(--reading-bg);
   border: none;
   box-shadow: none;
   opacity: 1;
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding: 10px 16px;
 }
 
 /* 条子本身实心，只把其中文字与返回箭头压淡一档，保证不抢正文 */
