@@ -77,6 +77,59 @@
     initSwipeHint();
     recordFootprints();
     restoreProgress();
+    initImmersive();
+  }
+
+  /* ===== 沉浸模式：隐藏系统状态栏 + 右下角自绘时间/电量 ===== */
+  function initImmersive() {
+    var bridge = window.LinyuanApp;
+    var canImmersive = bridge && typeof bridge.setImmersive === 'function';
+
+    var el = document.createElement('div');
+    el.id = 'readerStatus';
+    el.setAttribute('aria-hidden', 'true');
+    el.innerHTML = '<span id="readerClock">--:--</span><span id="readerBattery"></span>';
+    document.body.appendChild(el);
+
+    var clockEl = el.querySelector('#readerClock');
+    var battEl = el.querySelector('#readerBattery');
+
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+    function updateClock() {
+      var d = new Date();
+      clockEl.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+
+    function batteryHtml(level, charging) {
+      if (typeof level !== 'number' || level < 0) return '';
+      var pct = Math.max(0, Math.min(100, level));
+      var w = Math.max(1, Math.round(13 * pct / 100));
+      return '<span class="batt-shell"><span class="batt-level" style="width:' + w + 'px"></span></span>' +
+        '<span class="batt-tip"></span>' +
+        (charging ? '<span class="batt-charge">⚡</span>' : '') +
+        '<span class="batt-pct">' + pct + '</span>';
+    }
+
+    function updateBattery() {
+      if (!bridge || typeof bridge.getBattery !== 'function') {
+        battEl.innerHTML = '';
+        return;
+      }
+      try {
+        var info = JSON.parse(bridge.getBattery() || '{}');
+        battEl.innerHTML = batteryHtml(info.level, info.charging);
+      } catch (e) {
+        battEl.innerHTML = '';
+      }
+    }
+
+    updateClock();
+    updateBattery();
+    setInterval(updateClock, 15000);
+    setInterval(updateBattery, 60000);
+
+    if (canImmersive) bridge.setImmersive(true);
   }
 
   /* ===== FONT SIZE ===== */
@@ -247,6 +300,7 @@
   /* ===== BARS ===== */
   function showBars() {
     state.barsVisible = true;
+    document.body.classList.add('bars-open');
     var top = document.getElementById('readerTopbar');
     var bot = document.getElementById('readerBottombar');
     if (top) top.classList.add('visible');
@@ -256,6 +310,7 @@
 
   function hideBars() {
     state.barsVisible = false;
+    document.body.classList.remove('bars-open');
     state.settingsVisible = false;
     stopAutoClose();
     var top = document.getElementById('readerTopbar');

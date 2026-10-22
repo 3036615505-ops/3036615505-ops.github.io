@@ -1609,7 +1609,8 @@ body.reading-page {
 
 /* 阅读内容 */
 .chapter-content {
-  padding: 24px 20px 48px;
+  /* 顶部留出状态栏/刘海高度：沉浸模式隐藏状态栏后 env() 归零，正文自然贴顶 */
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 20px 48px;
   font-family: "FZYouHei", "方正悠黑", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   font-size: var(--font-size-base);
   line-height: 2.0;
@@ -3165,3 +3166,59 @@ body.reading-page {
   color: var(--text-muted);
   line-height: 1.9;
 }
+
+/* ===== 沉浸阅读：右下角自绘时间与电量（替代被隐藏的系统状态栏） ===== */
+#readerStatus {
+  position: fixed;
+  right: 14px;
+  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.4px;
+  color: var(--reading-text);
+  opacity: 0.42;
+  pointer-events: none;
+  user-select: none;
+  z-index: 150;
+  font-variant-numeric: tabular-nums;
+  transition: opacity 0.35s ease;
+}
+
+/* 工具栏升起时让位，避免和底栏打架 */
+body.bars-open #readerStatus { opacity: 0; }
+
+#readerBattery { display: inline-flex; align-items: center; gap: 3px; }
+
+.batt-shell {
+  position: relative;
+  width: 15px;
+  height: 8px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  opacity: 0.85;
+}
+
+.batt-level {
+  position: absolute;
+  left: 1px;
+  top: 1px;
+  bottom: 1px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.batt-tip {
+  width: 2px;
+  height: 4px;
+  margin-left: -2px;
+  background: currentColor;
+  border-radius: 0 1px 1px 0;
+}
+
+.batt-charge { font-size: 10px; }
+.batt-pct { font-size: 10px; opacity: 0.9; }
+
+[data-theme="dark"] #readerStatus { opacity: 0.5; }

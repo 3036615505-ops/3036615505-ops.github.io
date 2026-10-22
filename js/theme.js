@@ -19,6 +19,12 @@
     if (meta) meta.content = '#1c1c1c';
   }
 
+  /* ===== 非阅读页：恢复系统状态栏（阅读页会把它藏起来） ===== */
+  if (window.LinyuanApp && typeof window.LinyuanApp.setImmersive === 'function'
+      && !document.body.classList.contains('reading-page')) {
+    try { window.LinyuanApp.setImmersive(false); } catch (e) { /* 忽略 */ }
+  }
+
   /* ===== Service Worker 注册（离线阅读） ===== */
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
