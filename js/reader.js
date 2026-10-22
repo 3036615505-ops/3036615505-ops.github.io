@@ -327,16 +327,22 @@
   }
 
   /* ===== READING PROGRESS ===== */
-  function saveProgress(pct) {
+  var lastProgressSave = 0;
+  function saveProgress(pct, force) {
     if (pct === undefined) pct = getCurrentProgressPct();
     pct = clampProgress(pct);
+    refreshProgressControls(pct);
+    // localStorage 是同步磁盘写入：滚动时每帧都写会掉帧，节流到约 3 次/秒。
+    // 页面隐藏/卸载时传 force=true 补最后一把，保证离开前进度是准的。
+    var now = Date.now();
+    if (!force && now - lastProgressSave < 320) return;
+    lastProgressSave = now;
     localStorage.setItem('reader-pos-' + chapterId, pct);
     if (pct >= 95) {
       localStorage.setItem('reader-done-' + chapterId, '1');
     } else {
       localStorage.removeItem('reader-done-' + chapterId);
     }
-    refreshProgressControls(pct);
   }
 
   function restoreProgress() {
@@ -406,7 +412,11 @@
         saveProgress();
       });
     }, { passive: true });
-    window.addEventListener('beforeunload', function() { saveProgress(); });
+    window.addEventListener('beforeunload', function() { saveProgress(undefined, true); });
+    window.addEventListener('pagehide', function() { saveProgress(undefined, true); });
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'hidden') saveProgress(undefined, true);
+    });
   }
 
   /* ===== 键盘：Escape 逐层关闭（设置 -> 摘句簿 -> 目录 -> 工具栏） ===== */

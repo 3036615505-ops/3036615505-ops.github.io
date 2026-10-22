@@ -13,6 +13,7 @@
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="manifest" href="manifest.json">
+  <link rel="preload" as="image" href="assets/cover.webp">
   <link rel="stylesheet" href="css/style.css">
   <script src="js/chapters.js"></script>
   <script src="js/theme.js"></script>
@@ -33,12 +34,12 @@
 
     <section class="tree-band" id="treeBand">
       <div class="tree-sway">
-        <img class="tree-stage" src="assets/tree-bare.jpg" alt="">
-        <img class="tree-stage" src="assets/tree-s1.jpg" alt="">
-        <img class="tree-stage" src="assets/tree-s2.jpg" alt="">
-        <img class="tree-stage" src="assets/tree-s3.jpg" alt="">
-        <img class="tree-stage" src="assets/tree-s4.jpg" alt="">
-        <img class="tree-stage" src="assets/tree-s5.jpg" alt="">
+        <img class="tree-stage" data-src="assets/tree-bare.webp" alt="">
+        <img class="tree-stage" data-src="assets/tree-s1.webp" alt="">
+        <img class="tree-stage" data-src="assets/tree-s2.webp" alt="">
+        <img class="tree-stage" data-src="assets/tree-s3.webp" alt="">
+        <img class="tree-stage" data-src="assets/tree-s4.webp" alt="">
+        <img class="tree-stage" data-src="assets/tree-s5.webp" alt="">
       </div>
       <div class="tree-caption">
         <div class="tree-caption-main" id="treeCaption">梧桐还在沉睡</div>
@@ -135,7 +136,13 @@
 
       if (!stages.length) return;
       var rung = 100 / (stages.length - 1);
+      // 按需加载：只请求当前进度用到的两级（相邻级做淡入淡出），其余不下载
+      var lo = Math.floor(pct / rung + 1e-6);
+      var hi = Math.ceil(pct / rung - 1e-6);
       stages.forEach(function(img, i) {
+        if ((i === lo || i === hi) && !img.getAttribute('src')) {
+          img.src = img.getAttribute('data-src');
+        }
         var d = Math.abs(pct - i * rung) / rung;
         img.style.opacity = d >= 1 ? 0 : (1 - d).toFixed(3);
       });
@@ -157,7 +164,7 @@
       var metaEl = document.getElementById('rcMeta');
       var fillEl = document.getElementById('rcFill');
       var btn = document.getElementById('rcBtn');
-      if (cover) cover.style.backgroundImage = "url('assets/cover.jpg')";
+      if (cover) cover.style.backgroundImage = "url('assets/cover.webp')";
 
       if (lastReadChapter) {
         var pct = lastReadPct || 100;

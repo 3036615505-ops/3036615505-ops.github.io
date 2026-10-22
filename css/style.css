@@ -1008,9 +1008,7 @@ a { color: inherit; text-decoration: none; }
 
 /* ===== 小说详情页 ===== */
 .detail-header {
-  background: rgba(255, 250, 242, 0.82);
-  backdrop-filter: blur(16px) saturate(120%);
-  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  background: rgba(255, 250, 242, 0.94);
   padding: 12px 12px;
   display: flex;
   align-items: center;
@@ -1516,8 +1514,6 @@ body.reading-page {
   left: 12px;
   right: 12px;
   background: var(--reader-surface);
-  backdrop-filter: blur(16px) saturate(120%);
-  -webkit-backdrop-filter: blur(16px) saturate(120%);
   display: flex;
   align-items: center;
   padding: 10px 12px;
@@ -1732,8 +1728,6 @@ body.reading-page {
   left: 12px;
   right: 12px;
   background: var(--reader-surface);
-  backdrop-filter: blur(18px) saturate(120%);
-  -webkit-backdrop-filter: blur(18px) saturate(120%);
   z-index: 200;
   transform: translateY(calc(100% + 24px));
   transition: transform 0.28s ease, background 0.3s, box-shadow 0.3s;
@@ -2025,16 +2019,12 @@ body.reading-page {
 .modal-backdrop {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(36,24,12,0.34);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: rgba(36,24,12,0.46);
 }
 
 .modal-panel {
   position: relative;
   background: var(--reader-surface);
-  backdrop-filter: blur(18px) saturate(120%);
-  -webkit-backdrop-filter: blur(18px) saturate(120%);
   border-radius: 22px;
   width: 88vw;
   max-width: 370px;
@@ -2606,7 +2596,7 @@ body.reading-page {
 .detail-cover.linyuan {
   background-image:
     radial-gradient(ellipse 92% 48% at 50% 50%, rgba(28, 18, 6, 0.48) 0%, rgba(28, 18, 6, 0.16) 76%, transparent 100%),
-    url('../assets/cover.jpg');
+    url('../assets/cover.webp');
   background-size: cover, cover;
   background-position: center, center;
 }
@@ -2681,6 +2671,7 @@ body.reading-page {
   width: 124px;
   height: 124px;
   transform-origin: 50% 100%;
+  will-change: transform;
   animation: treeSway 7s ease-in-out infinite alternate;
 }
 
@@ -2870,7 +2861,6 @@ body.reading-page {
   border-top: 0.5px solid var(--border-light);
   padding: 8px 0 calc(9px + env(safe-area-inset-bottom, 0px));
   z-index: 100;
-  backdrop-filter: blur(18px);
 }
 
 [data-theme="dark"] .tab-bar {
@@ -3065,7 +3055,7 @@ body.reading-page {
 
 /* ---- 阅读页纸纹 ---- */
 body.reading-page {
-  background-image: url('../assets/paper.jpg');
+  background-image: url('../assets/paper.webp');
   background-size: cover;
 }
 
