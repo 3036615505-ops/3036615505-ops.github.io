@@ -19,10 +19,21 @@
     if (meta) meta.content = '#1c1c1c';
   }
 
-  /* ===== 非阅读页：恢复系统状态栏（阅读页会把它藏起来） ===== */
-  if (window.LinyuanApp && typeof window.LinyuanApp.setImmersive === 'function'
-      && !document.body.classList.contains('reading-page')) {
-    try { window.LinyuanApp.setImmersive(false); } catch (e) { /* 忽略 */ }
+  /* ===== 非阅读页：恢复系统状态栏（阅读页会把它藏起来） =====
+     注意：theme.js 在 <head> 里加载，此刻 document.body 还是 null，
+     必须等 DOM 就绪再判断，否则会抛异常并中断后面所有初始化。 */
+  function resetImmersiveIfNotReading() {
+    if (!document.body) return;
+    if (document.body.classList.contains('reading-page')) return;
+    var bridge = window.LinyuanApp;
+    if (!bridge || typeof bridge.setImmersive !== 'function') return;
+    try { bridge.setImmersive(false); } catch (e) { /* 忽略 */ }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', resetImmersiveIfNotReading);
+  } else {
+    resetImmersiveIfNotReading();
   }
 
   /* ===== Service Worker 注册（离线阅读） ===== */
