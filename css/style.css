@@ -3234,6 +3234,12 @@ body.reading-page {
 .batt-pct { font-size: 10px; opacity: 0.9; }
 
 /* 沉浸模式下壳已为挖孔留出顶部空间，正文与顶栏都不再重复叠加安全区 */
+/* 沉浸模式下工具栏展开时的章节名同样靠左，避免与摄像头挖孔重叠 */
+body.app-immersive .reader-topbar .chapter-name {
+  text-align: left;
+  padding-right: 0;
+}
+
 body.app-immersive .chapter-content {
   padding-top: 24px;
 }
