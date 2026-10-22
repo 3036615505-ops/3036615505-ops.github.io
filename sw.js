@@ -9,8 +9,14 @@
  */
 var CACHE = 'linyuan-v11';
 
-/** 必须保证新鲜的资源：章节列表变化要让新章节立刻出现 */
-var NETWORK_FIRST = ['/js/chapters.js'];
+/**
+ * 必须保证新鲜的资源（网络优先 + 500ms 超时兜底）：
+ * - 页面导航（任何 HTML）
+ * - 章节列表 chapters.js（新章节要立刻出现）
+ * - 全部 CSS 与 JS（改版/修样式必须第一次打开就生效，
+ *   否则会反复出现「推了没反应、要开两次」的问题）
+ */
+var NETWORK_FIRST = ['/js/chapters.js', '/css/', '/js/'];
 /** 网络优先的等待上限（毫秒）：超过就直接用缓存，不让人干等 */
 var NETWORK_TIMEOUT = 500;
 
@@ -114,7 +120,9 @@ self.addEventListener('fetch', function(e) {
   // 安装包与版本描述：绕过 SW 缓存，避免自更新拿到旧文件
   if (url.pathname.indexOf('/app/') === 0) return;
 
-  if (e.request.mode === 'navigate' || NETWORK_FIRST.indexOf(url.pathname) >= 0) {
+  var isNetworkFirst = e.request.mode === 'navigate'
+      || NETWORK_FIRST.some(function(prefix) { return url.pathname.indexOf(prefix) === 0; });
+  if (isNetworkFirst) {
     e.respondWith(networkFirst(e.request));
     return;
   }
