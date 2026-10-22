@@ -2787,6 +2787,13 @@ body.reading-page {
   padding: 16px 18px 0;
 }
 
+/* 首屏预留高度：目录由 JS 填充，空态高度为 0，填入后会顶动页脚（CLS）。
+   2 条 .date-item 实测约 83.5px（12+19.5+10+0.5 各一条），这里取 86px 留字体差异余量。
+   章节增到 3 条以上时仍会有一行左右的位移，属可接受范围。 */
+#dateList {
+  min-height: 86px;
+}
+
 .date-list-header {
   display: flex;
   justify-content: space-between;
