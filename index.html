@@ -27,16 +27,16 @@
       </div>
       <div class="leaf-pill">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C7 8 4 13 12 22c8-9 5-14 0-20z"/></svg>
-        <span id="leafPillText">0 / 8 叶</span>
+        <span id="leafPillText">未萌</span>
       </div>
     </header>
 
     <section class="tree-band" id="treeBand">
-      <img class="tree-band-img" src="assets/tree.jpg" alt="">
+      <img class="tree-band-img" src="assets/tree-bare.jpg" alt="">
       <div class="tree-leaves" id="treeLeaves"></div>
       <div class="tree-caption">
-        <div class="tree-caption-main" id="treeCaption">梧桐还在等第一片叶</div>
-        <div class="tree-caption-sub">读完一章，树上多一片</div>
+        <div class="tree-caption-main" id="treeCaption">梧桐还在沉睡</div>
+        <div class="tree-caption-sub">读到哪里，树就长到哪里</div>
       </div>
     </section>
 
@@ -93,43 +93,59 @@
       return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     };
 
-    var LEAF_SLOTS = [
-      { right: 64, top: 8 }, { right: 40, top: 18 }, { right: 30, top: 42 }, { right: 40, top: 64 },
-      { right: 64, top: 74 }, { right: 88, top: 64 }, { right: 98, top: 42 }, { right: 88, top: 18 }
-    ];
-
-    function leafSvg(fill, stroke) {
-      var path = 'M12 2C7 8 4 13 12 22c8-9 5-14 0-20z';
-      if (fill) return '<svg width="11" height="11" viewBox="0 0 24 24" fill="' + fill + '"><path d="' + path + '"/></svg>';
-      return '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="' + stroke + '" stroke-width="2.2"><path d="' + path + '"/></svg>';
-    }
-
-    // ===== 梧桐进度带：读完一章亮一片叶（绿=读完，金=在读） =====
+    // ===== 梧桐进度带：连续生长 =====
+    // 叶片来自 tree-lush.jpg 的分水岭分割（tools/build-tree-leaves.py 生成图集），
+    // 按 y 自下而上排序；总进度走到哪，就点亮多少叶——1% 时低枝零碎叶片，100% 全冠茂盛。
     (function() {
       var box = document.getElementById('treeLeaves');
-      var litCount = 0;
-      var html = '';
-      LEAF_SLOTS.forEach(function(slot, i) {
-        var ch = CHAPTERS[i];
-        var state = '';
-        if (ch) {
-          var key = getChapterStorageId(ch.file);
-          var done = localStorage.getItem('reader-done-' + key) === '1';
-          var pct = parseInt(localStorage.getItem('reader-pos-' + key)) || 0;
-          if (done) state = 'done';
-          else if (pct > 0) state = 'reading';
-        }
-        var icon = state === 'done' ? leafSvg('#8A9E6C')
-          : state === 'reading' ? leafSvg('#C4A24E')
-          : leafSvg(null, '#CFC2A4');
-        if (state) litCount++;
-        html += '<span class="tree-leaf' + (state ? ' lit' : '') + '" style="right:' + slot.right + 'px; top:' + slot.top + 'px;">' + icon + '</span>';
-      });
-      if (box) box.innerHTML = html;
+      var img = document.querySelector('.tree-band-img');
       var pill = document.getElementById('leafPillText');
-      if (pill) pill.textContent = litCount + ' / ' + LEAF_SLOTS.length + ' 叶';
       var caption = document.getElementById('treeCaption');
-      if (caption) caption.textContent = litCount > 0 ? '梧桐又长出 ' + litCount + ' 片叶' : '梧桐还在等第一片叶';
+
+      var totalWords = 0, readWords = 0;
+      CHAPTERS.forEach(function(ch) {
+        totalWords += ch.words;
+        var key = getChapterStorageId(ch.file);
+        var pct = parseInt(localStorage.getItem('reader-pos-' + key)) || 0;
+        var done = localStorage.getItem('reader-done-' + key) === '1';
+        if (done) readWords += ch.words;
+        else if (pct > 0) readWords += Math.round(ch.words * pct / 100);
+      });
+      var pct = totalWords > 0 ? Math.min(100, Math.round(readWords / totalWords * 100)) : 0;
+
+      var STAGES = [
+        { min: 0,   name: '未萌', caption: '梧桐还在沉睡' },
+        { min: 1,   name: '新芽', caption: '枝头冒出第一点绿' },
+        { min: 16,  name: '抽枝', caption: '叶子一片片醒过来' },
+        { min: 46,  name: '繁叶', caption: '树阴渐渐连成了片' },
+        { min: 81,  name: '亭亭', caption: '就快长成一片荫了' },
+        { min: 100, name: '如盖', caption: '亭亭如盖，一如那个九月' }
+      ];
+      var stage = STAGES[0];
+      for (var i = 0; i < STAGES.length; i++) {
+        if (pct >= STAGES[i].min) stage = STAGES[i];
+      }
+      if (pill) pill.textContent = stage.name;
+      if (caption) caption.textContent = stage.caption;
+
+      if (!box || !img) return;
+      fetch('assets/tree/leaves.json').then(function(r) { return r.json(); }).then(function(data) {
+        var scale = img.clientWidth / data.width || 124 / data.width;
+        var nShow = Math.round(pct / 100 * data.leaves.length);
+        var html = '';
+        for (var i = 0; i < nShow; i++) {
+          var L = data.leaves[i];
+          html += '<span class="tree-leaf" style="' +
+            'left:' + (L.x * scale).toFixed(2) + 'px;' +
+            'top:' + (L.y * scale).toFixed(2) + 'px;' +
+            'width:' + (L.w * scale).toFixed(2) + 'px;' +
+            'height:' + (L.h * scale).toFixed(2) + 'px;' +
+            'background-position:-' + (L.ax * scale).toFixed(2) + 'px -' + (L.ay * scale).toFixed(2) + 'px;' +
+            'background-size:' + (data.atlas.width * scale).toFixed(2) + 'px ' + (data.atlas.height * scale).toFixed(2) + 'px;' +
+            '"></span>';
+        }
+        box.innerHTML = html;
+      }).catch(function() { /* 加载失败时保持秃枝状态 */ });
     })();
 
     // ===== 继续阅读卡（新读者显示第一章） =====

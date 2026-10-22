@@ -2676,11 +2676,10 @@ body.reading-page {
 
 .tree-band-img {
   position: absolute;
-  right: -8px;
+  right: 0;
   bottom: -6px;
+  width: 124px;
   height: 124px;
-  width: 156px;
-  object-fit: contain;
   pointer-events: none;
 }
 
@@ -2688,13 +2687,19 @@ body.reading-page {
   filter: brightness(0.82) saturate(0.85);
 }
 
-.tree-leaf {
+.tree-leaves {
   position: absolute;
-  transition: transform 0.5s ease;
+  right: 0;
+  bottom: -6px;
+  width: 124px;
+  height: 124px;
+  pointer-events: none;
 }
 
-.tree-leaf.lit {
-  filter: drop-shadow(0 0 3px rgba(138, 158, 108, 0.5));
+.tree-leaf {
+  position: absolute;
+  background-image: url('../assets/tree/atlas.png');
+  background-repeat: no-repeat;
 }
 
 .tree-caption {
@@ -3021,14 +3026,6 @@ body.reading-page {
   line-height: 1.75;
   color: var(--text-secondary);
   margin: 9px 0 0;
-}
-
-.char-page-no {
-  position: absolute;
-  right: 13px;
-  bottom: 9px;
-  font-size: 10px;
-  color: var(--text-muted);
 }
 
 /* ---- 章节页：日期落款 + 角印 ---- */

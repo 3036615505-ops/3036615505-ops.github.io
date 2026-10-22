@@ -2,7 +2,7 @@
  * sw.js — 临渊羡鱼 Service Worker
  * 策略：页面导航网络优先（保证更新可见）；静态资源缓存优先 + 后台更新（离线可读）
  */
-var CACHE = 'linyuan-v2';
+var CACHE = 'linyuan-v3';
 
 var PRECACHE = [
   '/',
@@ -10,7 +10,9 @@ var PRECACHE = [
   '/manifest.json',
   '/assets/og-cover.jpg',
   '/assets/cover.jpg',
-  '/assets/tree.jpg',
+  '/assets/tree-bare.jpg',
+  '/assets/tree/atlas.png',
+  '/assets/tree/leaves.json',
   '/assets/paper.jpg',
   '/assets/portrait-linshu.jpg',
   '/assets/portrait-nanheng.jpg',
