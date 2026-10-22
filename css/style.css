@@ -3242,9 +3242,36 @@ body.app-immersive .reader-topbar {
   padding-top: 10px;
 }
 
+/* ===== 沉浸模式的固定章节条（番茄同款） =====
+   与页面同底色、完全不透明，是一条「固定页」而不是半透明浮层：
+   正文滚动时从它下方穿过并被完整遮住，不会出现文字与条子互相透出来的情况。 */
+body.app-immersive #readerTopbar:not(.visible) {
+  transform: none;
+  background: var(--reading-bg);
+  border: none;
+  box-shadow: none;
+  opacity: 1;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+/* 条子本身实心，只把其中文字与返回箭头压淡一档，保证不抢正文 */
+body.app-immersive #readerTopbar:not(.visible) .chapter-name {
+  opacity: 0.62;
+  font-size: 12.5px;
+  letter-spacing: 0.5px;
+}
+
+body.app-immersive #readerTopbar:not(.visible) .back-btn {
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  opacity: 0.55;
+}
+
 body.app-immersive .chapter-content {
-  /* 沉浸模式下壳已把顶部让到 0；这里只留一点呼吸感，正文贴近屏幕顶端 */
-  padding-top: 32px;
+  /* 顶部为固定章节条预留空间（条子约 50px），首行不会被压住 */
+  padding-top: 64px;
 }
 
 [data-theme="dark"] #readerStatus { opacity: 0.55; }
