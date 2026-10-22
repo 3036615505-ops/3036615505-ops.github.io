@@ -1610,7 +1610,7 @@ body.reading-page {
 /* 阅读内容 */
 .chapter-content {
   /* 顶部留出状态栏/刘海高度：沉浸模式隐藏状态栏后 env() 归零，正文自然贴顶 */
-  padding: calc(24px + env(safe-area-inset-top, 0px)) 20px 48px;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 20px calc(48px + 28px);
   font-family: "FZYouHei", "方正悠黑", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   font-size: var(--font-size-base);
   line-height: 2.0;
@@ -3167,30 +3167,42 @@ body.reading-page {
   line-height: 1.9;
 }
 
-/* ===== 沉浸阅读：右下角自绘时间与电量（替代被隐藏的系统状态栏） ===== */
+/* ===== 沉浸阅读：底部固定状态条 =====
+   参考番茄小说的处理：整条固定、不透明、不随正文滚动，
+   正文滚到它下面会被盖住；左侧是章节内位置，右侧是时间与电量。 */
 #readerStatus {
   position: fixed;
-  right: 14px;
-  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28px;
+  padding: 0 18px;
   display: flex;
   align-items: center;
-  gap: 7px;
+  justify-content: space-between;
+  background: var(--reading-bg);
+  color: var(--reading-text);
   font-size: 11px;
   line-height: 1;
-  letter-spacing: 0.4px;
-  color: var(--reading-text);
-  opacity: 0.42;
+  letter-spacing: 0.3px;
+  opacity: 0.52;
   pointer-events: none;
   user-select: none;
   z-index: 150;
   font-variant-numeric: tabular-nums;
-  transition: opacity 0.35s ease;
 }
 
-/* 工具栏升起时让位，避免和底栏打架 */
-body.bars-open #readerStatus { opacity: 0; }
+#readerPos { font-size: 11px; }
 
-#readerBattery { display: inline-flex; align-items: center; gap: 3px; }
+#readerBattery {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+#readerClock { font-size: 11px; }
+
+#readerBattGlyph { display: inline-flex; align-items: center; gap: 3px; }
 
 .batt-shell {
   position: relative;
@@ -3221,4 +3233,13 @@ body.bars-open #readerStatus { opacity: 0; }
 .batt-charge { font-size: 10px; }
 .batt-pct { font-size: 10px; opacity: 0.9; }
 
-[data-theme="dark"] #readerStatus { opacity: 0.5; }
+/* 沉浸模式下壳已为挖孔留出顶部空间，正文与顶栏都不再重复叠加安全区 */
+body.app-immersive .chapter-content {
+  padding-top: 24px;
+}
+
+body.app-immersive .reader-topbar {
+  padding-top: 10px;
+}
+
+[data-theme="dark"] #readerStatus { opacity: 0.55; }

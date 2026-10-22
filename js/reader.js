@@ -80,7 +80,9 @@
     initImmersive();
   }
 
-  /* ===== 沉浸模式：隐藏系统状态栏 + 右下角自绘时间/电量 ===== */
+  /* ===== 沉浸模式：隐藏系统状态栏 + 底部固定状态条 =====
+     参考番茄小说：底部是一条固定、不透明、不随正文滚动的状态栏，
+     正文滚到它下面会被盖住；左侧为章节内位置，右侧为时间与电量。 */
   function initImmersive() {
     var bridge = window.LinyuanApp;
     var canImmersive = bridge && typeof bridge.setImmersive === 'function';
@@ -88,19 +90,45 @@
     var el = document.createElement('div');
     el.id = 'readerStatus';
     el.setAttribute('aria-hidden', 'true');
-    el.innerHTML = '<span id="readerClock">--:--</span><span id="readerBattery"></span>';
+    el.innerHTML = '<span id="readerPos">0/0</span>' +
+      '<span id="readerBattery">' +
+        '<span id="readerClock">--:--</span>' +
+        '<span id="readerBattGlyph"></span>' +
+      '</span>';
     document.body.appendChild(el);
 
+    var posEl = el.querySelector('#readerPos');
     var clockEl = el.querySelector('#readerClock');
-    var battEl = el.querySelector('#readerBattery');
+    var battEl = el.querySelector('#readerBattGlyph');
+    var article = document.querySelector('.chapter-content');
 
+    /* ----- 章节内位置（按滚动比例折算成字数，与番茄的 n/总量 一致） ----- */
+    var totalChars = article ? (article.textContent || '').replace(/\s+/g, '').length : 0;
+
+    function updatePos() {
+      if (!posEl || !totalChars) return;
+      var sc = document.scrollingElement || document.documentElement;
+      var max = sc.scrollHeight - sc.clientHeight;
+      var y = sc.scrollTop || window.scrollY || 0;
+      var ratio = max > 0 ? Math.min(1, Math.max(0, y / max)) : 0;
+      posEl.textContent = Math.round(ratio * totalChars) + '/' + totalChars;
+    }
+
+    var posScheduled = false;
+    window.addEventListener('scroll', function () {
+      if (posScheduled) return;
+      posScheduled = true;
+      requestAnimationFrame(function () { posScheduled = false; updatePos(); });
+    }, { passive: true });
+
+    /* ----- 时间 ----- */
     function pad(n) { return (n < 10 ? '0' : '') + n; }
-
     function updateClock() {
       var d = new Date();
       clockEl.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes());
     }
 
+    /* ----- 电量（只有 App 内才拿得到，浏览器里留空） ----- */
     function batteryHtml(level, charging) {
       if (typeof level !== 'number' || level < 0) return '';
       var pct = Math.max(0, Math.min(100, level));
@@ -124,12 +152,17 @@
       }
     }
 
+    updatePos();
     updateClock();
     updateBattery();
     setInterval(updateClock, 15000);
     setInterval(updateBattery, 60000);
 
-    if (canImmersive) bridge.setImmersive(true);
+    if (canImmersive) {
+      bridge.setImmersive(true);
+      // 标记沉浸：壳已为挖孔留好顶部空间，正文不再重复叠加安全区
+      document.body.classList.add('app-immersive');
+    }
   }
 
   /* ===== FONT SIZE ===== */
@@ -300,7 +333,6 @@
   /* ===== BARS ===== */
   function showBars() {
     state.barsVisible = true;
-    document.body.classList.add('bars-open');
     var top = document.getElementById('readerTopbar');
     var bot = document.getElementById('readerBottombar');
     if (top) top.classList.add('visible');
@@ -310,7 +342,6 @@
 
   function hideBars() {
     state.barsVisible = false;
-    document.body.classList.remove('bars-open');
     state.settingsVisible = false;
     stopAutoClose();
     var top = document.getElementById('readerTopbar');

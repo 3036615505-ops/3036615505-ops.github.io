@@ -7,7 +7,7 @@
  *   2. 其余静态资源（CSS/JS/图片/字体）→ 缓存优先 + 后台刷新
  *      （切换极快、离线可读；改动会在下一次打开时生效）
  */
-var CACHE = 'linyuan-v10';
+var CACHE = 'linyuan-v11';
 
 /** 必须保证新鲜的资源：章节列表变化要让新章节立刻出现 */
 var NETWORK_FIRST = ['/js/chapters.js'];
