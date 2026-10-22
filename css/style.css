@@ -3264,6 +3264,10 @@ body.app-immersive #readerTopbar:not(.visible) .chapter-name {
   opacity: 0.62;
   font-size: 12.5px;
   letter-spacing: 0.5px;
+  /* 靠左：屏幕中上方常被摄像头挖孔占据，居中会被挡住 */
+  text-align: left;
+  padding-right: 0;
+  padding-left: 4px;
 }
 
 body.app-immersive #readerTopbar:not(.visible) .back-btn {
