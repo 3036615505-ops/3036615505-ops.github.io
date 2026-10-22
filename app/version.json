@@ -1,8 +1,8 @@
 {
-  "versionCode": 6,
-  "versionName": "1.5",
+  "versionCode": 7,
+  "versionName": "1.6",
   "apkUrl": "https://zephyrw.site/app/linyuan-latest.apk",
   "size": 95422,
-  "notes": "1.5 版更新：\n· 阅读页顶部不再留出状态栏高度，正文紧贴屏幕顶端\n· 底部状态条改为固定栏（左侧章节位置，右侧时间与电量），不再压在文字上",
+  "notes": "1.6 版更新：\n· 更新检查不再有 6 小时冷却，每次启动都会检查（修复装完收不到下一个更新提示的问题）\n· 站点资源改为网络优先，改版第一次打开就生效",
   "publishedAt": "2026-10-23"
 }
