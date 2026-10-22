@@ -1,8 +1,8 @@
 {
-  "versionCode": 8,
-  "versionName": "1.7",
+  "versionCode": 9,
+  "versionName": "1.8",
   "apkUrl": "https://zephyrw.site/app/linyuan-latest.apk",
-  "size": 95422,
-  "notes": "1.7 版更新：\n· 顶部彻底不留白，正文贴屏幕顶端（修复 MIUI 把状态栏当挖孔上报导致的色带）\n· 去掉顶部章节名行，阅读界面更干净\n· 左下角改为页码（当前页/总页数）",
+  "size": 99686,
+  "notes": "1.8 版更新：\n· 更新弹窗换成 App 风格的米色纸卡（衬线标题 + 金色按钮）\n· 修复弱网时读到旧样式导致的顶部章节名残留\n· 阅读界面顶部更干净",
   "publishedAt": "2026-10-23"
 }
