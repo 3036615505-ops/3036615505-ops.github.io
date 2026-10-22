@@ -1,8 +1,18 @@
 /**
  * sw.js — 临渊羡鱼 Service Worker
- * 策略：页面导航网络优先（保证更新可见）；静态资源缓存优先 + 后台更新（离线可读）
+ *
+ * 策略：
+ *   1. 页面导航 + 章节列表 js/chapters.js → 网络优先，500ms 内没回来就用缓存
+ *      （新章节打开即见；弱网也不空等）
+ *   2. 其余静态资源（CSS/JS/图片/字体）→ 缓存优先 + 后台刷新
+ *      （切换极快、离线可读；改动会在下一次打开时生效）
  */
-var CACHE = 'linyuan-v6';
+var CACHE = 'linyuan-v7';
+
+/** 必须保证新鲜的资源：章节列表变化要让新章节立刻出现 */
+var NETWORK_FIRST = ['/js/chapters.js'];
+/** 网络优先的等待上限（毫秒）：超过就直接用缓存，不让人干等 */
+var NETWORK_TIMEOUT = 500;
 
 var PRECACHE = [
   '/',
@@ -42,39 +52,69 @@ self.addEventListener('activate', function(e) {
   );
 });
 
+function putCache(request, response) {
+  if (response && response.status === 200 && response.type === 'basic') {
+    var copy = response.clone();
+    caches.open(CACHE).then(function(c) { c.put(request, copy); });
+  }
+  return response;
+}
+
+/**
+ * 网络优先，带超时兜底：
+ * - 网络在 NETWORK_TIMEOUT 内返回 → 用新的（并写入缓存）
+ * - 超时且有缓存 → 立刻用缓存（网络回包仍然写缓存，供下次用）
+ * - 没网也没缓存 → 落回首页
+ */
+function networkFirst(request) {
+  return new Promise(function(resolve) {
+    var settled = false;
+    var timer = setTimeout(function() {
+      if (settled) return;
+      caches.match(request).then(function(cached) {
+        if (settled || !cached) return;
+        settled = true;
+        resolve(cached);
+      });
+    }, NETWORK_TIMEOUT);
+
+    fetch(request).then(function(res) {
+      putCache(request, res);
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(res);
+    }).catch(function() {
+      caches.match(request).then(function(cached) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(cached || caches.match('/'));
+      });
+    });
+  });
+}
+
+/** 缓存优先：命中直接返回，同时后台拉新写回缓存 */
+function cacheFirst(request) {
+  return caches.match(request).then(function(cached) {
+    var network = fetch(request).then(function(res) {
+      putCache(request, res);
+      return res;
+    }).catch(function() { return cached; });
+    return cached || network;
+  });
+}
+
 self.addEventListener('fetch', function(e) {
   if (e.request.method !== 'GET') return;
   var url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // 页面导航：缓存优先 + 后台更新（切换页面立即出内容）；首次无缓存才等网络
-  if (e.request.mode === 'navigate') {
-    e.respondWith(
-      caches.match(e.request).then(function(cached) {
-        var network = fetch(e.request).then(function(res) {
-          if (res && res.status === 200 && res.type === 'basic') {
-            var copy = res.clone();
-            caches.open(CACHE).then(function(c) { c.put(e.request, copy); });
-          }
-          return res;
-        }).catch(function() { return cached || caches.match('/'); });
-        return cached || network;
-      })
-    );
+  if (e.request.mode === 'navigate' || NETWORK_FIRST.indexOf(url.pathname) >= 0) {
+    e.respondWith(networkFirst(e.request));
     return;
   }
 
-  // 静态资源：缓存优先，命中后后台刷新
-  e.respondWith(
-    caches.match(e.request).then(function(cached) {
-      var network = fetch(e.request).then(function(res) {
-        if (res && res.status === 200 && res.type === 'basic') {
-          var copy = res.clone();
-          caches.open(CACHE).then(function(c) { c.put(e.request, copy); });
-        }
-        return res;
-      }).catch(function() { return cached; });
-      return cached || network;
-    })
-  );
+  e.respondWith(cacheFirst(e.request));
 });
