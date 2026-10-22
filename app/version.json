@@ -1,0 +1,8 @@
+{
+  "versionCode": 5,
+  "versionName": "1.4",
+  "apkUrl": "https://zephyrw.site/app/linyuan-latest.apk",
+  "size": 95422,
+  "notes": "1.4 版更新：\n· 新增应用内更新：以后有新版本会直接在这里提示，点一下就装好\n· 阅读页隐藏系统状态栏，右下角显示时间与电量\n· 图片换成 WebP，加载明显更快；切换页面更顺",
+  "publishedAt": "2026-10-23"
+}
