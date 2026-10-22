@@ -29,7 +29,7 @@
   var fontSizeValues = { small: 19, medium: 22, large: 25 };
 
   var fontFamilies = ['fzyouhei', 'serif'];
-  var fontFamilyLabels = { fzyouhei: '方正悠黑', serif: '宋体' };
+  var fontFamilyLabels = { fzyouhei: '黑体', serif: '衬线' };
 
   var chapterId = window.location.pathname.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-');
 
@@ -184,19 +184,46 @@
     applyFontSize(fontSizes[idx]);
   };
 
-  /* ===== FONT FAMILY ===== */
+  /* ===== FONT FAMILY =====
+     安卓上 PingFang / 宋体 / 微软雅黑 都不存在，原先那串字体名最后全落到同一个
+     系统默认黑体，所以按钮看着像失效。这里做两件事：
+       1. 用 canvas 实测系统有没有真正的中文衬线字体；
+       2. 没有的话用站点自带的小薇字体（已随 SW 预缓存，不额外下载）作为衬线选项。 */
+  var systemSerifAvailable = null;
+
+  function detectSystemSerif() {
+    if (systemSerifAvailable !== null) return systemSerifAvailable;
+    try {
+      var ctx = document.createElement('canvas').getContext('2d');
+      ctx.font = '40px serif';
+      var serifW = ctx.measureText('临渊羡鱼梧桐').width;
+      ctx.font = '40px sans-serif';
+      var sansW = ctx.measureText('临渊羡鱼梧桐').width;
+      // 宽度一致说明 serif 回退到了同一套字形
+      systemSerifAvailable = Math.abs(serifW - sansW) > 0.5;
+    } catch (e) {
+      systemSerifAvailable = false;
+    }
+    return systemSerifAvailable;
+  }
+
+  function serifStack() {
+    return detectSystemSerif()
+      ? '"Noto Serif CJK SC","Noto Serif SC","Source Han Serif SC","Songti SC",serif'
+      : '"ZCOOL XiaoWei","Noto Serif CJK SC",serif';
+  }
+
   function applyFontFamily(family) {
     state.fontFamily = family;
     localStorage.setItem('reader-fontfamily', family);
     var content = document.querySelector('.chapter-content');
-    if (!content) return;
-    if (family === 'fzyouhei') {
-      content.style.fontFamily = '"FZYouHei","方正悠黑","PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif';
-    } else {
-      content.style.fontFamily = '"Noto Serif SC","Songti SC","STSong","SimSun",serif';
+    if (content) {
+      content.style.fontFamily = family === 'serif'
+        ? serifStack()
+        : '-apple-system,"PingFang SC","Noto Sans CJK SC","Noto Sans SC","Microsoft YaHei",sans-serif';
     }
     var label = document.getElementById('fontFamilyLabel');
-    if (label) label.textContent = fontFamilyLabels[family] || '方正悠黑';
+    if (label) label.textContent = fontFamilyLabels[family] || '黑体';
   }
 
   window.toggleFontFamily = function() {
@@ -928,7 +955,7 @@
           '</div>' +
           '<div class="setting-group"><div class="setting-label">字体</div>' +
             '<div class="mode-toggle-row">' +
-              '<button id="fontFamilyToggle" class="mode-toggle-btn" onclick="toggleFontFamily()"><span id="fontFamilyLabel">' + (fontFamilyLabels[state.fontFamily] || '方正悠黑') + '</span></button>' +
+              '<button id="fontFamilyToggle" class="mode-toggle-btn" onclick="toggleFontFamily()"><span id="fontFamilyLabel">' + (fontFamilyLabels[state.fontFamily] || '黑体') + '</span></button>' +
             '</div>' +
           '</div>' +
           '<div class="setting-group"><div class="setting-label">版式</div>' +
@@ -948,7 +975,7 @@
     var circles = ov.querySelectorAll('.theme-circle');
     circles.forEach(function(c) { c.classList.toggle('active', c.dataset.theme === state.theme); });
     var fl = document.getElementById('fontFamilyLabel');
-    if (fl) fl.textContent = fontFamilyLabels[state.fontFamily] || '方正悠黑';
+    if (fl) fl.textContent = fontFamilyLabels[state.fontFamily] || '黑体';
     var rw = document.getElementById('readWidthLabel');
     if (rw) rw.textContent = state.readWidth === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关';
     if (ov) { ov.classList.add('visible'); document.body.style.overflow = 'hidden'; }

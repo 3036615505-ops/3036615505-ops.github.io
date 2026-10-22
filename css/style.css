@@ -220,8 +220,8 @@
   /* 阅读页默认 - 暖纸色 */
   --reading-bg: #f5efe0;
   --reading-text: #4a3b2f;
-  --reader-surface: rgba(250, 245, 235, 0.92);
-  --reader-surface-soft: rgba(255, 250, 242, 0.72);
+  --reader-surface: #FAF5EB;
+  --reader-surface-soft: #FFFAF2;
   --reader-border: rgba(120, 84, 42, 0.10);
   --reader-shadow: 0 12px 36px rgba(74, 49, 21, 0.12);
 
@@ -233,8 +233,8 @@
 [data-theme="light"] {
   --reading-bg: #fffdf8;
   --reading-text: #2a2825;
-  --reader-surface: rgba(255,253,248,0.93);
-  --reader-surface-soft: rgba(255,255,255,0.78);
+  --reader-surface: #FFFDF8;
+  --reader-surface-soft: #FFFFFF;
   --reader-border: rgba(104,82,54,0.08);
   --reader-shadow: 0 12px 34px rgba(96,70,38,0.08);
 }
@@ -242,8 +242,8 @@
 [data-theme="wheat"] {
   --reading-bg: #f4ead8;
   --reading-text: #4a392b;
-  --reader-surface: rgba(252, 245, 233, 0.93);
-  --reader-surface-soft: rgba(255, 250, 242, 0.76);
+  --reader-surface: #FCF5E9;
+  --reader-surface-soft: #FFFAF2;
   --reader-border: rgba(120, 84, 42, 0.12);
   --reader-shadow: 0 14px 38px rgba(74, 49, 21, 0.13);
 }
@@ -251,8 +251,8 @@
 [data-theme="green"] {
   --reading-bg: #d8e4d3;
   --reading-text: #2f3b2a;
-  --reader-surface: rgba(228, 239, 223, 0.93);
-  --reader-surface-soft: rgba(240, 248, 236, 0.74);
+  --reader-surface: #E4EFDF;
+  --reader-surface-soft: #F0F8EC;
   --reader-border: rgba(60, 88, 42, 0.13);
   --reader-shadow: 0 12px 34px rgba(32, 62, 28, 0.10);
 }
@@ -261,8 +261,8 @@
   /* 阅读页 */
   --reading-bg: #181715;
   --reading-text: #bdb3a3;
-  --reader-surface: rgba(31,30,28,0.94);
-  --reader-surface-soft: rgba(45,43,39,0.80);
+  --reader-surface: #1F1E1C;
+  --reader-surface-soft: #2D2B27;
   --reader-border: rgba(255,246,232,0.08);
   --reader-shadow: 0 16px 40px rgba(0,0,0,0.36);
 
@@ -1007,7 +1007,7 @@ a { color: inherit; text-decoration: none; }
 
 /* ===== 小说详情页 ===== */
 .detail-header {
-  background: rgba(255, 250, 242, 0.94);
+  background: #FFFAF2;
   padding: 12px 12px;
   display: flex;
   align-items: center;
@@ -1611,7 +1611,7 @@ body.reading-page {
 .chapter-content {
   /* 顶部留出状态栏/刘海高度：沉浸模式隐藏状态栏后 env() 归零，正文自然贴顶 */
   padding: calc(24px + env(safe-area-inset-top, 0px)) 20px calc(48px + 28px);
-  font-family: "FZYouHei", "方正悠黑", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  font-family: -apple-system, "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   font-size: var(--font-size-base);
   line-height: 2.0;
   color: var(--reading-text);
@@ -2206,7 +2206,7 @@ body.reading-page {
 .modal-panel.settings-modal {
   width: min(92vw, 380px);
   border-radius: 24px;
-  background: color-mix(in srgb, var(--reader-surface) 92%, transparent 8%);
+  background: var(--reader-surface);
   box-shadow: 0 24px 64px rgba(37, 24, 10, 0.24);
 }
 
