@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "site.zephyrw.linyuan",
+    "sha256_cert_fingerprints": ["FD:BE:AA:46:F7:3B:E6:B7:16:12:1C:47:AE:EE:5F:C3:4F:23:86:7A:6E:A5:D0:A5:CF:A9:41:DE:62:70:7F:CB"]
+  }
+}]
