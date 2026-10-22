@@ -2,7 +2,7 @@
  * sw.js — 临渊羡鱼 Service Worker
  * 策略：页面导航网络优先（保证更新可见）；静态资源缓存优先 + 后台更新（离线可读）
  */
-var CACHE = 'linyuan-v5';
+var CACHE = 'linyuan-v6';
 
 var PRECACHE = [
   '/',
@@ -47,13 +47,18 @@ self.addEventListener('fetch', function(e) {
   var url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // 页面导航：网络优先，离线回退缓存
+  // 页面导航：缓存优先 + 后台更新（切换页面立即出内容）；首次无缓存才等网络
   if (e.request.mode === 'navigate') {
     e.respondWith(
-      fetch(e.request).catch(function() {
-        return caches.match(e.request).then(function(r) {
-          return r || caches.match('/');
-        });
+      caches.match(e.request).then(function(cached) {
+        var network = fetch(e.request).then(function(res) {
+          if (res && res.status === 200 && res.type === 'basic') {
+            var copy = res.clone();
+            caches.open(CACHE).then(function(c) { c.put(e.request, copy); });
+          }
+          return res;
+        }).catch(function() { return cached || caches.match('/'); });
+        return cached || network;
       })
     );
     return;
