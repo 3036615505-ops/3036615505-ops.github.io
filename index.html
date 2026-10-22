@@ -32,8 +32,14 @@
     </header>
 
     <section class="tree-band" id="treeBand">
-      <img class="tree-band-img" src="assets/tree-bare.jpg" alt="">
-      <div class="tree-leaves" id="treeLeaves"></div>
+      <div class="tree-sway">
+        <img class="tree-stage" src="assets/tree-bare.jpg" alt="">
+        <img class="tree-stage" src="assets/tree-s1.jpg" alt="">
+        <img class="tree-stage" src="assets/tree-s2.jpg" alt="">
+        <img class="tree-stage" src="assets/tree-s3.jpg" alt="">
+        <img class="tree-stage" src="assets/tree-s4.jpg" alt="">
+        <img class="tree-stage" src="assets/tree-s5.jpg" alt="">
+      </div>
       <div class="tree-caption">
         <div class="tree-caption-main" id="treeCaption">梧桐还在沉睡</div>
         <div class="tree-caption-sub">读到哪里，树就长到哪里</div>
@@ -93,12 +99,11 @@
       return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     };
 
-    // ===== 梧桐进度带：连续生长 =====
-    // 叶片来自 tree-lush.jpg 的分水岭分割（tools/build-tree-leaves.py 生成图集），
-    // 按 y 自下而上排序；总进度走到哪，就点亮多少叶——1% 时低枝零碎叶片，100% 全冠茂盛。
+    // ===== 梧桐进度带：阶段图连续过渡 =====
+    // 六级阶段图（0/20/40/60/80/100%）全部由 AI 绘制、同构图；
+    // 相邻两级之间按进度比例淡入淡出，任何进度都呈现自然的中间形态。
     (function() {
-      var box = document.getElementById('treeLeaves');
-      var img = document.querySelector('.tree-band-img');
+      var stages = document.querySelectorAll('.tree-stage');
       var pill = document.getElementById('leafPillText');
       var caption = document.getElementById('treeCaption');
 
@@ -128,24 +133,12 @@
       if (pill) pill.textContent = stage.name;
       if (caption) caption.textContent = stage.caption;
 
-      if (!box || !img) return;
-      fetch('assets/tree/leaves.json').then(function(r) { return r.json(); }).then(function(data) {
-        var scale = img.clientWidth / data.width || 124 / data.width;
-        var nShow = Math.round(pct / 100 * data.leaves.length);
-        var html = '';
-        for (var i = 0; i < nShow; i++) {
-          var L = data.leaves[i];
-          html += '<span class="tree-leaf" style="' +
-            'left:' + (L.x * scale).toFixed(2) + 'px;' +
-            'top:' + (L.y * scale).toFixed(2) + 'px;' +
-            'width:' + (L.w * scale).toFixed(2) + 'px;' +
-            'height:' + (L.h * scale).toFixed(2) + 'px;' +
-            'background-position:-' + (L.ax * scale).toFixed(2) + 'px -' + (L.ay * scale).toFixed(2) + 'px;' +
-            'background-size:' + (data.atlas.width * scale).toFixed(2) + 'px ' + (data.atlas.height * scale).toFixed(2) + 'px;' +
-            '"></span>';
-        }
-        box.innerHTML = html;
-      }).catch(function() { /* 加载失败时保持秃枝状态 */ });
+      if (!stages.length) return;
+      var rung = 100 / (stages.length - 1);
+      stages.forEach(function(img, i) {
+        var d = Math.abs(pct - i * rung) / rung;
+        img.style.opacity = d >= 1 ? 0 : (1 - d).toFixed(3);
+      });
     })();
 
     // ===== 继续阅读卡（新读者显示第一章） =====
