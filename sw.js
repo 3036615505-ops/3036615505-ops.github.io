@@ -14,7 +14,7 @@
  *      所以它们必须走缓存优先。
  *   3. /app/ 前缀（安装包、version.json）不拦截，直接交给网络
  */
-var CACHE = 'linyuan-v13';
+var CACHE = 'linyuan-v14';
 
 /**
  * 仍然需要「网络优先 + 500ms 超时兜底」的资源：
@@ -40,10 +40,21 @@ var PRECACHE = [
   '/manifest.json',
   '/assets/og-cover.jpg',
   '/assets/cover.webp',
+  '/assets/cover-thumb.webp',
   '/assets/paper.webp',
   '/assets/portrait-linshu.webp',
   '/assets/portrait-nanheng.webp',
   '/assets/portrait-jiangbuqiu.webp',
+  /* 梧桐阶段图（6 张共 153.4KB）：首页进度带的核心意象。
+     原先一张都不在预缓存里，每次切回首页都要现场取 tree-*.webp；
+     装上后切页零网络、断网也长得出树。任一 404 会让 install 整体失败，
+     所以这 6 条已逐条核对过文件存在。 */
+  '/assets/tree-bare.webp',
+  '/assets/tree-s1.webp',
+  '/assets/tree-s2.webp',
+  '/assets/tree-s3.webp',
+  '/assets/tree-s4.webp',
+  '/assets/tree-s5.webp',
   '/assets/fonts/zcool-xiaowei-subset.woff2',
   '/css/style.css',
   '/js/reader.js',

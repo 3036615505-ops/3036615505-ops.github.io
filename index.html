@@ -13,9 +13,14 @@
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="manifest" href="manifest.json">
-  <link rel="preload" as="image" href="assets/cover.webp">
-  <link rel="stylesheet" href="css/style.css?v=20">
-  <script src="js/theme.js?v=20"></script>
+  <!-- 样式表必须排在最前面：它是唯一阻塞首次渲染的资源。
+       缩略图 preload 放到样式表之后，否则这个 high 优先级请求会排在 CSS 前面、
+       抢走同一条连接上的带宽（实测冷启动：cover 199ms 起、CSS 201ms 起）。
+       这里改指 144x196 的 cover-thumb.webp（5.7KB），
+       不再用 528x720 的 cover.webp（69.4KB）去画一个 46x62 的方块。 -->
+  <link rel="stylesheet" href="css/style.css?v=21">
+  <link rel="preload" as="image" href="assets/cover-thumb.webp">
+  <script src="js/theme.js?v=21"></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame home-page">
@@ -31,14 +36,17 @@
       </div>
     </header>
 
+    <!-- 六级阶段图只给 data-src：真正的 src 由下面内联脚本按当前阅读进度
+         只写 1~2 张（相邻两级做淡入淡出），不是六张全下载。
+         decoding="async" 让解码离开首帧合成，避免首屏多占一次同步解码。 -->
     <section class="tree-band" id="treeBand">
       <div class="tree-sway">
-        <img class="tree-stage" data-src="assets/tree-bare.webp" alt="">
-        <img class="tree-stage" data-src="assets/tree-s1.webp" alt="">
-        <img class="tree-stage" data-src="assets/tree-s2.webp" alt="">
-        <img class="tree-stage" data-src="assets/tree-s3.webp" alt="">
-        <img class="tree-stage" data-src="assets/tree-s4.webp" alt="">
-        <img class="tree-stage" data-src="assets/tree-s5.webp" alt="">
+        <img class="tree-stage" data-src="assets/tree-bare.webp" alt="" decoding="async">
+        <img class="tree-stage" data-src="assets/tree-s1.webp" alt="" decoding="async">
+        <img class="tree-stage" data-src="assets/tree-s2.webp" alt="" decoding="async">
+        <img class="tree-stage" data-src="assets/tree-s3.webp" alt="" decoding="async">
+        <img class="tree-stage" data-src="assets/tree-s4.webp" alt="" decoding="async">
+        <img class="tree-stage" data-src="assets/tree-s5.webp" alt="" decoding="async">
       </div>
       <div class="tree-caption">
         <div class="tree-caption-main" id="treeCaption">梧桐还在沉睡</div>
@@ -101,7 +109,7 @@
        弱网下 chapters.js 没回来之前整页白屏（首屏可感知卡顿）。
        放在这里首屏骨架先画出来；但必须保持在下面依赖 CHAPTERS 的内联脚本之前
        （经典脚本按文档顺序执行，内联脚本是同步 IIFE，等不到任何异步回调）。 -->
-  <script src="js/chapters.js?v=20"></script>
+  <script src="js/chapters.js?v=21"></script>
 
   <script>
   (function() {
@@ -173,7 +181,9 @@
       var metaEl = document.getElementById('rcMeta');
       var fillEl = document.getElementById('rcFill');
       var btn = document.getElementById('rcBtn');
-      if (cover) cover.style.backgroundImage = "url('assets/cover.webp')";
+      // 缩略图：显示盒只有 46x62 CSS px（DPR 2.75 时 127x171 设备像素），
+      // 用 144x196 的 cover-thumb.webp 就够；528x720 的 cover.webp 只留给书架大封面。
+      if (cover) cover.style.backgroundImage = "url('assets/cover-thumb.webp')";
 
       if (lastReadChapter) {
         var pct = lastReadPct || 100;
@@ -258,9 +268,15 @@
           currentIdx = next;
           quoteInner.innerHTML = renderQuote(currentIdx);
           quoteInner.style.transform = 'translateY(6px)';
-          quoteInner.offsetHeight;
-          quoteInner.style.opacity = '1';
-          quoteInner.style.transform = 'translateY(0)';
+          // 原来这里读一次 offsetHeight 强制同步布局（把整篇文档重排一遍，
+          // 每 5 秒一次）。改成双 rAF：第一帧提交上面的样式，下一帧再上淡入，
+          // 视觉效果完全一致，但不再触发强制同步布局。
+          requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+              quoteInner.style.opacity = '1';
+              quoteInner.style.transform = 'translateY(0)';
+            });
+          });
         }, 550);
       }
 
