@@ -208,8 +208,14 @@
   --bg-card: #ffffff;
   --bg-warm: #f5efe4;
   --text: #3d3228;
-  --text-secondary: #7a6b5a;
-  --text-muted: #b5a695;
+  /* 次级文字：10~13px 的小字在浅色卡片上原来只有 2.1~2.3:1（WCAG 正文要求 4.5:1），
+     这里整体压深到 4.5:1 以上。三级层次仍然保持单调递进：
+       相对亮度  text 0.034  <  secondary 0.120  <  muted 0.140
+     （原来 muted 是 #b5a695、亮度 0.393，比 secondary 还亮，只是靠浅底才看得见）。
+     --accent / --accent-hover 故意不动：它们当「描边/图标/填充底色」都没问题，
+     只有当小字文字色时仍不足 4.5，属于另一类问题（金色文字），需单独确认。 */
+  --text-secondary: #6e5f4f;
+  --text-muted: #756654;
   --accent: #b8864e;
   --accent-hover: #9a6d3e;
   --accent-light: rgba(184,134,78,0.08);
