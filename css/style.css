@@ -3687,3 +3687,32 @@ body.app-immersive .chapter-content {
 }
 #autoScrollPill .auto-pp { font-size: 11px; letter-spacing: -1px; }
 #autoScrollPill .auto-stop { font-size: 12px; opacity: 0.8; }
+
+/* ===== 阅读辅助（js/reader.js）=====
+   对话高亮：只给「」/“” 内的说话内容加淡底，不改变字号与行高，
+   所以开与关之间正文高度完全一致，不会引起滚动位置跳动。
+   底色用主题金调的低透明度，夜间再抬高一点保证能看出来。 */
+.chapter-content .dlg {
+  background: rgba(201, 162, 84, 0.16);
+  border-radius: 3px;
+  padding: 0 2px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+[data-theme="dark"] .chapter-content .dlg {
+  background: rgba(201, 162, 84, 0.24);
+}
+
+/* 设置面板里第二行辅助开关与第一行留一点缝 */
+.mode-toggle-row-gap {
+  margin-top: 8px;
+}
+
+/* 底部状态栏的剩余阅读时间：比页码更弱一档，不抢视线 */
+#readerRemain {
+  margin-left: 6px;
+  font-size: 11px;
+  opacity: 0.72;
+  font-variant-numeric: tabular-nums;
+}

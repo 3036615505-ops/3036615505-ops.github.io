@@ -72,6 +72,7 @@
     recordFootprints();
     restoreProgress();
     initImmersive();
+    initReadingAids();
   }
 
   /* ===== 沉浸模式：隐藏系统状态栏 + 底部固定状态条 =====
@@ -84,7 +85,7 @@
     var el = document.createElement('div');
     el.id = 'readerStatus';
     el.setAttribute('aria-hidden', 'true');
-    el.innerHTML = '<span id="readerPos">0/0</span>' +
+    el.innerHTML = '<span id="readerPos">0/0</span><span id="readerRemain"></span>' +
       '<span id="readerBattery">' +
         '<span id="readerClock">--:--</span>' +
         '<span id="readerBattGlyph"></span>' +
@@ -105,6 +106,7 @@
       var y = sc.scrollTop || window.scrollY || 0;
       var cur = Math.min(total, Math.floor(y / viewH) + 1);
       posEl.textContent = cur + '/' + total;
+      updateRemainTime();
     }
 
     var posScheduled = false;
@@ -953,6 +955,17 @@
               '<button id="readWidthToggle" class="mode-toggle-btn" onclick="toggleReadWidth()"><span id="readWidthLabel">' + (state.readWidth === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关') + '</span></button>' +
             '</div>' +
           '</div>' +
+          '<div class="setting-group"><div class="setting-label">阅读辅助</div>' +
+            '<div class="mode-toggle-row">' +
+              '<button class="mode-toggle-btn' + (readingAids.dialogue ? ' is-on' : '') + '" data-aid="dialogue" onclick="toggleReadingAid(\'dialogue\')">' + aidLabel('dialogue') + '</button>' +
+              '<button class="mode-toggle-btn' + (readingAids.cornerQuotes ? ' is-on' : '') + '" data-aid="cornerQuotes" onclick="toggleReadingAid(\'cornerQuotes\')">' + aidLabel('cornerQuotes') + '</button>' +
+            '</div>' +
+            '<div class="mode-toggle-row mode-toggle-row-gap">' +
+              '<button class="mode-toggle-btn' + (readingAids.keepAwake ? ' is-on' : '') + '" data-aid="keepAwake" onclick="toggleReadingAid(\'keepAwake\')">' + aidLabel('keepAwake') + '</button>' +
+              '<button class="mode-toggle-btn' + (readingAids.remainTime ? ' is-on' : '') + '" data-aid="remainTime" onclick="toggleReadingAid(\'remainTime\')">' + aidLabel('remainTime') + '</button>' +
+            '</div>' +
+            '<div class="setting-hint">对话高亮只给引号里的说话内容加淡底色；直角引号把全书的 “” 换成「」。四项都能随时关掉。</div>' +
+          '</div>' +
         '</div>' +
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
@@ -965,6 +978,7 @@
     var circles = ov.querySelectorAll('.theme-circle');
     circles.forEach(function(c) { c.classList.toggle('active', c.dataset.theme === state.theme); });
     refreshFontButtons();
+    refreshAidButtons();
     var fontHintBox = document.getElementById('fontFamilyHint');
     if (fontHintBox) fontHintBox.textContent = fontHintText();
     var rw = document.getElementById('readWidthLabel');
@@ -1087,6 +1101,169 @@
       showToast('自动滚动开始，点右下角 ✕ 可停止');
     }
   };
+
+  /* ===== 阅读辅助（做法借鉴 Readest）=====
+     四项互相独立，全部可在设置里开关，默认遵守「不打扰」：
+       dialogue     对话高亮：成对引号里的说话内容套一层淡色底（默认关）
+       cornerQuotes 直角引号：弯引号 “” → 直角引号「」（默认关）
+       keepAwake    阅读常亮：阅读页不让屏幕自动熄灭（默认开）
+       remainTime   底部显示剩余阅读时间（默认开）
+     所有内容改动都从 contentSnapshot 重新渲染，因此任意开关组合都能反复切，
+     不会出现「开过一次再关就回不去」。 */
+  var readingAids = {
+    dialogue: localStorage.getItem('reader-dialogue') === '1',
+    cornerQuotes: localStorage.getItem('reader-cornerquotes') === '1',
+    keepAwake: localStorage.getItem('reader-keepawake') !== '0',
+    remainTime: localStorage.getItem('reader-remaintime') !== '0'
+  };
+  var READER_KEYS = {
+    dialogue: 'reader-dialogue',
+    cornerQuotes: 'reader-cornerquotes',
+    keepAwake: 'reader-keepawake',
+    remainTime: 'reader-remaintime'
+  };
+  var contentSnapshot = null;
+  var wakeSentinel = null;
+
+  function captureContent() {
+    if (contentSnapshot !== null) return;
+    var article = document.querySelector('.chapter-content');
+    if (article) contentSnapshot = article.innerHTML;
+  }
+
+  /* 以快照为源重建正文：先做引号替换，再按需包裹对话 */
+  function renderContentDecorations() {
+    var article = document.querySelector('.chapter-content');
+    if (!article || contentSnapshot === null) return;
+    if (!readingAids.dialogue && !readingAids.cornerQuotes) {
+      article.innerHTML = contentSnapshot;
+      return;
+    }
+    var holder = document.createElement('div');
+    holder.innerHTML = contentSnapshot;
+    var walker = document.createTreeWalker(holder, NodeFilter.SHOW_TEXT, null);
+    var nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+
+    var open = readingAids.cornerQuotes ? '\u300c' : '\u201c';
+    var close = readingAids.cornerQuotes ? '\u300d' : '\u201d';
+
+    nodes.forEach(function (node) {
+      var text = node.nodeValue;
+      if (!text) return;
+      if (readingAids.cornerQuotes) {
+        text = text.replace(/\u201c/g, '\u300c').replace(/\u201d/g, '\u300d');
+      }
+      if (!readingAids.dialogue) {
+        node.nodeValue = text;
+        return;
+      }
+      var frag = document.createDocumentFragment();
+      var i = 0;
+      while (i < text.length) {
+        var start = text.indexOf(open, i);
+        if (start < 0) { frag.appendChild(document.createTextNode(text.slice(i))); break; }
+        var end = text.indexOf(close, start + 1);
+        if (end < 0) { frag.appendChild(document.createTextNode(text.slice(i))); break; }
+        if (start > i) frag.appendChild(document.createTextNode(text.slice(i, start)));
+        var span = document.createElement('span');
+        span.className = 'dlg';
+        span.textContent = text.slice(start, end + 1);
+        frag.appendChild(span);
+        i = end + 1;
+      }
+      node.parentNode.replaceChild(frag, node);
+    });
+    article.innerHTML = holder.innerHTML;
+  }
+
+  function applyKeepAwake() {
+    var on = !!readingAids.keepAwake;
+    var bridge = window.LinyuanApp;
+    if (bridge && typeof bridge.setKeepScreenOn === 'function') {
+      try { bridge.setKeepScreenOn(on); } catch (e) { /* 忽略 */ }
+      return;
+    }
+    if (!navigator.wakeLock) return;
+    if (on) {
+      if (wakeSentinel) return;
+      navigator.wakeLock.request('screen').then(function (sentinel) {
+        wakeSentinel = sentinel;
+        sentinel.addEventListener('release', function () { wakeSentinel = null; });
+      }).catch(function () { wakeSentinel = null; });
+    } else if (wakeSentinel) {
+      try { wakeSentinel.release(); } catch (e) { /* 忽略 */ }
+      wakeSentinel = null;
+    }
+  }
+
+  function releaseKeepAwake() {
+    var bridge = window.LinyuanApp;
+    if (bridge && typeof bridge.setKeepScreenOn === 'function') {
+      try { bridge.setKeepScreenOn(false); } catch (e) { /* 忽略 */ }
+    }
+    if (wakeSentinel) {
+      try { wakeSentinel.release(); } catch (e) { /* 忽略 */ }
+      wakeSentinel = null;
+    }
+  }
+
+  /* 剩余阅读时间：按中文字数折算（约 400 字/分钟），随滚动更新 */
+  function updateRemainTime() {
+    var el = document.getElementById('readerRemain');
+    if (!el) return;
+    if (!readingAids.remainTime) { el.textContent = ''; return; }
+    var article = document.querySelector('.chapter-content');
+    if (!article) { el.textContent = ''; return; }
+    var total = (article.textContent || '').replace(/\s+/g, '').length;
+    var sc = document.scrollingElement || document.documentElement;
+    var max = sc.scrollHeight - window.innerHeight;
+    if (max <= 0) { el.textContent = ''; return; }
+    var y = sc.scrollTop || window.scrollY || 0;
+    var ratio = Math.min(1, Math.max(0, y / max));
+    var left = Math.round(total * (1 - ratio));
+    if (left <= 0) { el.textContent = ''; return; }
+    var minutes = left / 400;
+    el.textContent = '\u00b7 ' + (minutes < 1 ? '<1' : Math.round(minutes)) + ' \u5206';
+  }
+
+  function aidLabel(key) {
+    var names = { dialogue: '对话高亮', cornerQuotes: '直角引号', keepAwake: '阅读常亮', remainTime: '剩余时间' };
+    var on = readingAids[key];
+    return names[key] + ' \u00b7 ' + (on ? '开' : '关');
+  }
+
+  function refreshAidButtons() {
+    var keys = ['dialogue', 'cornerQuotes', 'keepAwake', 'remainTime'];
+    keys.forEach(function (key) {
+      var btn = document.querySelector('[data-aid="' + key + '"]');
+      if (!btn) return;
+      btn.textContent = aidLabel(key);
+      btn.classList.toggle('is-on', !!readingAids[key]);
+    });
+  }
+
+  window.toggleReadingAid = function (key) {
+    if (!(key in readingAids)) return;
+    readingAids[key] = !readingAids[key];
+    localStorage.setItem(READER_KEYS[key], readingAids[key] ? '1' : '0');
+    if (key === 'dialogue' || key === 'cornerQuotes') renderContentDecorations();
+    if (key === 'keepAwake') { readingAids.keepAwake ? applyKeepAwake() : releaseKeepAwake(); }
+    if (key === 'remainTime') updateRemainTime();
+    refreshAidButtons();
+  };
+
+  function initReadingAids() {
+    captureContent();
+    renderContentDecorations();
+    applyKeepAwake();
+    updateRemainTime();
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) releaseKeepAwake();
+      else applyKeepAwake();
+    });
+    window.addEventListener('pagehide', releaseKeepAwake);
+  }
 
   /* ===== START ===== */
   if ('serviceWorker' in navigator) {
