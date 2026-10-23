@@ -19,7 +19,7 @@
  *      NETWORK_TIMEOUT（500ms），所以它们必须走缓存优先。
  *   3. /app/ 前缀（安装包、version.json）不拦截，直接交给网络
  */
-var CACHE = 'linyuan-v19';
+var CACHE = 'linyuan-v20';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
@@ -27,6 +27,11 @@ var CACHE = 'linyuan-v19';
  *   - 文本（具体后缀见下面的 TEXT_EXTENSIONS：html/htm/css/js/mjs/json/svg/txt/xml）
  *     24 小时。
  *   - 二进制（图片 / 字体，即 TEXT_EXTENSIONS 之外的一切）：7 天，勤刷只是浪费流量。
+ *
+ * ⚠ 需要「立刻生效」的修复（改的是行为而不是只改样式）时，除了 +1 ?v=，
+ *   还要把 CACHE 名一起 +1：activate 会删掉旧缓存，连带着把「旧 ?v= 键」清空，
+ *   这样即使 HTML 本身还是旧的（请求 ?v=旧值），也会走网络拿到新内容。
+ *   只改 ?v= 不升 CACHE 时，弱网/HTTP 缓存命中旧 HTML 会让旧 JS 一直留在缓存里。
  * 注意：TTL 只管「后台刷新」，**不影响本次响应** —— 命中永远先用缓存秒回。
  * 改后缀名单时只改 TEXT_EXTENSIONS，别在这里再列一遍（一次漏改就漂移）。
  */
