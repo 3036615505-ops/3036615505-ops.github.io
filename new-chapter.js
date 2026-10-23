@@ -166,6 +166,23 @@ function detectAssetVersion() {
 }
 const ASSET_V = detectAssetVersion();
 
+// 章节页的日期行：顶部写开头那天，章末写收束那天（一章写多天时两处都有）。
+// 年份取 --year，缺省沿用上一章；没年份或没日期就不输出这一行。
+const CN_YEAR_CHARS = '〇一二三四五六七八九';
+function cnYearStr(y) {
+  return String(y).replace(/\d/g, function (d) { return CN_YEAR_CHARS.charAt(Number(d)); });
+}
+const pageYear = toYearValue(opts.year) || (prev && prev.year) || '';
+const pageDates = opts.dates
+  ? String(opts.dates).split(/[,，]/).map(function (x) { return x.trim(); }).filter(Boolean)
+  : (opts.date ? [String(opts.date).trim()] : []);
+const dateLineTop = (pageYear && pageDates.length)
+  ? '    <div class="chapter-date">' + cnYearStr(pageYear) + ' · ' + pageDates[0] + '</div>\n'
+  : '';
+const dateLineEnd = (pageYear && pageDates.length > 1)
+  ? '    <div class="chapter-date chapter-date-end">' + cnYearStr(pageYear) + ' · ' + pageDates[pageDates.length - 1] + '</div>\n'
+  : '';
+
 // ===== 章节页模板 =====
 const prevNav = prev ? '<a href="' + prev.file + '">上一章</a>' : '<span>上一章</span>';
 const nextNav = '<span>下一章</span>';
@@ -216,7 +233,7 @@ const tpl = `<!DOCTYPE html>
 
   <article class="chapter-content">
     <h1>${escapeHtml(title)}</h1>
-${contentHtml}  </article>
+${dateLineTop}${contentHtml}${dateLineEnd}  </article>
 
   <div class="chapter-afterglow">
     <div class="afterglow-kicker">这一章的风</div>

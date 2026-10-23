@@ -18,9 +18,9 @@
        抢走同一条连接上的带宽（实测冷启动：cover 199ms 起、CSS 201ms 起）。
        这里改指 144x196 的 cover-thumb.webp（5.7KB），
        不再用 528x720 的 cover.webp（69.4KB）去画一个 46x62 的方块。 -->
-  <link rel="stylesheet" href="css/style.css?v=48">
+  <link rel="stylesheet" href="css/style.css?v=49">
   <link rel="preload" as="image" href="assets/cover-thumb.webp">
-  <script src="js/theme.js?v=48"></script>
+  <script src="js/theme.js?v=49"></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame home-page">
@@ -119,8 +119,8 @@
        弱网下 chapters.js 没回来之前整页白屏（首屏可感知卡顿）。
        放在这里首屏骨架先画出来；但必须保持在下面依赖 CHAPTERS 的内联脚本之前
        （经典脚本按文档顺序执行，内联脚本是同步 IIFE，等不到任何异步回调）。 -->
-  <script src="js/chapters.js?v=48"></script>
-  <script src="js/transition.js?v=48"></script>
+  <script src="js/chapters.js?v=49"></script>
+  <script src="js/transition.js?v=49"></script>
 
   <script>
   (function() {
@@ -259,6 +259,20 @@
         return from + '–' + to;
       }
 
+      // 日期列的内容：
+      //   单日 → 直接显示；
+      //   多日 → 包一层 .date-rotator，交给下面的定时器每 4 秒「跳」一次；
+      //   系统开了「减少动效」→ 退回区间写法（九月一日–十七），信息不丢。
+      var REDUCE_MOTION = !!(typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+      function dateCellHtml(ch) {
+        var list = (ch.dates && ch.dates.length ? ch.dates : [ch.date]).filter(function (d) { return d; });
+        if (!list.length) return '';
+        if (list.length === 1 || REDUCE_MOTION) return dateSpanOf(ch);
+        return '<span class="date-rotator" data-dates="' + list.join('|') + '" data-i="0">' +
+          '<span class="date-rotator-text">' + list[0] + '</span></span>';
+      }
+
       // 返回 { key, label }：key 相同就归为同一段（跨元旦也归在一起），
       // label 里的年份取该段第一章的年份。
       // 高中以外（推算年级越界）或日期缺失时，退回只按年份分段。
@@ -296,13 +310,43 @@
         var badge = (hasNew && isLast) ? '<span class="date-item-new">新</span>' : '';
         html += '<a href="novel/' + ch.file + '" class="date-item">' +
           '<span class="date-item-leaf">' + icon + '</span>' +
-          '<span class="date-item-date">' + dateSpanOf(ch) + '</span>' +
+          '<span class="date-item-date">' + dateCellHtml(ch) + '</span>' +
           '<span class="date-item-title">' + ch.title + '</span>' +
           badge + state +
           '<span class="date-item-words">' + ch.words + '字</span>' +
         '</a>';
       });
       list.innerHTML = html;
+
+      // 多日期轮播：每 4 秒切下一个日期，切的时候先淡出上移、换字、再从下方淡入。
+      // 只动 opacity/transform；prefers-reduced-motion 下不启动（返回区间写法）。
+      var rotators = (list.querySelectorAll && !REDUCE_MOTION)
+        ? list.querySelectorAll('.date-rotator') : [];
+      var raf = (typeof window !== 'undefined' && window.requestAnimationFrame) || function (fn) { return setTimeout(fn, 16); };
+      if (rotators.length) {
+        setInterval(function () {
+          Array.prototype.forEach.call(rotators, function (el) {
+            var items = String(el.getAttribute('data-dates') || '').split('|');
+            if (items.length < 2) return;
+            var i = (Number(el.getAttribute('data-i')) + 1) % items.length;
+            el.setAttribute('data-i', String(i));
+            var text = el.querySelector('.date-rotator-text');
+            if (!text) return;
+            text.style.opacity = '0';
+            text.style.transform = 'translateY(-5px)';
+            setTimeout(function () {
+              text.textContent = items[i];
+              text.style.transform = 'translateY(5px)';
+              raf(function () {
+                raf(function () {
+                  text.style.opacity = '1';
+                  text.style.transform = 'translateY(0)';
+                });
+              });
+            }, 260);
+          });
+        }, 4000);
+      }
     })();
 
     // ===== 金句轮播 =====

@@ -3094,6 +3094,18 @@ body.reading-page {
   color: var(--text);
 }
 
+/* 一章写了多天时（第一章 九月一日 → 九月十七），日期列做小幅轮播：
+   每 4 秒「跳」一下，比塞成「九月一日–十七」省列宽，也更有日子在走的意思。
+   只动 opacity/transform，不触发布局。 */
+.date-rotator {
+  display: inline-block;
+}
+
+.date-rotator-text {
+  display: inline-block;
+  transition: opacity 0.26s ease, transform 0.26s ease;
+}
+
 .date-item-words {
   font-size: 11px;
   color: var(--text-muted);
@@ -3287,6 +3299,12 @@ body.reading-page {
   text-align: center;
   letter-spacing: 3px;
   margin: 6px 0 14px;
+}
+
+/* 章末的收束日期：这一章写到哪天为止。与开头那个同款，
+   只把下边距收掉、上边距放大，免得贴在最后一段屁股上。 */
+.chapter-date-end {
+  margin: 26px 0 4px;
 }
 
 .chapter-seal {
