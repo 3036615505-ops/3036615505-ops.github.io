@@ -179,9 +179,29 @@ const pageDates = opts.dates
 const dateLineTop = (pageYear && pageDates.length)
   ? '    <div class="chapter-date">' + cnYearStr(pageYear) + ' · ' + pageDates[0] + '</div>\n'
   : '';
-const dateLineEnd = (pageYear && pageDates.length > 1)
-  ? '    <div class="chapter-date chapter-date-end">' + cnYearStr(pageYear) + ' · ' + pageDates[pageDates.length - 1] + '</div>\n'
-  : '';
+
+// 章内日期落点：日期是跟着「时间变化」走的，所以第 2 个及以后的日子
+// 要贴在场景切换（--- → <div class="scene-break">）后面、下一段之前，
+// 而不是塞在章末 —— 挂在末尾等于说这一章写到那天为止，位置是错的。
+//   --dates "九月一日,九月十七" + 正文一处 ---  →  顶上一个九月一日，切换点后一个九月十七
+//   切换点不够用（日期比切换点多）→ 剩下的退回章末，宁可位置差也别丢日期
+const midDates = pageDates.slice(1);
+if (pageYear && midDates.length) {
+  const MARK = '<div class="scene-break"></div>\n';
+  const parts = contentHtml.split(MARK);
+  let merged = parts[0];
+  for (let i = 1; i < parts.length; i++) {
+    merged += MARK;
+    if (i - 1 < midDates.length) {
+      merged += '    <div class="chapter-date">' + cnYearStr(pageYear) + ' · ' + midDates[i - 1] + '</div>\n';
+    }
+    merged += parts[i];
+  }
+  contentHtml = merged;
+  midDates.slice(parts.length - 1).forEach(function (d) {
+    contentHtml += '    <div class="chapter-date chapter-date-end">' + cnYearStr(pageYear) + ' · ' + d + '</div>\n';
+  });
+}
 
 // ===== 章节页模板 =====
 const prevNav = prev ? '<a href="' + prev.file + '">上一章</a>' : '<span>上一章</span>';
@@ -233,7 +253,7 @@ const tpl = `<!DOCTYPE html>
 
   <article class="chapter-content">
     <h1>${escapeHtml(title)}</h1>
-${dateLineTop}${contentHtml}${dateLineEnd}  </article>
+${dateLineTop}${contentHtml}  </article>
 
   <div class="chapter-afterglow">
     <div class="afterglow-kicker">这一章的风</div>

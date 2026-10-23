@@ -3073,12 +3073,14 @@ body.reading-page {
 }
 
 .date-item-date {
-  /* 64px 只够放「九月二十七」这种单日。一章可能跨好几天（第一章从九月一日
-     写到九月二十七），要显示成「九月一日–二十七」，所以放到 96px 并禁止折行 ——
-     固定宽度是为了让各行标题左边缘对齐，宁可单日留白也别让列宽随内容跳。
-     跨月的区间（九月二十八–十月三）会更长，极端情况用省略号收尾。 */
+  /* 单日最长是「九月二十七」5 个字，11px 下约 55px，所以 66px 够用，禁止折行。
+     曾经为「九月一日–二十七」这种区间句式放到 96px，结果多出 30px 空白，
+     把章节名推到整行正中（左留白 121px、右留白 95px），看着像标题居中了。
+     现在多日期改成一格一跳的轮播，一格只显示一个日期，宽度收回到 66px；
+     只有系统开了「减少动效」退回区间写法时才加 .is-range 临时放到 96px。
+     固定宽度是为了让各行标题左边缘对齐，宁可单日留白也别让列宽随内容跳。 */
   flex-shrink: 0;
-  width: 96px;
+  width: 66px;
   font-size: 11px;
   color: var(--text-muted);
   margin-left: 9px;
@@ -3087,8 +3089,17 @@ body.reading-page {
   text-overflow: ellipsis;
 }
 
+/* 减少动效时退回「九月一日–二十七」的区间写法，这时才需要 96px。
+   只影响那一行，别的行仍是 66px 的列宽。 */
+.date-item-date.is-range {
+  width: 96px;
+}
+
 .date-item-title {
   flex: 1;
+  /* 显式左对齐：这一格吃满剩余宽度，一旦有祖先漏下来 text-align，
+     整行章节名就会飘到正中，看着像标题居中。写明比依赖继承可靠。 */
+  text-align: left;
   font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 13px;
   color: var(--text);
