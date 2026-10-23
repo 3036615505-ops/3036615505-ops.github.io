@@ -18,9 +18,9 @@
        抢走同一条连接上的带宽（实测冷启动：cover 199ms 起、CSS 201ms 起）。
        这里改指 144x196 的 cover-thumb.webp（5.7KB），
        不再用 528x720 的 cover.webp（69.4KB）去画一个 46x62 的方块。 -->
-  <link rel="stylesheet" href="css/style.css?v=45">
+  <link rel="stylesheet" href="css/style.css?v=46">
   <link rel="preload" as="image" href="assets/cover-thumb.webp">
-  <script src="js/theme.js?v=45"></script>
+  <script src="js/theme.js?v=46"></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame home-page">
@@ -90,6 +90,8 @@
       <span class="app-version" id="appVersion"></span>
       <span class="app-update-sep" id="appVersionSep">·</span>
       <button type="button" class="app-update-link" id="checkUpdateBtn">检查更新</button>
+      <span class="app-update-sep" aria-hidden="true">·</span>
+      <button type="button" class="app-update-link" id="forceRefreshBtn">强制刷新</button>
     </div>
 
   </div>
@@ -117,8 +119,8 @@
        弱网下 chapters.js 没回来之前整页白屏（首屏可感知卡顿）。
        放在这里首屏骨架先画出来；但必须保持在下面依赖 CHAPTERS 的内联脚本之前
        （经典脚本按文档顺序执行，内联脚本是同步 IIFE，等不到任何异步回调）。 -->
-  <script src="js/chapters.js?v=45"></script>
-  <script src="js/transition.js?v=45"></script>
+  <script src="js/chapters.js?v=46"></script>
+  <script src="js/transition.js?v=46"></script>
 
   <script>
   (function() {
@@ -276,6 +278,16 @@
     }
 
     if (quoteOuter && quoteInner && quotes.length > 0) {
+      // 先量出最高的一条，把容器高度定死，轮播时卡片不再忽高忽低（短句在框内居中）。
+      // 只在这里同步布局 5 次、一次性的；不同机型每行字数不同，写死 px 会在某个
+      // 宽度上差一档，所以只能量。渲染中间态不会上屏（同一个任务里连续完成）。
+      var tallestQuote = 0;
+      for (var qi = 0; qi < quotes.length; qi++) {
+        quoteInner.innerHTML = renderQuote(qi);
+        if (quoteInner.offsetHeight > tallestQuote) tallestQuote = quoteInner.offsetHeight;
+      }
+      // offsetHeight 为 0（页面还没排版/被隐藏）时不写，宁可变高也别把高度锁成 0
+      if (tallestQuote > 0) quoteInner.style.minHeight = tallestQuote + 'px';
       quoteInner.innerHTML = renderQuote(currentIdx);
       var quoteTimer = null;
       var quotePaused = false;
@@ -379,6 +391,65 @@
           }
         }
         flashHint('请在 App 内使用此功能');
+      });
+    })();
+
+    // ===== 强制刷新（浏览器与 App 通用）=====
+    // 为什么要它：App 是 WebView 壳，Pages 给 HTML 的 max-age 是 600 秒，
+    // SW 对 CSS/JS 又是缓存优先 —— 刚发完版想立刻看到新内容，只能干等或去
+    // 系统设置里清缓存。这里把「清 SW + 清 Cache Storage + 带时间戳重载」
+    // 三步合成一次点击。
+    //
+    // **绝不清 localStorage**：阅读进度、摘句、足迹、主题偏好全在里面，
+    // 清缓存的目的只是让「文件」重新下载，不该连「读者的数据」一起丢。
+    (function () {
+      var btn = document.getElementById('forceRefreshBtn');
+      if (!btn) return;
+      var originalText = btn.textContent;
+      var fired = false;
+      var resetTimer = null;
+
+      // 刷新回来后地址栏里会留着 ?r=…，抹掉它（replace 不新增历史记录）
+      if (location.search.indexOf('r=') !== -1) {
+        try { history.replaceState(null, '', location.pathname); } catch (err) {}
+      }
+
+      function go() {
+        if (fired) return;
+        fired = true;
+        // 带唯一查询串：HTML 的 10 分钟 HTTP 缓存按 URL 命中，换 URL 就绕过了
+        location.replace('/?r=' + Date.now());
+      }
+
+      function hint(text) {
+        btn.textContent = text;
+        btn.disabled = true;
+        if (resetTimer) clearTimeout(resetTimer);
+        resetTimer = setTimeout(function () {
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }, 2200);
+      }
+
+      btn.addEventListener('click', function () {
+        if (btn.disabled) return;
+        if (navigator.onLine === false) { hint('当前没有网络'); return; }
+        btn.textContent = '正在清理…';
+        btn.disabled = true;
+        var jobs = [];
+        if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+          jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+            return Promise.all(rs.map(function (r) { return r.unregister(); }));
+          }).catch(function () {}));
+        }
+        if (window.caches && caches.keys) {
+          jobs.push(caches.keys().then(function (keys) {
+            return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+          }).catch(function () {}));
+        }
+        // 两个清理并行，谁先失败都不拦着刷新；1.5s 兜底，别让人盯着按钮
+        Promise.all(jobs).then(go, go);
+        setTimeout(go, 1500);
       });
     })();
   })();

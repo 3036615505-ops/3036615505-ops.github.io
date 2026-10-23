@@ -619,6 +619,14 @@ a { color: inherit; text-decoration: none; }
   padding: 30px 0 26px;
   transition: opacity 0.55s ease, transform 0.55s ease;
   width: 100%;
+  /* 金句长短差得多（2 行到 5 行）。不定高的话卡片每 5 秒变一次高，下面整段内容
+     跟着上下跳。精确高度由 index.html 里那段「量最高的一条」的代码算出来后写到
+     minHeight 上（不同机型行数不同，写死 px 必然在某个宽度上错一档）；
+     这里的 200px 只是脚本没跑起来时的兜底，同时保证短句在框内垂直居中。 */
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .home-quote blockquote {
