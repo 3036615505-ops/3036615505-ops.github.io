@@ -194,13 +194,16 @@
   /* 系统字体名：WebView 不会自动跟随 ROM 主题字体，只能向壳要名字再交给 CSS。
      壳（v1.8.3+）通过 getSystemFontFamily() 返回，老壳没有这个方法 → 返回空串。 */
   var systemFontName = null;
+  var systemFontBridge = null;   /* null=未探测，false=壳太旧没有这个方法 */
 
   function detectSystemFontName() {
     if (systemFontName !== null) return systemFontName;
     systemFontName = '';
+    systemFontBridge = false;
     try {
       var bridge = window.LinyuanApp;
       if (bridge && typeof bridge.getSystemFontFamily === 'function') {
+        systemFontBridge = true;
         var raw = String(bridge.getSystemFontFamily() || '').trim();
         // 去掉可能存在的引号，避免拼进 CSS 时把字体栈写坏
         raw = raw.replace(/["']/g, '');
@@ -218,10 +221,11 @@
       return '"' + KAI_FAMILY + '","Kaiti SC","STKaiti","KaiTi","楷体","Noto Serif CJK SC",serif';
     }
     if (family === 'system') {
-      /* 先点名系统字体（ROM 主题字体只有点名才生效），再退回通用栈 */
+      /* 不能点名叫 Roboto / Segoe UI：装了主题字体的 ROM 替换的是「默认字体族」，
+         一旦显式写 Roboto，浏览器会优先命中 Roboto，系统字体就被挡在外面。
+         所以只在拿到系统字体名时点名它，否则直接交给 system-ui / sans-serif。 */
       var name = detectSystemFontName();
-      var generic = 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
-      return name ? '"' + name + '",' + generic : generic;
+      return name ? '"' + name + '",system-ui,sans-serif' : 'system-ui,sans-serif';
     }
     return '"Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif';
   }
@@ -243,13 +247,13 @@
   }
 
   function fontHintText() {
-    var base = '「系统」跟随手机的字体设置；「楷体」首次选择需下载约 0.17MB';
-    if (state.fontFamily !== 'system') return base;
+    /* 平时不显示提示；只有选中「系统」时说明一句现状，
+       并且能区分「手机没开放字体名」与「App 版本太旧」。 */
+    if (state.fontFamily !== 'system') return '';
     var name = detectSystemFontName();
-    if (name) {
-      return '已跟随系统字体：' + name + '。「楷体」首次选择需下载约 0.17MB';
-    }
-    return '未识别到系统字体名（可能是手机未开放，或壳版本过旧；「楷体」需下载约 0.17MB）';
+    if (name) return '已跟随系统字体：' + name;
+    if (systemFontBridge === false) return '跟随系统默认字体（App 需更新到 1.8.3 以上）';
+    return '跟随系统默认字体（手机未提供字体名）';
   }
 
   function refreshFontButtons() {
@@ -272,7 +276,10 @@
     var label = document.getElementById('fontFamilyLabel');
     if (label) label.textContent = fontFamilyLabels[family] || '黑体';
     var hint = document.getElementById('fontFamilyHint');
-    if (hint) hint.textContent = fontHintText();
+    if (hint) {
+      hint.textContent = fontHintText();
+      hint.style.display = hint.textContent ? '' : 'none';
+    }
     refreshFontButtons();
   }
 
@@ -948,7 +955,7 @@
               '<button class="mode-toggle-btn" data-font="system" onclick="setFontFamily(\'system\')">系统</button>' +
               '<button class="mode-toggle-btn" data-font="kai" onclick="setFontFamily(\'kai\')">楷体</button>' +
             '</div>' +
-            '<div class="setting-hint" id="fontFamilyHint">' + fontHintText() + '</div>' +
+            '<div class="setting-hint" id="fontFamilyHint"' + (fontHintText() ? '' : ' style="display:none"') + '>' + fontHintText() + '</div>' +
           '</div>' +
           '<div class="setting-group"><div class="setting-label">版式</div>' +
             '<div class="mode-toggle-row">' +
@@ -964,7 +971,6 @@
               '<button class="mode-toggle-btn' + (readingAids.keepAwake ? ' is-on' : '') + '" data-aid="keepAwake" onclick="toggleReadingAid(\'keepAwake\')">' + aidLabel('keepAwake') + '</button>' +
               '<button class="mode-toggle-btn' + (readingAids.remainTime ? ' is-on' : '') + '" data-aid="remainTime" onclick="toggleReadingAid(\'remainTime\')">' + aidLabel('remainTime') + '</button>' +
             '</div>' +
-            '<div class="setting-hint">对话高亮只给引号里的说话内容加淡底色；直角引号把全书的 “” 换成「」。四项都能随时关掉。</div>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -980,7 +986,10 @@
     refreshFontButtons();
     refreshAidButtons();
     var fontHintBox = document.getElementById('fontFamilyHint');
-    if (fontHintBox) fontHintBox.textContent = fontHintText();
+    if (fontHintBox) {
+      fontHintBox.textContent = fontHintText();
+      fontHintBox.style.display = fontHintBox.textContent ? '' : 'none';
+    }
     var rw = document.getElementById('readWidthLabel');
     if (rw) rw.textContent = state.readWidth === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关';
     if (ov) { ov.classList.add('visible'); document.body.style.overflow = 'hidden'; }
