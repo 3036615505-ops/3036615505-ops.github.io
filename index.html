@@ -18,9 +18,9 @@
        抢走同一条连接上的带宽（实测冷启动：cover 199ms 起、CSS 201ms 起）。
        这里改指 144x196 的 cover-thumb.webp（5.7KB），
        不再用 528x720 的 cover.webp（69.4KB）去画一个 46x62 的方块。 -->
-  <link rel="stylesheet" href="css/style.css?v=46">
+  <link rel="stylesheet" href="css/style.css?v=47">
   <link rel="preload" as="image" href="assets/cover-thumb.webp">
-  <script src="js/theme.js?v=46"></script>
+  <script src="js/theme.js?v=47"></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame home-page">
@@ -119,8 +119,8 @@
        弱网下 chapters.js 没回来之前整页白屏（首屏可感知卡顿）。
        放在这里首屏骨架先画出来；但必须保持在下面依赖 CHAPTERS 的内联脚本之前
        （经典脚本按文档顺序执行，内联脚本是同步 IIFE，等不到任何异步回调）。 -->
-  <script src="js/chapters.js?v=46"></script>
-  <script src="js/transition.js?v=46"></script>
+  <script src="js/chapters.js?v=47"></script>
+  <script src="js/transition.js?v=47"></script>
 
   <script>
   (function() {
@@ -215,20 +215,56 @@
       localStorage.setItem('reader-seen-chapters', String(CHAPTERS.length));
 
       var html = '';
-      // 年份分隔：故事跨年后日期会重名（明年还有「九月二十七」），
-      // 所以年份单独成一行压在章节之上，同一年只出现一次。
-      // 计数先按年份汇总，避免每条都扫一遍数组。
-      var yearCount = {};
-      CHAPTERS.forEach(function(c) { if (c.year) yearCount[c.year] = (yearCount[c.year] || 0) + 1; });
-      var prevYear = null;
+
+      // ===== 学年学期分隔 =====
+      // 日期跨年就会重名（明年还有「九月二十七」），所以按「学年 + 学期」分段，
+      // 标签形如「二〇二二 · 高一上」。年级不写死、也不按章数推，全由 date 的月份算：
+      //   9 月–次年 1 月 = 上学期，2–8 月 = 下学期；
+      //   学年 = 月份 ≥ 9 取当年，否则取上一年；年级 = 学年 − COHORT_YEAR。
+      // 于是新章节只要填对 year/date，写到高二、高三时后面的分隔条会自己长出来。
+      var CN_DIGIT = { '〇': 0, '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10 };
+      var GRADE_NAMES = ['高一', '高二', '高三'];
+
+      function cnNumber(s) {
+        if (/^\d+$/.test(s)) return parseInt(s, 10);
+        if (s === '十') return 10;
+        if (s.length === 1) return CN_DIGIT.hasOwnProperty(s) ? CN_DIGIT[s] : 0;
+        if (s.charAt(0) === '十') return 10 + (CN_DIGIT[s.charAt(1)] || 0);                                  // 十一、十二
+        if (s.charAt(1) === '十') return (CN_DIGIT[s.charAt(0)] || 0) * 10 + (CN_DIGIT[s.charAt(2)] || 0);  // 二十
+        return 0;
+      }
+
+      function cnYear(y) {
+        return String(y).replace(/\d/g, function (d) { return '〇一二三四五六七八九'.charAt(Number(d)); });
+      }
+
+      function monthOf(dateStr) {
+        var m = /^([〇零一二三四五六七八九十\d]{1,2})月/.exec(String(dateStr || ''));
+        var v = m ? cnNumber(m[1]) : 0;
+        return v >= 1 && v <= 12 ? v : 0;
+      }
+
+      // 返回 { key, label }：key 相同就归为同一段（跨元旦也归在一起），
+      // label 里的年份取该段第一章的年份。
+      // 高中以外（推算年级越界）或日期缺失时，退回只按年份分段。
+      function termGroupOf(ch) {
+        if (!ch.year) return null;
+        if (ch.term) return { key: 't' + ch.year + ch.term, label: cnYear(ch.year) + ' · ' + ch.term };
+        var m = monthOf(ch.date);
+        if (!m) return { key: 'y' + ch.year, label: cnYear(ch.year) };
+        var academicYear = m >= 9 ? ch.year : ch.year - 1;
+        var grade = academicYear - (typeof COHORT_YEAR === 'number' ? COHORT_YEAR : 2022);
+        if (grade < 0 || grade > 2) return { key: 'y' + ch.year, label: cnYear(ch.year) };
+        var term = GRADE_NAMES[grade] + (m >= 2 && m <= 8 ? '下' : '上');
+        return { key: 't' + grade + term, label: cnYear(ch.year) + ' · ' + term };
+      }
+
+      var prevGroup = null;
       CHAPTERS.forEach(function(ch) {
-        if (ch.year && ch.year !== prevYear) {
-          prevYear = ch.year;
-          html += '<div class="date-year">' +
-            '<span class="date-year-label">' + ch.year + '</span>' +
-            '<span class="date-year-rule"></span>' +
-            '<span class="date-year-count">' + yearCount[ch.year] + ' 章</span>' +
-          '</div>';
+        var group = termGroupOf(ch);
+        if (group && group.key !== prevGroup) {
+          prevGroup = group.key;
+          html += '<div class="date-year"><span class="date-year-label">' + group.label + '</span></div>';
         }
         var key = getChapterStorageId(ch.file);
         var done = localStorage.getItem('reader-done-' + key) === '1';

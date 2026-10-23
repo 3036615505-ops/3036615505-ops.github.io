@@ -3,7 +3,7 @@
  * new-chapter.js — 从 Markdown 生成新章节页
  *
  * 用法：
- *   node new-chapter.js <原稿.md> [--title "标题"] [--blurb "目录简介"] [--afterglow "章末尾语"] [--year "二〇二二"] [--volume "卷名"] [--dry-run]
+ *   node new-chapter.js <原稿.md> [--title "标题"] [--blurb "目录简介"] [--afterglow "章末尾语"] [--year 2022] [--term "高一上"] [--volume "卷名"] [--dry-run]
  *
  * 做三件事：
  *   1. 生成 novel/chapter-NN.html（含 SEO/OG/JSON-LD/分享按钮）
@@ -36,6 +36,22 @@ function readChapters(src) {
 
 /** 序列化条目：固定字段在前，未知字段追加在后 —— 加字段不会再把老字段吃掉 */
 const KEY_ORDER = ['num', 'title', 'file', 'words', 'blurb', 'year', 'date', 'seal', 'leaf', 'volume'];
+
+/** 年份统一存成数字：首页要拿它算学年/年级，存「二〇二二」这种字符串没法减。
+    接受 2023 与「二〇二三」「二零二三」两种写法。 */
+function toYearValue(v) {
+  if (v === undefined || v === null || v === '') return '';
+  var str = String(v).trim();
+  if (/^\d{4}$/.test(str)) return parseInt(str, 10);
+  var map = { '〇': 0, '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
+  var digits = '';
+  for (var i = 0; i < str.length; i++) {
+    var d = map[str.charAt(i)];
+    if (d === undefined) return '';
+    digits += d;
+  }
+  return digits.length === 4 ? parseInt(digits, 10) : '';
+}
 function fmtEntry(entry) {
   const keys = KEY_ORDER.filter(function (k) { return entry[k] !== undefined && entry[k] !== ''; });
   Object.keys(entry).forEach(function (k) { if (KEY_ORDER.indexOf(k) === -1) keys.push(k); });
@@ -326,7 +342,8 @@ const newEntry = { num, title, file, words };
 if (opts.blurb) newEntry.blurb = opts.blurb;
 // 年份默认继承上一章（故事通常不会一章一跨年），要换年时用 --year 显式指定。
 // 首页光阴册按它插年份分隔条，漏写就会并进上一年的组里。
-newEntry.year = opts.year || (prev && prev.year) || '';
+newEntry.year = toYearValue(opts.year) || (prev && prev.year) || '';
+if (opts.term) newEntry.term = opts.term;   // 学期默认由首页按 date 推算，只有算错时才手写
 if (opts.date) newEntry.date = opts.date;
 if (opts.seal) newEntry.seal = opts.seal;
 newEntry.leaf = (num - 1) % 8;

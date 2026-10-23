@@ -12,7 +12,7 @@
 | SW 缓存名 | `linyuan-v32` |
 | 阅读器模块 | dom 77 行 · flags 86 · store 226 · engine 467 · ui 1356 · 入口 30 |
 | 样式 | `css/style.css` 3811 行（4 套主题令牌） |
-| 章节 | 3 章（ch01 2861 / ch02 2347 / ch03 2029 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year` 字段，首页光阴册按年分段 |
+| 章节 | 3 章（ch01 2861 / ch02 2347 / ch03 2029 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出） |
 | Android 壳 | v1.8.4 / versionCode 13（**本轮无壳改动，不需要重新打包**） |
 | 校验 | 本地 pre-push 4 项 · CI 2 个 job · 端到端 27 项 |
 

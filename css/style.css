@@ -3016,39 +3016,43 @@ body.reading-page {
   color: var(--accent);
 }
 
-/* 年份分隔条（2026-10-24）：故事跨年后日期必然重名——明年还有「九月二十七」，
-   光看日期分不出是哪一年。所以年份独立成条，字号拉到 22px（章节行是 13px），
-   视觉上当作「分卷」用。同一年只出现一次，条数与年份数相等。 */
+/* 学年学期分隔条：日期跨年/跨学期会重名，这里按「学年 + 学期」分段，
+   标签形如「二〇二二 · 高一上」，居中、两边细线收束。
+   刻意压到 12.5px（章节行 13px、日期 11px）——它是分节符，不是标题，
+   字号一大就会跟章节标题抢注意力。 */
 .date-year {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 0 2px;
+  gap: 12px;
+  padding: 18px 0 6px;
 }
 
 .date-year:first-child {
   padding-top: 2px;
 }
 
+.date-year::before,
+.date-year::after {
+  content: '';
+  flex: 1;
+  height: 0.5px;
+}
+
+.date-year::before {
+  background: linear-gradient(90deg, transparent, var(--border-light));
+}
+
+.date-year::after {
+  background: linear-gradient(90deg, var(--border-light), transparent);
+}
+
 .date-year-label {
   flex-shrink: 0;
   font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
-  font-size: 22px;
+  font-size: 12.5px;
   line-height: 1;
-  letter-spacing: 0.12em;
-  color: var(--text);
-}
-
-.date-year-rule {
-  flex: 1;
-  height: 0.5px;
-  background: var(--border-light);
-}
-
-.date-year-count {
-  flex-shrink: 0;
-  font-size: 11px;
-  letter-spacing: 1px;
+  letter-spacing: 0.16em;
+  text-indent: 0.16em;  /* 抵消末字后面多出的字距，视觉上才是真居中 */
   color: var(--text-muted);
 }
 
