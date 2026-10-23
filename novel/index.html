@@ -24,8 +24,8 @@
     "author": { "@type": "Person", "name": "叶南衡" }
   }
   </script>
-  <link rel="stylesheet" href="../css/style.css?v=26">
-  <script src="../js/theme.js?v=26"></script>
+  <link rel="stylesheet" href="../css/style.css?v=27">
+  <script src="../js/theme.js?v=27"></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame">
@@ -98,12 +98,6 @@
     <div class="chapter-list" id="chapterList"></div>
   </div>
 
-  <!-- 检查更新：只有 App 壳里真正可用（window.LinyuanApp.checkUpdate 走原生桥强制检查，
-       绕过启动时的 60s 节流）；浏览器里点击会提示「请在 App 内使用此功能」。
-       刻意做得很轻（11px 下划线、--text-muted），不抢目录与 tab bar 的视觉。 -->
-  <div class="app-update-row">
-    <button type="button" class="app-update-link" id="checkUpdateBtn">检查更新</button>
-  </div>
 
   </div>
 
@@ -155,8 +149,8 @@
        弱网下 chapters.js 没回来之前整页白屏（书架页首屏可感知卡顿）。
        放在这里首屏骨架先画出来；但必须保持在下面依赖 CHAPTERS 的内联脚本之前
        （经典脚本按文档顺序执行，内联脚本是同步 IIFE，等不到任何异步回调）。 -->
-  <script src="../js/chapters.js?v=26"></script>
-  <script src="../js/transition.js?v=26"></script>
+  <script src="../js/chapters.js?v=27"></script>
+  <script src="../js/transition.js?v=27"></script>
 
   <script>
   (function() {
@@ -355,37 +349,6 @@
       return '<div class="footprint-pill"><span>' + label + '</span><strong>' + value + '</strong></div>';
     }
 
-    // ===== 检查更新（仅 App 壳内真正可用）=====
-    // App 里 window.LinyuanApp.checkUpdate 是原生桥，会绕过启动时的 60s 节流强制检查，
-    // 结果由原生侧给反馈（有新版本 → 更新弹窗；已是最新 → Toast）。
-    // 浏览器里没有这个桥，就把按钮文案临时换成提示，避免「点了没反应」。
-    (function () {
-      var btn = document.getElementById('checkUpdateBtn');
-      if (!btn) return;
-      var originalText = btn.textContent;
-      var resetTimer = null;
-      function flashHint(text) {
-        btn.textContent = text;
-        btn.disabled = true;
-        if (resetTimer) clearTimeout(resetTimer);
-        resetTimer = setTimeout(function () {
-          btn.textContent = originalText;
-          btn.disabled = false;
-        }, 2200);
-      }
-      btn.addEventListener('click', function () {
-        var bridge = window.LinyuanApp;
-        if (bridge && typeof bridge.checkUpdate === 'function') {
-          try {
-            bridge.checkUpdate();
-            return;
-          } catch (err) {
-            // 桥存在但调用失败（例如壳版本太老）：走下面的提示分支
-          }
-        }
-        flashHint('请在 App 内使用此功能');
-      });
-    })();
   })();
   </script>
 </body>

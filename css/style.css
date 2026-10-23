@@ -1403,6 +1403,31 @@ a { color: inherit; text-decoration: none; }
   text-align: center;
 }
 
+.app-version {
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-update-sep {
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.55;
+}
+
+/* 首页页脚下方：版本号 · 检查更新。
+   页脚本身上下留白较大（34/42px），这里用负外边距把它收进页脚的下留白里，
+   避免出现「页脚 — 空白 — 入口」两段独立留白。 */
+.home-footer + .app-update-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px 30px;
+  margin-top: -18px;
+}
+
 .app-update-link {
   appearance: none;
   border: none;

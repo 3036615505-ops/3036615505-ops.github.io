@@ -18,9 +18,9 @@
        抢走同一条连接上的带宽（实测冷启动：cover 199ms 起、CSS 201ms 起）。
        这里改指 144x196 的 cover-thumb.webp（5.7KB），
        不再用 528x720 的 cover.webp（69.4KB）去画一个 46x62 的方块。 -->
-  <link rel="stylesheet" href="css/style.css?v=26">
+  <link rel="stylesheet" href="css/style.css?v=27">
   <link rel="preload" as="image" href="assets/cover-thumb.webp">
-  <script src="js/theme.js?v=26"></script>
+  <script src="js/theme.js?v=27"></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame home-page">
@@ -84,6 +84,14 @@
 
     <footer class="home-footer">南城的梧桐树还在长</footer>
 
+    <!-- 版本号与手动检查更新：刻意做得很轻（11px、--text-muted），不抢主视觉。
+         版本号由 App 壳的 LinyuanApp.getAppVersion() 提供；浏览器里不显示。 -->
+    <div class="app-update-row">
+      <span class="app-version" id="appVersion"></span>
+      <span class="app-update-sep" id="appVersionSep">·</span>
+      <button type="button" class="app-update-link" id="checkUpdateBtn">检查更新</button>
+    </div>
+
   </div>
 
   <nav class="tab-bar">
@@ -109,8 +117,8 @@
        弱网下 chapters.js 没回来之前整页白屏（首屏可感知卡顿）。
        放在这里首屏骨架先画出来；但必须保持在下面依赖 CHAPTERS 的内联脚本之前
        （经典脚本按文档顺序执行，内联脚本是同步 IIFE，等不到任何异步回调）。 -->
-  <script src="js/chapters.js?v=26"></script>
-  <script src="js/transition.js?v=26"></script>
+  <script src="js/chapters.js?v=27"></script>
+  <script src="js/transition.js?v=27"></script>
 
   <script>
   (function() {
@@ -304,6 +312,60 @@
       leaves: 0,
       initialText: '梧桐叶正落下'
     });
+
+    // ===== 版本号与「检查更新」（仅 App 壳内真正可用）=====
+    // 版本号来自原生桥 getAppVersion()；没有桥（浏览器打开）就不显示版本号，
+    // 只保留一个可点的「检查更新」并给出「请在 App 内使用」的提示。
+    (function () {
+      var versionEl = document.getElementById('appVersion');
+      var sepEl = document.getElementById('appVersionSep');
+      var btn = document.getElementById('checkUpdateBtn');
+      if (!btn) return;
+
+      var bridge = window.LinyuanApp;
+      if (versionEl) {
+        var version = '';
+        try {
+          if (bridge && typeof bridge.getAppVersion === 'function') {
+            version = String(bridge.getAppVersion() || '').trim();
+          }
+        } catch (err) {
+          version = '';
+        }
+        if (version) {
+          versionEl.textContent = 'v' + version;
+        } else {
+          // 浏览器或老版本壳：不显示版本号，也不显示分隔点
+          versionEl.style.display = 'none';
+          if (sepEl) sepEl.style.display = 'none';
+        }
+      }
+
+      var originalText = btn.textContent;
+      var resetTimer = null;
+      function flashHint(text) {
+        btn.textContent = text;
+        btn.disabled = true;
+        if (resetTimer) clearTimeout(resetTimer);
+        resetTimer = setTimeout(function () {
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }, 2200);
+      }
+
+      btn.addEventListener('click', function () {
+        var app = window.LinyuanApp;
+        if (app && typeof app.checkUpdate === 'function') {
+          try {
+            app.checkUpdate();
+            return;
+          } catch (err) {
+            // 桥存在但调用失败（壳版本过老）：落到提示分支
+          }
+        }
+        flashHint('请在 App 内使用此功能');
+      });
+    })();
   })();
   </script>
 </body>
