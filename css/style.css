@@ -213,6 +213,16 @@
   --accent: #b8864e;
   --accent-hover: #9a6d3e;
   --accent-light: rgba(184,134,78,0.08);
+  /* ---- 填充按钮专用底色（白字必须 ≥4.5:1）----
+     --accent 是「强调色」，用来做描边、图标、强调文字都没问题，但它太亮：
+     白字压 #b8864e 只有 3.20:1、压深色主题的 #d4a050 只有 2.35:1，
+     所以凡是「金底白字」的主行动按钮/徽标都必须改用这一对值，别再直接写 --accent。
+       白字 on #8f6636 = 5.09:1
+       白字 on #7a5529 = 6.65:1（渐变深端 / :active）
+     两主题共用同一对值：深色下白字同样需要 4.5:1，且 #8f6636 与深色卡片
+     (#221f18) 仍有 3.23:1 的辨识度，按钮不会糊进背景。 */
+  --accent-fill: #8f6636;
+  --accent-fill-deep: #7a5529;
   --border: #e8e0d4;
   --border-light: #f0e8dc;
   --shadow: 0 1px 3px rgba(60, 40, 20, 0.05);
@@ -1258,7 +1268,9 @@ a { color: inherit; text-decoration: none; }
   gap: 6px;
   padding: 15px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #c4945a, #9a6d3e);
+  /* 原来是写死的 linear-gradient(135deg, #c4945a, #9a6d3e)：浅端 #c4945a
+     上白字只有 2.72:1。改用填充按钮令牌，两端都 ≥4.5，渐变层次保留。 */
+  background: linear-gradient(135deg, var(--accent-fill), var(--accent-fill-deep));
   color: #fff;
   font-size: 16px;
   font-weight: 600;
@@ -2811,7 +2823,7 @@ body.reading-page {
 }
 
 .rc-btn {
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #FFFFFF;
   font-size: 12px;
   font-weight: 500;
@@ -2822,7 +2834,7 @@ body.reading-page {
 }
 
 .rc-btn:active {
-  background: var(--accent-hover);
+  background: var(--accent-fill-deep);
 }
 
 /* ---- 光阴目录 ---- */
@@ -2891,7 +2903,7 @@ body.reading-page {
 }
 
 .date-item-new {
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #FFFFFF;
   font-size: 10px;
   font-weight: 500;
@@ -3147,7 +3159,7 @@ body.reading-page {
 
 .quotes-export-btn {
   border: none;
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #FFFFFF;
   font-size: 12px;
   padding: 7px 14px;
@@ -3156,7 +3168,7 @@ body.reading-page {
 }
 
 .quotes-export-btn:active {
-  background: var(--accent-hover);
+  background: var(--accent-fill-deep);
 }
 
 .quotes-list {

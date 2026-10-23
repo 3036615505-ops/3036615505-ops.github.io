@@ -26,12 +26,31 @@
  *     entryText: 'random', // 入场时是否换成随机文案（章节页/书架用）
  *     skipSelector: '.tab-bar',  // 命中其内的链接直接走浏览器默认跳转
  *     mount: el,           // 遮罩挂载点（默认 document.body）
- *     delegate: false,     // true = document 事件委托（章节页用）；false = 初始化时直接绑定
+ *     delegate: false,     // 事件委托 vs. 初始化时直接绑定，详见下方说明
  *     hashScroll: false,   // 同页锚点链接改为平滑滚动、不触发过渡（章节页用）
  *     exitDelay: 120,      // 离开时先让叶子露一下再跳转
  *     enterHold: 200,
  *     enterTtl: 8000
  *   });
+ *
+ * ── 关于 delegate（重要，别当成 bug 去"修"）──────────────────────────
+ *   delegate: true  = 挂在 document 上做事件委托，之后**动态插入**的链接也能抓到
+ *   delegate: false = 只在 init() 执行的那一刻给已存在的 a[href] 直接绑定
+ *
+ *   两个 tab 页（index.html / novel/index.html）故意用 false，因此存在一个
+ *   **已知且刻意保留**的行为差异：
+ *     · 首页的「光阴目录」条目（.date-item）**有**过渡 —— 因为它在内联脚本里
+ *       比 PageTransition.init() 更早被渲染进 DOM；
+ *     · 书架的章节条目（.chapter-item）**没有**过渡 —— 因为 renderChapterList()
+ *       在 PageTransition.init() **之后**才执行，那些链接在绑定时还不存在。
+ *   这是抽取共享模块之前就有的既成行为，本轮刻意保持不变（改为 true 会让书架
+ *   点目录条目突然多出 120ms 延迟 + 一层遮罩，属于可见的行为变化，需要单独决策）。
+ *
+ *   如果将来要让书架目录条目也有过渡：把该页改成 delegate: true 即可
+ *   （委托不依赖渲染顺序）；或保持 false 但把 init() 挪到 renderChapterList()
+ *   之后 —— 后者会连带改变首次加载时遮罩的时序，不推荐。
+ *   章节页（js/reader.js）用 true 是被迫的：阅读页的目录/设置面板全部是运行时
+ *   插入的，直接绑定抓不到。
  *
  * 依赖：无。非 ES module，挂到 window.PageTransition，供普通 <script> 引用。
  * 注意：三处引用方必须都加载本文件（sw.js 的 PRECACHE 里也有它）。

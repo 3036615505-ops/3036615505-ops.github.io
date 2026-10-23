@@ -17,6 +17,8 @@
  *   node tools/contrast-audit.mjs --page /index.html    # 只看一页
  *   node tools/contrast-audit.mjs --min 4.5             # 只列出低于阈值的
  *   node tools/contrast-audit.mjs --json out.json       # 额外输出 JSON
+ *   node tools/contrast-audit.mjs --inject fix.css      # 注入一份候选样式再测（做方案对比用）
+ *   node tools/contrast-audit.mjs --inject ':root{--text-muted:#7a6b5a}'
  *
  * 环境变量：
  *   BROWSER=/path/to/chrome|msedge    浏览器可执行文件（默认按平台猜）
@@ -48,6 +50,16 @@ const PAGES = arg('page')
 const THEMES = arg('theme') ? [arg('theme')] : ['dark', 'light'];
 const MIN_ONLY = arg('min') ? parseFloat(arg('min')) : null;
 const JSON_OUT = arg('json');
+/**
+ * 候选样式注入：可以给一段 CSS 字面量，也可以给一个 .css 文件路径。
+ * 用来做「方案 A / B / C 各自能把未达标数降到多少」的对比，不用改仓库。
+ */
+const INJECT = (() => {
+  const v = arg('inject');
+  if (!v) return null;
+  const looksLikeFile = /\.css$/i.test(v) && fs.existsSync(path.resolve(v));
+  return looksLikeFile ? fs.readFileSync(path.resolve(v), 'utf8') : v;
+})();
 
 /**
  * 归一化页面路径。两个坑都要吃掉：
@@ -268,6 +280,14 @@ async function auditPage(cdp, base, page, theme) {
     if (result.value === 'complete') break;
   }
   await sleep(1500);
+  if (INJECT) {
+    await cdp.send('Runtime.evaluate', {
+      expression: `(() => { const s=document.createElement('style'); s.id='__inject';
+        s.textContent = ${JSON.stringify(INJECT)}; document.head.appendChild(s); return s.textContent.length; })()`,
+      returnByValue: true
+    });
+    await sleep(400);
+  }
 
   const ev = async (expr) => {
     const { result } = await cdp.send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
@@ -300,7 +320,7 @@ async function auditPage(cdp, base, page, theme) {
     return { ...e, fg: hex(fg), bg: hex(bg), cr: +cr.toFixed(2), need, pass: cr >= need };
   }).filter((r) => (MIN_ONLY === null ? true : !r.pass || r.cr < MIN_ONLY));
 
-  return { page, theme: applied, rows };
+  return { page, theme: applied, injected: INJECT ? INJECT.replace(/\s+/g, ' ').trim() : null, rows };
 }
 
 const { srv, port: httpPort } = await startServer();
