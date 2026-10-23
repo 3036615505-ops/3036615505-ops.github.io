@@ -11,9 +11,10 @@
 # 临时跳过（不推荐）：
 #     git push --no-verify
 #
-# 检查两项：
+# 检查三项：
 #   1. node tools/bump-assets.mjs --check   —— 6 个 HTML 的 ?v= 是否统一（混版 = 有人拿旧文件）
 #   2. node tools/check-precache.mjs        —— sw.js 的 PRECACHE 每条是否真实存在、脚本引用是否齐全
+#   3. python tools/make-kai-subset.py --check —— 楷体字体子集是否覆盖当前正文用字
 # 任一失败 → 退出码 1 → push 被阻止。想放行请先修好，不要养成 --no-verify 的习惯。
 
 set -u
@@ -35,15 +36,28 @@ fi
 failed=0
 
 echo ""
-echo "→ [1/2] 检查全站 ?v= 版本号是否统一 …"
+echo "→ [1/3] 检查全站 ?v= 版本号是否统一 …"
 if ! node tools/bump-assets.mjs --check; then
   failed=1
 fi
 
 echo ""
-echo "→ [2/2] 检查 sw.js 的 PRECACHE 条目与脚本引用 …"
+echo "→ [2/3] 检查 sw.js 的 PRECACHE 条目与脚本引用 …"
 if ! node tools/check-precache.mjs; then
   failed=1
+fi
+
+echo ""
+echo "→ [3/3] 检查楷体字体是否覆盖当前正文用字 …"
+PY=""
+if command -v python >/dev/null 2>&1; then PY=python
+elif command -v python3 >/dev/null 2>&1; then PY=python3; fi
+if [ -n "$PY" ] && [ -f tools/make-kai-subset.py ]; then
+  if ! "$PY" tools/make-kai-subset.py --check; then
+    failed=1
+  fi
+else
+  echo "   跳过（未找到 python 或 tools/make-kai-subset.py）"
 fi
 
 if [ "$failed" -ne 0 ]; then
@@ -54,7 +68,8 @@ if [ "$failed" -ne 0 ]; then
   echo "  ① 版本号混版： node tools/bump-assets.mjs --write"
   echo "     （扫描 6 个 HTML，取最大 ?v= +1 后全站统一替换；只改文件，不自动 commit）"
   echo "  ② 预缓存缺失： 按上面列出的路径补文件，或从 sw.js 的 PRECACHE 删掉该条"
-  echo "  ③ 若改了 sw.js 的 PRECACHE 内容，记得把 CACHE 版本号一起 +1"
+  echo "  ③ 楷体缺字： python tools/make-kai-subset.py（重新生成子集并提交 woff2）"
+  echo "  ④ 若改了 sw.js 的 PRECACHE 内容，记得把 CACHE 版本号一起 +1"
   echo "     （如 linyuan-v16 → v17，否则老用户不会重新 install）"
   echo ""
   echo "确实要绕过（不推荐）： git push --no-verify"

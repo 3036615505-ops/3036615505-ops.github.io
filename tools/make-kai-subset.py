@@ -30,29 +30,28 @@ PUNCT = "，。！？：；、“”‘’（）《》【】…—·～「」『
 
 
 def chapter_chars() -> set:
+    """章节页里所有会显示出来的字（正文、标题、题注都算）。
+
+    只收录"当前已发布"的用字，所以体积最小；新增章节后重跑本脚本即可。
+    """
     chars = set()
     for f in sorted(ROOT.glob("novel/chapter-*.html")):
         s = f.read_text(encoding="utf-8")
-        m = re.search(r"<article[^>]*chapter-content[^>]*>(.*?)</article>", s, re.S)
-        if m:
-            chars |= set(re.sub(r"<[^>]+>", "", m.group(1)))
+        s = re.sub(r"<script[\s\S]*?</script>", "", s)
+        s = re.sub(r"<style[\s\S]*?</style>", "", s)
+        chars |= set(re.sub(r"<[^>]+>", "", s))
     # 换行/制表等控制字符不需要字形（HTML 会折叠成空格），排除掉免得误报缺字
     return {c for c in chars if not c.isspace()}
 
 
-def gb2312_level1() -> set:
-    out = set()
-    for hi in range(0xB0, 0xD8):
-        for lo in range(0xA1, 0xFF):
-            try:
-                out.add(bytes([hi, lo]).decode("gb2312"))
-            except UnicodeDecodeError:
-                pass
-    return out
-
-
 def full_charset() -> set:
-    return chapter_chars() | {chr(c) for c in range(0x20, 0x7F)} | set(PUNCT) | gb2312_level1()
+    """只取当前正文用字 + ASCII + 中文标点。
+
+    为什么不并常用字库：整份 3755 常用字要 850KB，首页强网下也要多等好几秒；
+    而"缺字"风险已经由 --check（pre-push 里会跑）兜住 —— 新章节若出现字体里
+    没有的字，push 会被拦下并提示重跑本脚本，所以不会带着缺字上线。
+    """
+    return chapter_chars() | {chr(c) for c in range(0x20, 0x7F)} | set(PUNCT)
 
 
 def check() -> int:

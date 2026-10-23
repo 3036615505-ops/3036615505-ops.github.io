@@ -910,7 +910,7 @@
               '<button class="mode-toggle-btn" data-font="system" onclick="setFontFamily(\'system\')">系统</button>' +
               '<button class="mode-toggle-btn" data-font="kai" onclick="setFontFamily(\'kai\')">楷体</button>' +
             '</div>' +
-            '<div class="setting-hint">「系统」跟随手机的字体设置；「楷体」首次选择需下载约 0.85MB</div>' +
+            '<div class="setting-hint">「系统」跟随手机的字体设置；「楷体」首次选择需下载约 0.17MB</div>' +
           '</div>' +
           '<div class="setting-group"><div class="setting-label">版式</div>' +
             '<div class="mode-toggle-row">' +
