@@ -92,4 +92,30 @@ if (missing || refMissing) {
   console.error(`\n✗ 有 ${missing} 条预缓存缺失${refMissing ? `、${refMissing} 处引用缺失` : ''}，请修掉再发`);
   process.exit(1);
 }
+/* ===== 章节模板完整性 =====
+   new-chapter.js 里的模板是「新章节长什么样」的唯一来源。模块拆分那次它漏了
+   一半脚本，生成出来的新章没有交互、也不报错。这类漂移必须在 CI 拦住，而不是
+   等下次加章节才发现。
+   判据取自**现有章节页实际引用的脚本**（而不是 js/ 目录里有什么 —— 那里还有
+   只属于人物页的 lightbox.js / theme.js）。这样以后给章节页加模块，这条检查
+   会自动跟上。 */
+const TEMPLATE = path.join(ROOT, 'new-chapter.js');
+const NOVEL_DIR = path.join(ROOT, 'novel');
+if (fs.existsSync(TEMPLATE) && fs.existsSync(NOVEL_DIR)) {
+  const sample = fs.readdirSync(NOVEL_DIR).filter((f) => /^chapter-\d+\.html$/.test(f))[0];
+  if (sample) {
+    const html = fs.readFileSync(path.join(NOVEL_DIR, sample), 'utf8');
+    const required = [...new Set(html.match(/js\/[a-z.]+?\.js/g) || [])];
+    const tpl = fs.readFileSync(TEMPLATE, 'utf8');
+    const missing = required.filter((src) => tpl.indexOf(src) === -1);
+    if (missing.length) {
+      console.error('✗ new-chapter.js 的章节模板缺少脚本引用（对照 ' + sample + '）：');
+      missing.forEach((src) => console.error('   - ' + src));
+      console.error('   生成的新章节会缺模块（很可能表现为页面无交互）。请补模板后重跑。');
+      process.exit(1);
+    }
+    console.log('  ✓ 章节模板与 ' + sample + ' 一致（' + required.length + ' 个脚本）');
+  }
+}
+
 console.log('\n✓ 预缓存条目全部存在，脚本引用齐全');

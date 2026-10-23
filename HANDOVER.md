@@ -77,6 +77,30 @@ git commit && git push               # ③ pre-push 会跑 4 项校验，CI 会�
 cd E:/novel-site/twa && ./publish-apk.sh "更新说明"
 ```
 
+## 加新章节（一条命令，其余全自动）
+
+```bash
+node new-chapter.js 原稿.md --blurb "目录页一句话" --date "十月十日" --seal "前桌"
+```
+
+原稿写成 Markdown：首行 `# 标题`，空行分段，单独一行 `---` 是场景分隔。
+
+脚本一次做完六件事：
+
+1. 生成 `novel/chapter-NN.html`（八个脚本引用齐全，`?v=` 自动取当前版本）
+2. 写 `manuscript/chapter-NN.md`（源稿快照，push 前逐字比对）
+3. 把新章节页登记进 `sw.js` 的 `PRECACHE`
+4. 把 `CACHE` 版本名 +1（不升的话老用户 SW 不会重新 install，新条目进不去）
+5. 往 `js/chapters.js` 追加条目（保留 `date/seal/leaf`，未知字段也不丢）
+6. 把上一章的「下一章」接上
+
+三道保护：**目标章节页已存在 → 中止**（不覆盖旧章）；**模板漏脚本 → 删掉半成品并报错**；`check-precache.mjs` 里还有一条 CI 检查，拿现有章节页比对模板的脚本引用，模板落后会红。
+
+人工只剩一件：把章末「这一章留下来的」占位文案换成属于这一章的话（脚本会提醒）。
+然后 commit + push，CI 跑四项校验 + 27 项端到端。
+
+新增章节**不需要**手动升 `?v=`：章节页是新 URL，导航走网络优先；`CACHE` 由脚本升。
+
 ## 埋过的坑（每条都是真出过事的）
 
 1. **`content-visibility: auto` 会毁掉所有位置数学**。没进过视口的段落只有 2em 的估算高度，跳进章节中间时整章高度是假的 → 进度、页码、剩余时间、位置恢复全错。已从 `.chapter-content p` 删除，**别再以“性能”名义加回来**。

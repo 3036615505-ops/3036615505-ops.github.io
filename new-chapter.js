@@ -120,6 +120,31 @@ if (fs.existsSync(targetPath)) {
   process.exit(1);
 }
 
+// ===== 资源版本号 =====
+// 模板里的 ?v= 曾经是手写的，改版后会过期 —— 更糟的是模块拆分后这里还停留在
+// 「只引一个 reader.js」，生成出来的新章会是个没有交互的空壳。
+// 所以每次都从现有页面里取当前版本，并保证脚本引用齐全。
+const ASSET_SCRIPTS = [
+  'chapters.js', 'transition.js',
+  'reader.flags.js', 'reader.dom.js', 'reader.store.js', 'reader.engine.js', 'reader.ui.js',
+  'reader.js'
+];
+function detectAssetVersion() {
+  var max = 0;
+  var dirs = [NOVEL_DIR, ROOT];
+  dirs.forEach(function (dir) {
+    if (!fs.existsSync(dir)) return;
+    fs.readdirSync(dir).filter(function (f) { return /\.html$/.test(f); }).forEach(function (f) {
+      var html = fs.readFileSync(path.join(dir, f), 'utf-8');
+      var re = /\?v=(\d+)/g;
+      var m;
+      while ((m = re.exec(html)) !== null) max = Math.max(max, parseInt(m[1], 10));
+    });
+  });
+  return max || 1;
+}
+const ASSET_V = detectAssetVersion();
+
 // ===== 章节页模板 =====
 const prevNav = prev ? '<a href="' + prev.file + '">上一章</a>' : '<span>上一章</span>';
 const nextNav = '<span>下一章</span>';
@@ -216,8 +241,14 @@ ${contentHtml}  </article>
 
   </div>
 
-  <script src="../js/chapters.js"></script>
-  <script src="../js/reader.js"></script>
+  <script src="../js/chapters.js?v=${ASSET_V}"></script>
+  <script src="../js/transition.js?v=${ASSET_V}"></script>
+  <script src="../js/reader.flags.js?v=${ASSET_V}"></script>
+  <script src="../js/reader.dom.js?v=${ASSET_V}"></script>
+  <script src="../js/reader.store.js?v=${ASSET_V}"></script>
+  <script src="../js/reader.engine.js?v=${ASSET_V}"></script>
+  <script src="../js/reader.ui.js?v=${ASSET_V}"></script>
+  <script src="../js/reader.js?v=${ASSET_V}"></script>
 </body>
 </html>
 `;
@@ -236,6 +267,19 @@ if (opts.dryRun) {
 const out = path.join(NOVEL_DIR, file);
 fs.writeFileSync(out, tpl);
 
+// 1.2) 自检：模板必须把当前所有阅读器模块都引上。
+//      模块拆分那次就是这里漏了 —— 新章只有入口脚本，页面没有交互，而且不报错。
+const written = fs.readFileSync(out, 'utf-8');
+const missing = ASSET_SCRIPTS.filter(function (name) {
+  return written.indexOf('js/' + name) === -1;
+});
+if (missing.length) {
+  fs.unlinkSync(out);
+  console.error('✗ 模板缺少脚本引用：' + missing.join(', '));
+  console.error('  已删除刚生成的章节页，未改动 chapters.js。请先更新 new-chapter.js 的模板。');
+  process.exit(1);
+}
+
 // 1.5) 源稿入库：manuscript/chapter-NN.md 是这一章的「原文快照」。
 //      tools/manuscript-sync.mjs 会在 push 前拿它和章节页逐字比对，
 //      「哪句话被谁改了」从此有据可查，而不是只有生成后的 HTML 可看。
@@ -244,6 +288,36 @@ fs.mkdirSync(msDir, { recursive: true });
 const msPath = path.join(msDir, file.replace(/\.html$/, '.md'));
 fs.writeFileSync(msPath, md, 'utf8');
 console.log('📄 源稿已存: manuscript/' + path.basename(msPath));
+
+// 1.8) 预缓存登记 + 缓存名 +1
+//      章节页在 sw.js 的 PRECACHE 里。新章节不登记，就不会被预缓存（首次访问靠
+//      网络兜底，离线就打不开）；而不升 CACHE 名，老用户的 SW 不会重新 install，
+//      新条目也进不去。这两步以前是手动的，最容易漏。
+const SW_JS = path.join(ROOT, 'sw.js');
+if (fs.existsSync(SW_JS)) {
+  let swSrc = fs.readFileSync(SW_JS, 'utf-8');
+  const entryPath = '/novel/' + file;
+  if (swSrc.indexOf("'" + entryPath + "'") === -1) {
+    const lastChapter = /(\n\s*'\/novel\/chapter-\d+\.html',)(?![\s\S]*'\/novel\/chapter-\d+\.html',)/;
+    const firstEntry = /(var PRECACHE = \[\n)/;
+    if (lastChapter.test(swSrc)) {
+      swSrc = swSrc.replace(lastChapter, "$1\n  '" + entryPath + "',");
+    } else if (firstEntry.test(swSrc)) {
+      swSrc = swSrc.replace(firstEntry, "$1  '" + entryPath + "',\n");
+    } else {
+      console.error('⚠ 没找到 sw.js 的 PRECACHE 数组，预缓存未登记（请手动补）');
+    }
+    const cacheRe = /var CACHE = '([a-z-]+)-v(\d+)'/;
+    const cm = swSrc.match(cacheRe);
+    if (cm) {
+      const nextCache = cm[1] + '-v' + (parseInt(cm[2], 10) + 1);
+      swSrc = swSrc.replace(cacheRe, "var CACHE = '" + nextCache + "'");
+      console.log('🔁 SW 缓存名 → ' + nextCache + '（老用户才会重新 install）');
+    }
+    fs.writeFileSync(SW_JS, swSrc);
+    console.log('📦 已登记预缓存: ' + entryPath);
+  }
+}
 
 // 2) 更新 chapters.js（保留头部注释与尾部代码，重建数组）
 const head = chaptersSrc.slice(0, chaptersSrc.indexOf('var CHAPTERS = ['));
