@@ -60,6 +60,14 @@
   var resizeTimer = 0;
   var lastTrigger = null;
   var pinchEndAt = 0;
+  /* 两套时间闸，语义不同、互不打架：
+     pinchEndAt + PINCH_TAP_GUARD_MS(400ms)：捏合结束后忽略「单击」，防止松手
+       尾焰被误判成双击缩放开关（QA Round 1 口径的 400ms guard）。
+     clickGuardUntil：「空白区点击关闭」的闸。三个来源——① open() 后 350ms：
+       挡掉「打开灯箱的那一次点击」的延迟合成 click（触摸→鼠标兼容事件可能晚于
+       DOM 变化派发，落到新出现的遮罩/frame 空白区上，会把刚打开的灯箱立刻关掉）；
+        ② 捏合/拖动移动期间持续 +500ms：松手尾焰的 click 不触发关闭。 */
+  var clickGuardUntil = 0;
 
   /* ------------------------------------------------------------ 小工具 */
   function pointerCountOf() {
@@ -139,8 +147,13 @@
     image.draggable = false; /* 防浏览器原生拖拽影子图 */
     frame.appendChild(image);
 
-    /* 关闭：遮罩 / 按钮 / Esc 三条路都汇到 close() */
-    backdrop.addEventListener('click', close);
+    /* 关闭：遮罩 / 按钮 / Esc 三条路都汇到 close()。
+       遮罩这条路带 clickGuardUntil 闸——挡「打开它的那次点击」的延迟合成事件 */
+    backdrop.addEventListener('click', function () {
+      if (!state.open) return;
+      if (Date.now() < clickGuardUntil) return;
+      close();
+    });
     closeBtn.addEventListener('click', close);
     document.addEventListener('keydown', onKeyDown);
 
@@ -151,6 +164,16 @@
     frame.addEventListener('pointercancel', endPointer);
     frame.addEventListener('lostpointercapture', endPointer);
     frame.addEventListener('wheel', onWheel, { passive: false });
+
+    /* 点立绘之外的空白区也关闭：桌面下 frame 几乎铺满舞台，只靠 stage 的 16px
+       边沟可点太小，用户点一大片深色空白区理应关掉。点在图片上不关（双击放大
+       还要用）；clickGuardUntil 窗口内不关（打开尾焰 + 手势尾焰）。 */
+    frame.addEventListener('click', function (e) {
+      if (!state.open) return;
+      if (e.target !== frame) return;              /* 点在图片上 → 不关 */
+      if (Date.now() < clickGuardUntil) return;    /* 尾焰 → 不关 */
+      close();
+    });
 
     /* 桌面便利：滚轮缩放（需求只要求双击 + 捏合，这是附赠；触屏没有 wheel） */
     global.addEventListener('resize', onResize);
@@ -185,6 +208,9 @@
     if (!overlay || state.open || !src) return;
     state.open = true;
     lastTrigger = trigger || null;
+    /* 新开一轮：清掉上一轮的手势尾焰窗口，并给本次「打开的点击」留 350ms 闸
+       （触摸的兼容鼠标 click 可能晚于 DOM 变化派发，落到新遮罩上会立刻关掉） */
+    clickGuardUntil = Date.now() + 350;
     if (nameEl) nameEl.textContent = name || '';
     image.alt = name || '';
     image.src = src;
@@ -355,6 +381,7 @@
 
     if (mode === 'pinch' && pinch && pointerCountOf() >= 2) {
       e.preventDefault();
+      clickGuardUntil = Date.now() + 500;
       var pts = lastTwoPointers();
       var d = dist(pts[0], pts[1]);
       /* 以捏合起始状态为基准连续缩放，1x–3x；锚点固定在起始中点 */
@@ -376,6 +403,7 @@
       drag = { x: e.clientX, y: e.clientY };
       clampTranslation();
       applyTransform(false);
+      clickGuardUntil = Date.now() + 500;
     }
   }
 

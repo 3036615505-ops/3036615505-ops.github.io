@@ -3485,7 +3485,11 @@ body.app-immersive .chapter-content {
 }
 
 /* ---- 舞台：整屏 flex 列，上图下文 ----
-   z-index 压过遮罩；关闭按钮 z-index 再压一层（浮在立绘右上角）。 */
+   z-index 压过遮罩；关闭按钮 z-index 再压一层（浮在立绘右上角）。
+   pointer-events:none：stage 是 overlay 里唯一的 in-flow flex 子元素、必然铺满
+   全场，若不豁免会把 .modal-backdrop 的命中区全盖住（视觉透明但命中测试不过去，
+   表现为「点深色区域毫无反应」——QA Round 1 的缺陷）。真正要交互的子区
+   （.lightbox-frame 手势区）自行 pointer-events:auto 恢复。 */
 .lightbox-stage {
   position: relative;
   z-index: 1;
@@ -3495,6 +3499,7 @@ body.app-immersive .chapter-content {
   flex-direction: column;
   padding: calc(20px + env(safe-area-inset-top, 0px)) 16px
             calc(16px + env(safe-area-inset-bottom, 0px));
+  pointer-events: none;
   opacity: 0;
   transform: scale(0.94);
   transition: opacity 0.25s ease, transform 0.25s ease;
@@ -3507,7 +3512,10 @@ body.app-immersive .chapter-content {
 
 /* ---- 图片容器：度量基准 + 手势接管区 ----
    overflow:hidden 把放大后探出的部分裁掉（不遮说明文字）；
-   touch-action:none 把捏合 / 拖动从浏览器手势里抢过来交给 JS。 */
+   touch-action:none 把捏合 / 拖动从浏览器手势里抢过来交给 JS。
+   pointer-events:auto 只挂在 .visible（打开）状态下：父级 .lightbox-stage 是
+   none，本元素若无条件 auto，关闭时那层隐形 frame 会重新变得可命中，变成一块
+   盖住全页的点击护盾（人物卡在它下面，全点不到）——QA Round 2 抓到的第二个坑。 */
 .lightbox-frame {
   flex: 1;
   min-height: 0;
@@ -3516,6 +3524,10 @@ body.app-immersive .chapter-content {
   justify-content: center;
   overflow: hidden;
   touch-action: none;
+}
+
+.lightbox-overlay.visible .lightbox-frame {
+  pointer-events: auto;
 }
 
 .lightbox-image {
