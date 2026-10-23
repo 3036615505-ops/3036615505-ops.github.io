@@ -336,18 +336,15 @@
     tap.innerHTML = '<button type="button" class="reader-tap-zone top" aria-label="向上翻页"></button><button type="button" class="reader-tap-zone middle" aria-label="显示工具栏"></button><button type="button" class="reader-tap-zone bottom" aria-label="向下翻页"></button>';
 
     tap.querySelector('.reader-tap-zone.top').addEventListener('click', function() {
-      stopAutoScroll(false);
       if (state.barsVisible) hideBars();
       window.scrollBy({ top: -window.innerHeight * 0.85, behavior: 'smooth' });
     });
 
     tap.querySelector('.reader-tap-zone.middle').addEventListener('click', function() {
-      stopAutoScroll(false);
       state.barsVisible ? hideBars() : showBars();
     });
 
     tap.querySelector('.reader-tap-zone.bottom').addEventListener('click', function() {
-      stopAutoScroll(false);
       if (state.barsVisible) hideBars();
       window.scrollBy({ top: window.innerHeight * 0.85, behavior: 'smooth' });
     });
@@ -922,12 +919,12 @@
      rAF 逐帧滚动，速度按时间计算（与帧率无关）；速度 10 档存 localStorage。
      停止条件：点屏幕（touchstart/mousedown，悬浮条除外）、点悬浮条 ✕、到章末。
      打开任何面板/工具栏也必然经过一次触摸 → 自动停止，与站点交互一致。 */
-  var autoScroll = { active: false, paused: false, level: 3, raf: 0, lastT: 0, pos: 0 };
+  var autoScroll = { active: false, paused: false, level: 5, raf: 0, lastT: 0, pos: 0 };
   var AS_SPEEDS = [8, 15, 24, 35, 48, 64, 84, 108, 136, 170]; /* px/s */
 
   function loadAutoSpeed() {
-    var v = parseInt(localStorage.getItem('reader-autoscroll-speed') || '3', 10);
-    autoScroll.level = isNaN(v) ? 3 : Math.min(10, Math.max(1, v));
+    var v = parseInt(localStorage.getItem('reader-autoscroll-speed') || '5', 10);
+    autoScroll.level = isNaN(v) ? 5 : Math.min(10, Math.max(1, v));
   }
   function saveAutoSpeed() {
     localStorage.setItem('reader-autoscroll-speed', String(autoScroll.level));
@@ -941,6 +938,9 @@
     var max = doc.scrollHeight - window.innerHeight;
     var y = window.scrollY || doc.scrollTop || 0;
     if (y >= max - 1) { stopAutoScroll(true); return; } /* 到章末自动停 */
+    /* 用户手动滚动接管：与累积值偏差超过 3px 说明不是我们滚的，以实际位置为准，
+       避免自动滚动把用户的手指操作"顶回去"。 */
+    if (Math.abs(y - Math.round(autoScroll.pos)) > 3) autoScroll.pos = y;
     /* 慢速档每帧步长 < 1px，直接 scrollTo 会被取整卡死 → 必须浮点累积 */
     autoScroll.pos = Math.min(max, autoScroll.pos + AS_SPEEDS[autoScroll.level - 1] * dt / 1000);
     window.scrollTo(0, Math.round(autoScroll.pos));
@@ -1021,22 +1021,9 @@
       startAutoScroll();
       if (typeof closeSettings === 'function') closeSettings();
       if (state.barsVisible) hideBars(); /* 从工具栏开启 → 收起工具栏让出屏幕 */
-      showToast('自动滚动开始，点屏幕即可停止');
+      showToast('自动滚动开始，点右下角 ✕ 可停止');
     }
   };
-
-  /* 触摸/按下即停：悬浮条以外的任何按下都视为接管（面板、工具栏、正文一视同仁） */
-  function autoScrollUserStop(e) {
-    if (!autoScroll.active) return;
-    var t = e.target;
-    while (t && t !== document.body) {
-      if (t.id === 'autoScrollPill') return;
-      t = t.parentElement;
-    }
-    stopAutoScroll(false);
-  }
-  document.addEventListener('touchstart', autoScrollUserStop, { passive: true });
-  document.addEventListener('mousedown', autoScrollUserStop);
 
   /* ===== START ===== */
   if ('serviceWorker' in navigator) {
