@@ -894,28 +894,10 @@
               '<button id="readWidthToggle" class="mode-toggle-btn" onclick="toggleReadWidth()"><span id="readWidthLabel">' + (state.readWidth === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关') + '</span></button>' +
             '</div>' +
           '</div>' +
-          '<div class="setting-group"><div class="setting-label">自动滚动</div>' +
-            '<div class="mode-toggle-row">' +
-              '<button id="autoScrollToggle" class="mode-toggle-btn" onclick="toggleAutoScroll()"><span id="autoScrollLabel">关</span></button>' +
-            '</div>' +
-            '<div class="speed-row"><span class="speed-cap">慢</span>' +
-              '<input type="range" id="autoScrollSpeed" class="speed-slider" min="1" max="10" step="1" value="' + autoScroll.level + '" aria-label="自动滚动速度">' +
-              '<span class="speed-cap">快</span>' +
-            '</div>' +
-          '</div>' +
         '</div>' +
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
     ov.querySelector('.modal-backdrop').addEventListener('click', closeSettings);
-    var asSlider = ov.querySelector('#autoScrollSpeed');
-    if (asSlider) {
-      asSlider.value = autoScroll.level;
-      asSlider.addEventListener('input', function() {
-        autoScroll.level = parseInt(asSlider.value, 10) || 3;
-        saveAutoSpeed();
-        updateAutoUI();
-      });
-    }
   }
 
   window.openSettings = function() {
@@ -927,10 +909,6 @@
     if (fl) fl.textContent = fontFamilyLabels[state.fontFamily] || '黑体';
     var rw = document.getElementById('readWidthLabel');
     if (rw) rw.textContent = state.readWidth === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关';
-    var asLabel = document.getElementById('autoScrollLabel');
-    if (asLabel) asLabel.textContent = autoScroll.active ? (autoScroll.paused ? '已暂停' : '进行中') : '关';
-    var asSliderOpen = document.getElementById('autoScrollSpeed');
-    if (asSliderOpen) asSliderOpen.value = autoScroll.level;
     if (ov) { ov.classList.add('visible'); document.body.style.overflow = 'hidden'; }
     if (state.barsVisible) { stopAutoClose(); startAutoClose(); }
   };
@@ -1004,7 +982,7 @@
 
   function updateAutoUI() {
     var label = document.getElementById('autoScrollLabel');
-    if (label) label.textContent = autoScroll.active ? (autoScroll.paused ? '已暂停' : '进行中') : '关';
+    if (label) label.textContent = autoScroll.active ? (autoScroll.paused ? '已暂停' : '进行中') : '自动';
     var pill = document.getElementById('autoScrollPill');
     if (!pill) return;
     pill.classList.toggle('visible', autoScroll.active);
@@ -1042,6 +1020,7 @@
     } else {
       startAutoScroll();
       if (typeof closeSettings === 'function') closeSettings();
+      if (state.barsVisible) hideBars(); /* 从工具栏开启 → 收起工具栏让出屏幕 */
       showToast('自动滚动开始，点屏幕即可停止');
     }
   };
