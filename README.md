@@ -11,6 +11,9 @@ novel/characters.html 人物
 quotes.html           剪贴本
 css/style.css         全站样式（含浅色 / 深色两套令牌）
 js/chapters.js        章节数据（唯一数据源，加章节只改这里）
+flags.json            线上功能开关（不缓存，改一行即生效，见下）
+manuscript/           章节源稿（原文快照，push 前与章节页逐字比对）
+js/reader.flags.js    阅读页 · 远程开关客户端
 js/reader.dom.js      阅读页 · DOM 工具（el/text，替代手拼 innerHTML）
 js/reader.store.js    阅读页 · 存储层（所有 localStorage 读写的唯一入口）
 js/reader.engine.js   阅读页 · 引擎（位置锚点、恢复、自动滚屏、阅读计时）
@@ -48,10 +51,54 @@ git config core.hooksPath .githooks
 |---|---|---|
 | 全站 `?v=` 是否统一 | `node tools/bump-assets.mjs --check` | 有人拿到旧 CSS/JS（混版缓存） |
 | PRECACHE 条目是否都存在、脚本引用是否齐全 | `node tools/check-precache.mjs` | SW 预缓存里放了一条 404 |
+| 楷体子集是否覆盖正文 | `python tools/make-kai-subset.py --check` | 新章节用了子集里没有的字，显示成豆腐块 |
+| 章节正文与源稿是否一致 | `node tools/manuscript-sync.mjs` | 正文被误改而没人发现 |
 
 任一失败会**阻止 push** 并打印修复命令；hook 只做拦截，不改你的文件。
 没装 Node 的环境会打印提示并放行（不会把 push 卡死）。
 紧急情况下可 `git push --no-verify` 跳过——但不建议养成习惯。
+
+## 线上开关：出问题时先关功能，别回滚整站
+
+`flags.json` 是不缓存的静态文件（SW 明确放行），改完 push 最多一分钟生效，
+**不需要发版、不需要升 `?v=`**：
+
+```json
+{
+  "flags": {
+    "autoscroll": true,
+    "readingAids": true,
+    "anchorRestore": true,
+    "backup": true
+  }
+}
+```
+
+| 开关 | 关掉之后 |
+|---|---|
+| `autoscroll` | 工具栏「自动」按钮隐藏，直接调用也只弹一句「暂时关闭」 |
+| `readingAids` | 设置里的「阅读辅助」整组隐藏，开关调用被拒 |
+| `anchorRestore` | 位置恢复退回按百分比（会偏一点，但能读） |
+| `backup` | 「阅读数据」整组隐藏，弹窗入口被拒 |
+
+三条设计约定：**拉不到就全开**（开关是止血工具，不能反过来影响可用性）；
+**用的时候才问**（1.5 秒后才到的值立刻生效，不用刷新）；**只认 boolean**
+（写 `"false"` 字符串不算关）。新增功能时把名字加进 `DEFAULTS` 与 `flags.json`。
+
+## 章节源稿：manuscript/
+
+`manuscript/chapter-NN.md` 是每一章的原文快照，由 `new-chapter.js` 在生成章节页时
+一并写入。push 前会拿它和 `novel/chapter-NN.html` **逐字比对**（忽略空白），
+不一致就拦住并打印第一个差异点：
+
+```bash
+node tools/manuscript-sync.mjs                        # 校验
+node tools/manuscript-sync.mjs --verbose              # 附带每章字数
+node tools/manuscript-sync.mjs --write --only chapter-02   # 有意改文后重新生成快照
+```
+
+为什么要有它：上周有一段正文被误改（「找我自己」那句），git 只能证明文件变了，
+证明不了原文是什么。有了源稿，这类改动才有据可查。
 
 ## 改了阅读器之后：跑一遍端到端测试
 
@@ -73,6 +120,20 @@ node tools/e2e.mjs --verbose  # 顺带打印每项的实际值
 ```bash
 npx -p typescript tsc -p jsconfig.json --noEmit
 ```
+
+## 服务端校验（GitHub Actions，待启用）
+
+`tools/ci-verify.yml` 是准备好的工作流：四项静态校验 + 端到端测试。
+理由很实际：pre-push 钩子只在**配过 `core.hooksPath` 的那个 clone** 里生效，
+换台机器（比如 Mac 上）改完推上去，一项都不会跑；CI 在服务端跑，谁的机器都一样。
+
+**为什么还没启用**：本仓库推送用的 Personal Access Token 没有 `workflow` 权限，
+GitHub 拒绝任何对 `.github/workflows/` 的写入。启用二选一：
+
+1. 给 token 勾上 `workflow` 权限后，`git mv tools/ci-verify.yml .github/workflows/verify.yml`；
+2. 直接在 GitHub 网页端新建 `.github/workflows/verify.yml`，把 `tools/ci-verify.yml` 的内容贴进去。
+
+启用后每次 push / PR 都会自动跑，红灯在 Actions 页面上看。
 
 ## 其它工具
 

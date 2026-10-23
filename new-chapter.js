@@ -18,6 +18,34 @@
 const fs = require('fs');
 const path = require('path');
 
+const vm = require('vm');
+
+/** 把 chapters.js 里的 CHAPTERS 数组当代码求值，拿真实对象（比正则可靠） */
+function readChapters(src) {
+  const start = src.indexOf('var CHAPTERS = [');
+  if (start < 0) throw new Error('chapters.js 里找不到 CHAPTERS 数组');
+  const open = src.indexOf('[', start);
+  const end = src.indexOf('\n];', open);
+  if (end < 0) throw new Error('CHAPTERS 数组没有正常结束');
+  const literal = src.slice(open, end + 2);
+  const sandbox = {};
+  vm.createContext(sandbox);
+  vm.runInContext('result = ' + literal, sandbox);
+  return Array.isArray(sandbox.result) ? sandbox.result : [];
+}
+
+/** 序列化条目：固定字段在前，未知字段追加在后 —— 加字段不会再把老字段吃掉 */
+const KEY_ORDER = ['num', 'title', 'file', 'words', 'blurb', 'date', 'seal', 'leaf', 'volume'];
+function fmtEntry(entry) {
+  const keys = KEY_ORDER.filter(function (k) { return entry[k] !== undefined && entry[k] !== ''; });
+  Object.keys(entry).forEach(function (k) { if (KEY_ORDER.indexOf(k) === -1) keys.push(k); });
+  return '  { ' + keys.map(function (k) {
+    const v = entry[k];
+    if (typeof v === 'number') return k + ': ' + v;
+    return k + ": '" + String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+  }).join(', ') + ' }';
+}
+
 const ROOT = path.join(__dirname);
 const NOVEL_DIR = path.join(ROOT, 'novel');
 const CHAPTERS_JS = path.join(ROOT, 'js', 'chapters.js');
@@ -73,17 +101,24 @@ if (!title) { console.error('未找到标题：Markdown 首行用 "# 标题"，�
 const words = countWords(md);
 
 // ===== 读取现有章节，推算编号 =====
+// 这里曾经用正则逐条匹配 CHAPTERS 的文本。后来条目多了 date/seal/leaf 三个字段，
+// 正则整体失配 → entries 变成空数组 → 章号算成 1 → 直接覆盖 chapter-01。
+// 所以改成真解析：把数组字面量放进 vm 求值，字段怎么加都不会再失配。
 const chaptersSrc = fs.readFileSync(CHAPTERS_JS, 'utf-8');
-const entryRe = /\{\s*num:\s*(\d+),\s*title:\s*'((?:[^'\\]|\\.)*)',\s*file:\s*'([^']+)',\s*words:\s*(\d+)(?:,\s*blurb:\s*'((?:[^'\\]|\\.)*)')?(?:,\s*volume:\s*'((?:[^'\\]|\\.)*)')?\s*\}/g;
-const entries = [];
-let m;
-while ((m = entryRe.exec(chaptersSrc)) !== null) {
-  entries.push({ num: +m[1], title: m[2], file: m[3], words: +m[4], blurb: m[5] || '', volume: m[6] || '' });
-}
+const entries = readChapters(chaptersSrc);
 const maxNum = entries.reduce((mx, e) => Math.max(mx, e.num), 0);
 const num = maxNum + 1;
 const file = 'chapter-' + String(num).padStart(2, '0') + '.html';
 const prev = entries.length ? entries[entries.length - 1] : null;
+
+// 保护：绝不允许覆盖已有章节页（宁可停下，也不要静默毁掉一章）
+const targetPath = path.join(NOVEL_DIR, file);
+if (fs.existsSync(targetPath)) {
+  console.error('✗ 目标章节页已存在：novel/' + file);
+  console.error('  通常意味着章号推算错了（chapters.js 解析失败，或文件被手动改名）。');
+  console.error('  已中止，未写入任何文件。请先检查 js/chapters.js 的 CHAPTERS 数组。');
+  process.exit(1);
+}
 
 // ===== 章节页模板 =====
 const prevNav = prev ? '<a href="' + prev.file + '">上一章</a>' : '<span>上一章</span>';
@@ -201,18 +236,26 @@ if (opts.dryRun) {
 const out = path.join(NOVEL_DIR, file);
 fs.writeFileSync(out, tpl);
 
+// 1.5) 源稿入库：manuscript/chapter-NN.md 是这一章的「原文快照」。
+//      tools/manuscript-sync.mjs 会在 push 前拿它和章节页逐字比对，
+//      「哪句话被谁改了」从此有据可查，而不是只有生成后的 HTML 可看。
+const msDir = path.join(ROOT, 'manuscript');
+fs.mkdirSync(msDir, { recursive: true });
+const msPath = path.join(msDir, file.replace(/\.html$/, '.md'));
+fs.writeFileSync(msPath, md, 'utf8');
+console.log('📄 源稿已存: manuscript/' + path.basename(msPath));
+
 // 2) 更新 chapters.js（保留头部注释与尾部代码，重建数组）
 const head = chaptersSrc.slice(0, chaptersSrc.indexOf('var CHAPTERS = ['));
 const tail = chaptersSrc.slice(chaptersSrc.indexOf('];', chaptersSrc.indexOf('var CHAPTERS = [')) + 2);
-const newEntry = { num, title, file, words, blurb: opts.blurb || '', volume: opts.volume || '' };
+const newEntry = { num, title, file, words };
+if (opts.blurb) newEntry.blurb = opts.blurb;
+if (opts.date) newEntry.date = opts.date;
+if (opts.seal) newEntry.seal = opts.seal;
+newEntry.leaf = (num - 1) % 8;
+if (opts.volume) newEntry.volume = opts.volume;
 const all = entries.concat([newEntry]);
-const fmt = e => {
-  let s = "  { num: " + e.num + ", title: '" + e.title.replace(/'/g, "\\'") + "', file: '" + e.file + "', words: " + e.words;
-  if (e.blurb) s += ", blurb: '" + e.blurb.replace(/'/g, "\\'") + "'";
-  if (e.volume) s += ", volume: '" + e.volume.replace(/'/g, "\\'") + "'";
-  return s + ' }';
-};
-fs.writeFileSync(CHAPTERS_JS, head + 'var CHAPTERS = [\n' + all.map(fmt).join(',\n') + '\n];' + tail);
+fs.writeFileSync(CHAPTERS_JS, head + 'var CHAPTERS = [\n' + all.map(fmtEntry).join(',\n') + '\n];' + tail);
 
 // 3) 给上一章补"下一章"链接
 if (prev) {

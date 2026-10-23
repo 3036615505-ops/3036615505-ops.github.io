@@ -19,7 +19,7 @@
  *      NETWORK_TIMEOUT（500ms），所以它们必须走缓存优先。
  *   3. /app/ 前缀（安装包、version.json）不拦截，直接交给网络
  */
-var CACHE = 'linyuan-v28';
+var CACHE = 'linyuan-v29';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
@@ -86,6 +86,7 @@ var PRECACHE = [
   '/assets/fonts/zcool-xiaowei-subset.woff2',
   '/css/style.css',
   '/js/transition.js',
+  '/js/reader.flags.js',
   '/js/reader.dom.js',
   '/js/reader.store.js',
   '/js/reader.engine.js',
@@ -283,6 +284,9 @@ self.addEventListener('fetch', function(e) {
 
   // 安装包与版本描述：绕过 SW 缓存，避免自更新拿到旧文件
   if (url.pathname.indexOf('/app/') === 0) return;
+
+  // 远程功能开关：必须每次取最新，否则「关掉一个功能」要等缓存过期才生效
+  if (url.pathname === '/flags.json') return;
 
   // ① 页面导航（HTML）→ 网络优先 + 500ms 兜底：新页面立刻可见，弱网不空等
   if (e.request.mode === 'navigate') {

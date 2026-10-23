@@ -124,7 +124,15 @@
     // 页面隐藏/卸载时传 force=true 补最后一把，保证离开前进度是准的。
     var now = Date.now();
     if (!force && now - lastProgressSave < 320) return;
-    if (restoring && !force) return;
+    /* 恢复位置的过程中不许写盘 —— 连 force 也不行。
+       场景：打开章节的瞬间点了返回，pagehide 会强制保存，而此时页面还停在
+       顶部（恢复还没落位），一写就把「读到 88%」覆盖成 0。用户自己滚过就放行。 */
+    if (restoring && !userScrolled) return;
+
+    /* 再兜一层：没滚动过就读到 0 —— 这不是「读者回到开头」，是页面还没恢复
+       或者刚要卸载。典型场景是「导入备份 → 自动重载」，旧页面的 pagehide 会
+       抢先写一个 0，把刚导入的进度抹掉。只有用户真的滚到顶部才允许写 0。 */
+    if (!userScrolled && pct === 0 && clampProgress(localStorage.getItem('reader-pos-' + chapterId)) > 0) return;
     lastProgressSave = now;
     localStorage.setItem('reader-pos-' + chapterId, String(pct));
     /* 同时存锚点：百分比用于显示与兜底，段落序号用于真正定位 */
@@ -148,7 +156,8 @@
 
   function restoreProgress() {
     var pct = clampProgress(localStorage.getItem('reader-pos-' + chapterId));
-    var anchor = readAnchor();
+    /* 锚点这条路出问题时的退路：只按百分比恢复（会偏，但能读） */
+    var anchor = LY.flags.isOn('anchorRestore') ? readAnchor() : null;
     refreshProgressControls(pct);
     if (!(pct > 0 && pct < 95)) return;
 
@@ -431,6 +440,9 @@
   window.toggleAutoScroll = function() {
     if (autoScroll.active) {
       stopAutoScroll(false);
+    } else if (!LY.flags.isOn('autoscroll')) {
+      /* 远程关掉了：给一句人话，别让用户以为按钮坏了 */
+      showToast('自动滚屏暂时关闭');
     } else {
       startAutoScroll();
       if (typeof closeSettings === 'function') closeSettings();

@@ -89,6 +89,8 @@
     initModalKeys();
     initSwipeHint();
     recordFootprints();
+    applyFeatureVisibility();
+    LY.flags.onChange(applyFeatureVisibility);
     initReadingTime();
     restoreProgress();
     initImmersive();
@@ -920,7 +922,7 @@
               '<button id="readWidthToggle" class="mode-toggle-btn" onclick="toggleReadWidth()"><span id="readWidthLabel">' + (state.readWidth === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关') + '</span></button>' +
             '</div>' +
           '</div>' +
-          '<div class="setting-group"><div class="setting-label">阅读辅助</div>' +
+          '<div class="setting-group" data-group="aids"><div class="setting-label">阅读辅助</div>' +
             '<div class="mode-toggle-row">' +
               '<button class="mode-toggle-btn' + (readingAids.dialogue ? ' is-on' : '') + '" data-aid="dialogue" onclick="toggleReadingAid(\'dialogue\')">' + aidLabel('dialogue') + '</button>' +
               '<button class="mode-toggle-btn' + (readingAids.cornerQuotes ? ' is-on' : '') + '" data-aid="cornerQuotes" onclick="toggleReadingAid(\'cornerQuotes\')">' + aidLabel('cornerQuotes') + '</button>' +
@@ -930,7 +932,7 @@
               '<button class="mode-toggle-btn' + (readingAids.remainTime ? ' is-on' : '') + '" data-aid="remainTime" onclick="toggleReadingAid(\'remainTime\')">' + aidLabel('remainTime') + '</button>' +
             '</div>' +
           '</div>' +
-          '<div class="setting-group"><div class="setting-label">阅读数据</div>' +
+          '<div class="setting-group" data-group="backup"><div class="setting-label">阅读数据</div>' +
             '<div class="mode-toggle-row">' +
               '<button class="mode-toggle-btn" onclick="openDataModal(\'export\')">备份数据</button>' +
               '<button class="mode-toggle-btn" onclick="openDataModal(\'import\')">恢复数据</button>' +
@@ -942,6 +944,21 @@
     ov.querySelector('.modal-backdrop').addEventListener('click', closeSettings);
   }
 
+
+  /* ===== 远程开关 → 界面可见性 =====
+     开关只藏按钮是不够的（用户可能从旧页面点进来），所以每个入口函数里都有
+     isOn 守卫；这里负责把入口本身也拿掉 —— 点到一个死按钮比没有按钮更糟。 */
+  function applyFeatureVisibility() {
+    var autoBtn = document.querySelector('button[onclick*="toggleAutoScroll"]');
+    if (autoBtn) autoBtn.style.display = LY.flags.isOn('autoscroll') ? '' : 'none';
+
+    var ov = document.getElementById('settingsOverlay');
+    if (!ov) return;   /* 面板还没建过，等 openSettings 时再同步 */
+    var aids = ov.querySelector('[data-group="aids"]');
+    if (aids) aids.style.display = LY.flags.isOn('readingAids') ? '' : 'none';
+    var backup = ov.querySelector('[data-group="backup"]');
+    if (backup) backup.style.display = LY.flags.isOn('backup') ? '' : 'none';
+  }
 
   window.openSettings = function() {
     var ov = document.getElementById('settingsOverlay');
@@ -957,6 +974,7 @@
     }
     var rw = document.getElementById('readWidthLabel');
     if (rw) rw.textContent = state.readWidth === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关';
+    applyFeatureVisibility();
     if (ov) { ov.classList.add('visible'); document.body.style.overflow = 'hidden'; }
     if (state.barsVisible) { stopAutoClose(); startAutoClose(); }
   };
@@ -993,6 +1011,7 @@
 
 
   function openDataModal(mode) {
+    if (!LY.flags.isOn('backup')) { showToast('数据备份暂时关闭'); return; }
     var ov = document.getElementById('dataOverlay');
     if (!ov) {
       ov = document.createElement('div');
@@ -1298,6 +1317,7 @@
 
   window.toggleReadingAid = function (key) {
     if (!(key in readingAids)) return;
+    if (!LY.flags.isOn('readingAids')) { showToast('阅读辅助暂时关闭'); return; }
     readingAids[key] = !readingAids[key];
     localStorage.setItem(READER_KEYS[key], readingAids[key] ? '1' : '0');
     if (key === 'dialogue' || key === 'cornerQuotes') renderContentDecorations();

@@ -93,6 +93,8 @@ const browser = spawn(browserPath, [
   '--no-first-run', '--no-default-browser-check', '--no-proxy-server',
   '--disable-gpu', '--disable-features=Translate', '--hide-scrollbars',
   '--window-size=390,844',
+  /* GitHub Actions 的容器里没有 user namespace，沙箱起不来；这两个参数是 CI 标配 */
+  ...(process.env.CI ? ['--no-sandbox', '--disable-dev-shm-usage'] : []),
   'about:blank'
 ], { stdio: 'ignore' });
 
@@ -268,6 +270,29 @@ await sleep(300);
 const clickedStop = await evaluate(`document.getElementById('autoScrollPill').classList.contains('visible')`);
 check('点悬浮条 ✕ 能真的停下（真实点击路径）', clickedStop === false);
 
+section('阅读页 · 远程开关');
+const flagFile = await evaluate(`fetch('/flags.json', { cache: 'no-store' }).then(r => r.json()).then(j => ({ keys: Object.keys(j.flags || {}).sort() }))`);
+check('flags.json 可读且登记了 4 个开关', Array.isArray(flagFile.keys) && flagFile.keys.length === 4, JSON.stringify(flagFile));
+await evaluate(`LY.flags.apply({ autoscroll: false }); 1`);
+const flagHidden = await evaluate(`(() => {
+  const b = document.querySelector('button[onclick*="toggleAutoScroll"]');
+  return b ? getComputedStyle(b).display === 'none' : null;
+})()`);
+check('关掉 autoscroll：工具栏入口被隐藏', flagHidden === true, 'hidden=' + flagHidden);
+await evaluate(`window.scrollTo(0, 0); toggleAutoScroll(); 1`);
+await sleep(500);
+const notStarted = await evaluate(`(() => {
+  const p = document.getElementById('autoScrollPill');
+  return p ? p.classList.contains('visible') : false;
+})()`);
+check('关掉 autoscroll：直接调用也不会启动', notStarted === false);
+await evaluate(`LY.flags.apply({ autoscroll: true }); 1`);
+const flagBack = await evaluate(`(() => {
+  const b = document.querySelector('button[onclick*="toggleAutoScroll"]');
+  return b ? getComputedStyle(b).display !== 'none' : null;
+})()`);
+check('恢复开关：入口立刻回来（不用刷新）', flagBack === true, 'shown=' + flagBack);
+
 section('阅读页 · 阅读数据备份');
 await evaluate(`localStorage.setItem('${POS_KEY}', '42'); openDataModal('export'); 1`);
 await sleep(300);
@@ -291,6 +316,11 @@ check('导入：第一次点击只上膛、不写入', armed.text.indexOf('确�
 await evaluate(`dataPrimaryAction(); 1`);
 await sleep(300);
 const applied = await evaluate(`({ pos: localStorage.getItem('${POS_KEY}'), foreign: localStorage.getItem('other-app') })`);
+/* 导入后会自动 reload。旧页面的 pagehide 会抢先写一个 0，把刚导入的进度抹掉 ——
+   这条断言就是防它回潮（只有用户真滚到顶部才允许写 0）。 */
+await sleep(1800);
+const afterImportReload = await evaluate(`({ pos: localStorage.getItem('${POS_KEY}'), y: Math.round(scrollY) })`);
+check('导入后自动重载：进度没被抹成 0，且已落回原位', afterImportReload.pos === '88' && afterImportReload.y > 0, JSON.stringify(afterImportReload));
 check('导入：第二次点击写入备份值', applied.pos === '88', 'pos=' + applied.pos);
 check('导入：白名单外的键被忽略', applied.foreign === null);
 
@@ -308,10 +338,16 @@ await evaluate(`localStorage.setItem('reader-footprints', JSON.stringify({
 await goto(SHELF);
 const shelf = await evaluate(`({
   pills: Array.from(document.querySelectorAll('#novelFootprintsMetrics .footprint-pill')).map(el => el.textContent),
-  visible: (document.getElementById('novelFootprints') || {}).style ? document.getElementById('novelFootprints').style.display : ''
+  visible: (document.getElementById('novelFootprints') || {}).style ? document.getElementById('novelFootprints').style.display : '',
+  debug: {
+    ready: document.readyState,
+    hasFp: !!document.getElementById('novelFootprints'),
+    fp: (localStorage.getItem('reader-footprints') || '').slice(0, 40),
+    pos: localStorage.getItem('reader-pos${CHAPTER_KEY}')
+  }
 })`);
 const pills = shelf.pills || [];
-check('足迹显示为 4 枚指标', pills.length === 4, JSON.stringify(pills));
+check('足迹显示为 4 枚指标', pills.length === 4, JSON.stringify(pills) + ' debug=' + JSON.stringify(shelf.debug));
 check('时长格式正确（1 时 30 分）', pills.some(t => t.indexOf('1 时 30 分') >= 0), JSON.stringify(pills));
 check('连续天数从昨天起算（今天未读不断签）', pills.some(t => t.indexOf('2 天') >= 0), JSON.stringify(pills));
 
