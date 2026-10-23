@@ -189,13 +189,37 @@
   var KAI_FAMILY = 'LinyuanKai';
   var kaiLoading = false;
 
+  /* 系统字体名：WebView 不会自动跟随 ROM 主题字体，只能向壳要名字再交给 CSS。
+     壳（v1.8.3+）通过 getSystemFontFamily() 返回，老壳没有这个方法 → 返回空串。 */
+  var systemFontName = null;
+
+  function detectSystemFontName() {
+    if (systemFontName !== null) return systemFontName;
+    systemFontName = '';
+    try {
+      var bridge = window.LinyuanApp;
+      if (bridge && typeof bridge.getSystemFontFamily === 'function') {
+        var raw = String(bridge.getSystemFontFamily() || '').trim();
+        // 去掉可能存在的引号，避免拼进 CSS 时把字体栈写坏
+        raw = raw.replace(/["']/g, '');
+        if (raw && raw !== 'sans-serif' && raw !== 'default') systemFontName = raw;
+      }
+    } catch (e) {
+      systemFontName = '';
+    }
+    return systemFontName;
+  }
+
   function fontStackFor(family) {
     if (family === 'kai') {
       /* 自带楷体优先；万一字体没加载成功，退回系统的楷/宋，最后才是 serif */
       return '"' + KAI_FAMILY + '","Kaiti SC","STKaiti","KaiTi","楷体","Noto Serif CJK SC",serif';
     }
     if (family === 'system') {
-      return 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
+      /* 先点名系统字体（ROM 主题字体只有点名才生效），再退回通用栈 */
+      var name = detectSystemFontName();
+      var generic = 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
+      return name ? '"' + name + '",' + generic : generic;
     }
     return '"Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif';
   }
@@ -214,6 +238,16 @@
     }, function () {
       kaiLoading = false;
     });
+  }
+
+  function fontHintText() {
+    var base = '「系统」跟随手机的字体设置；「楷体」首次选择需下载约 0.17MB';
+    if (state.fontFamily !== 'system') return base;
+    var name = detectSystemFontName();
+    if (name) {
+      return '已跟随系统字体：' + name + '。「楷体」首次选择需下载约 0.17MB';
+    }
+    return '未识别到系统字体名（可能是手机未开放，或壳版本过旧；「楷体」需下载约 0.17MB）';
   }
 
   function refreshFontButtons() {
@@ -235,6 +269,8 @@
     if (family === 'kai') ensureKaiLoaded();
     var label = document.getElementById('fontFamilyLabel');
     if (label) label.textContent = fontFamilyLabels[family] || '黑体';
+    var hint = document.getElementById('fontFamilyHint');
+    if (hint) hint.textContent = fontHintText();
     refreshFontButtons();
   }
 
@@ -910,7 +946,7 @@
               '<button class="mode-toggle-btn" data-font="system" onclick="setFontFamily(\'system\')">系统</button>' +
               '<button class="mode-toggle-btn" data-font="kai" onclick="setFontFamily(\'kai\')">楷体</button>' +
             '</div>' +
-            '<div class="setting-hint">「系统」跟随手机的字体设置；「楷体」首次选择需下载约 0.17MB</div>' +
+            '<div class="setting-hint" id="fontFamilyHint">' + fontHintText() + '</div>' +
           '</div>' +
           '<div class="setting-group"><div class="setting-label">版式</div>' +
             '<div class="mode-toggle-row">' +
@@ -929,6 +965,8 @@
     var circles = ov.querySelectorAll('.theme-circle');
     circles.forEach(function(c) { c.classList.toggle('active', c.dataset.theme === state.theme); });
     refreshFontButtons();
+    var fontHintBox = document.getElementById('fontFamilyHint');
+    if (fontHintBox) fontHintBox.textContent = fontHintText();
     var rw = document.getElementById('readWidthLabel');
     if (rw) rw.textContent = state.readWidth === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关';
     if (ov) { ov.classList.add('visible'); document.body.style.overflow = 'hidden'; }
