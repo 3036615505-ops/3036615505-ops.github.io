@@ -1,0 +1,9 @@
+# hooks 必须有可执行位，且用 LF 结尾（CRLF 会让 shebang 失效）
+.githooks/* text eol=lf
+
+# 站点源码统一 LF，避免 Windows 上 checkout 后整文件 diff
+*.js text eol=lf
+*.mjs text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.json text eol=lf

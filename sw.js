@@ -1,20 +1,35 @@
 /**
  * sw.js — 临渊羡鱼 Service Worker
  *
- * 策略（linyuan-v13 起）：
+ * 策略（linyuan-v16 起）：
  *   1. 页面导航（任何 HTML）+ 章节列表 js/chapters.js → 网络优先
  *      网络秒回就用网络；**若该请求的精确 URL 已在缓存中命中**，则最多等
  *      NETWORK_TIMEOUT 就回落缓存（弱网不空等）。精确 URL 未命中时没有超时兜底，
  *      会一直等网络——所以「最多 500ms」是有前提的，不是无条件保证。
- *   2. 其余静态资源（CSS/JS/图片/字体）→ 缓存优先 + 后台静默刷新
- *      CSS/JS 的引用都带版本号（如 css/style.css?v=20）：改版时把版本号 +1，
- *      URL 变化 → 旧缓存自然失效 → 缓存优先不会让旧样式滞留。
- *      反过来，CSS 与 <head> 里的 JS 都是渲染阻塞资源，走网络优先会让首屏
- *      多等最多 NETWORK_TIMEOUT（500ms），表现为「进页面先白屏/卡一下」，
- *      所以它们必须走缓存优先。
+ *   2. 其余静态资源（CSS/JS/图片/字体）→ 缓存优先
+ *      **命中就立刻返回缓存，热路径零网络请求**；只有当该缓存条目「太旧」时
+ *      才在后台补一次刷新（按 date 头算年龄，文本 24h / 二进制 7d，见 CACHE_TTL）。
+ *      这些引用都带版本号（如 css/style.css?v=25），改版时版本号 +1 → URL 变 →
+ *      旧条目自然没人再请求，所以正常情况下根本轮不到 TTL 生效；
+ *      TTL 只是「忘了 +1 版本号」时的自愈护栏，把「永久陈旧」变成「最多陈旧一个 TTL」。
+ *      CSS 与 <head> 里的 JS 是渲染阻塞资源，走网络优先会为首屏多等最多
+ *      NETWORK_TIMEOUT（500ms），所以它们必须走缓存优先。
  *   3. /app/ 前缀（安装包、version.json）不拦截，直接交给网络
  */
-var CACHE = 'linyuan-v15';
+var CACHE = 'linyuan-v16';
+
+/**
+ * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
+ * 分两档是因为变更频率差得很远：
+ *   - 文本（HTML / CSS / JS / JSON）：24 小时。发版后最坏一天内一定自愈。
+ *   - 二进制（图片 / 字体）：7 天。它们几乎不变，勤刷只是浪费流量。
+ * 注意：TTL 只管「后台刷新」，**不影响本次响应** —— 命中永远先用缓存秒回。
+ */
+var CACHE_TTL = {
+  text: 24 * 60 * 60 * 1000,
+  binary: 7 * 24 * 60 * 60 * 1000
+};
+var TEXT_EXTENSIONS = ['.html', '.htm', '.css', '.js', '.mjs', '.json', '.svg', '.txt', '.xml'];
 
 /**
  * 仍然需要「网络优先 + 500ms 超时兜底」的资源：
@@ -150,24 +165,64 @@ function networkFirst(request) {
   });
 }
 
+/** 按扩展名判定该资源的自愈 TTL（文本 24h / 二进制 7d） */
+function ttlFor(url) {
+  var pathname = new URL(url).pathname.toLowerCase();
+  for (var i = 0; i < TEXT_EXTENSIONS.length; i++) {
+    var ext = TEXT_EXTENSIONS[i];
+    if (pathname.slice(-ext.length) === ext) return CACHE_TTL.text;
+  }
+  return CACHE_TTL.binary;
+}
+
 /**
- * 缓存优先。
+ * 缓存条目是否「太旧」。
+ * 判据是缓存副本自带的 date 头（GitHub Pages 与本地静态服务器都会带，
+ * 且 cache.put 会把它一起存进缓存），不是「我们什么时候存进去的」——
+ * 这样连预缓存（install 时抓的那批）也能正确算年龄。
  *
- * 改前这里是无条件 stale-while-revalidate：命中缓存也照样发一次 fetch(request)
- * 去刷新。理由本来是「样式改完第一次打开就生效」，但实际上全站 CSS/JS/HTML 都带
- * ?v= 版本号、图片与字体几乎不变 —— 版本号已经把新鲜度问题解决了，
- * 这次后台刷新纯属浪费：实测在 HTTP 缓存不可用（被驱逐）时，
- * 单次导航服务器仍收到 267,783B（字体 201KB + CSS 16KB + 图片…）。
+ * date 头缺失或解析不出来时**一律当作未过期**：
+ * 宁可继续用缓存，也不要因为拿不到 date 就退化成「每次命中都发请求」，
+ * 那样会把这一轮优化掉的流量又全加回来。
+ */
+function isStale(cached, request) {
+  var date = cached.headers.get('date');
+  if (!date) return false;
+  var timestamp = Date.parse(date);
+  if (!timestamp) return false;
+  return (Date.now() - timestamp) > ttlFor(request.url);
+}
+
+/** 后台补一次刷新：成功就写回缓存；失败静默（不影响本次响应，下次命中再试） */
+function refreshInBackground(request) {
+  fetch(request).then(function(res) {
+    putCache(request, res);
+  }).catch(function() { /* 离线/弱网：保持旧缓存，下次命中再试 */ });
+}
+
+/**
+ * 缓存优先 + TTL 自愈。
  *
- * 现在：
- *   命中 → 直接返回缓存，不发网络请求
- *   未命中 → 请求网络 → 写缓存 → 返回；失败才用 ignoreSearch 的预缓存兜底
- * 代价：改了 css/js 但忘了 +1 版本号，用户会继续用旧缓存 ——
- *       所以版本号递增必须机械化（tools/bump-assets.mjs）。
+ * 历史两版对照：
+ *   v15 之前：无条件 stale-while-revalidate —— 命中缓存也照样 fetch 一次刷新，
+ *             理由是「样式改完第一次打开就生效」。实测在 HTTP 缓存被驱逐时，
+ *             单次导航服务器仍收到 267,783B（字体 201KB + CSS 16KB + 图片…）。
+ *   v15：命中即返回、不发请求，流量降到 10.7KB。
+ *        但引入了新风险：若内容变了而 ?v= 与 CACHE 名都没变，
+ *        缓存永远命中 → 新规则**永不生效**（reload、清 HTTP 缓存都救不回来）。
+ *   v16（现在）：
+ *     命中 → 立刻返回缓存（热路径仍是 0 额外请求、0 额外字节）
+ *     命中且条目年龄 > TTL → 顺手发一次后台刷新（不阻塞本次响应）
+ *     未命中 → 请求网络 → 写缓存 → 返回；失败才用 ignoreSearch 的预缓存兜底
+ *     于是「忘了 +1 版本号」最坏也就陈旧一个 TTL（文本 24h / 二进制 7d），
+ *     而不是永久。版本号仍是第一道防线（tools/bump-assets.mjs + pre-push hook）。
  */
 function cacheFirst(request) {
   return caches.match(request).then(function(cached) {
-    if (cached) return cached;
+    if (cached) {
+      if (isStale(cached, request)) refreshInBackground(request);
+      return cached;
+    }
 
     return fetch(request).then(function(res) {
       putCache(request, res);
@@ -202,6 +257,6 @@ self.addEventListener('fetch', function(e) {
     return;
   }
 
-  // ③ CSS / JS / 图片 / 字体 → 缓存优先 + 后台刷新（渲染阻塞资源不再等网络）
+  // ③ CSS / JS / 图片 / 字体 → 缓存优先（命中即返回，超龄才后台自愈刷新）
   e.respondWith(cacheFirst(e.request));
 });

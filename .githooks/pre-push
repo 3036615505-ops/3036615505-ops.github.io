@@ -1,0 +1,68 @@
+#!/bin/sh
+#
+# .githooks/pre-push — 发版前校验（只拦截，不改文件）
+#
+# 为什么需要它：sw.js 的 cacheFirst 现在是「命中即返回」，`?v=` 版本号是让新
+# CSS/JS 生效的第一道防线。忘了 +1 → 用户最长要吃一天旧缓存（TTL 自愈才兜回来）。
+# 靠人记不可靠，所以把检查放进 push 这一关。
+#
+# 启用（每个 clone 做一次）：
+#     git config core.hooksPath .githooks
+# 临时跳过（不推荐）：
+#     git push --no-verify
+#
+# 检查两项：
+#   1. node tools/bump-assets.mjs --check   —— 6 个 HTML 的 ?v= 是否统一（混版 = 有人拿旧文件）
+#   2. node tools/check-precache.mjs        —— sw.js 的 PRECACHE 每条是否真实存在、脚本引用是否齐全
+# 任一失败 → 退出码 1 → push 被阻止。想放行请先修好，不要养成 --no-verify 的习惯。
+
+set -u
+
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo ".")
+cd "$REPO_ROOT" || exit 0
+
+if ! command -v node >/dev/null 2>&1; then
+  echo ""
+  echo "⚠  未找到 node，跳过发版前校验。"
+  echo "   这意味着「?v= 混版」和「PRECACHE 缺失」这次不会被拦截。"
+  echo "   有 Node 的环境请手动跑："
+  echo "     node tools/bump-assets.mjs --check"
+  echo "     node tools/check-precache.mjs"
+  echo ""
+  exit 0
+fi
+
+failed=0
+
+echo ""
+echo "→ [1/2] 检查全站 ?v= 版本号是否统一 …"
+if ! node tools/bump-assets.mjs --check; then
+  failed=1
+fi
+
+echo ""
+echo "→ [2/2] 检查 sw.js 的 PRECACHE 条目与脚本引用 …"
+if ! node tools/check-precache.mjs; then
+  failed=1
+fi
+
+if [ "$failed" -ne 0 ]; then
+  echo ""
+  echo "✗ 发版前校验未通过，push 已被阻止。"
+  echo ""
+  echo "修复方式："
+  echo "  ① 版本号混版： node tools/bump-assets.mjs --write"
+  echo "     （扫描 6 个 HTML，取最大 ?v= +1 后全站统一替换；只改文件，不自动 commit）"
+  echo "  ② 预缓存缺失： 按上面列出的路径补文件，或从 sw.js 的 PRECACHE 删掉该条"
+  echo "  ③ 若改了 sw.js 的 PRECACHE 内容，记得把 CACHE 版本号一起 +1"
+  echo "     （如 linyuan-v16 → v17，否则老用户不会重新 install）"
+  echo ""
+  echo "确实要绕过（不推荐）： git push --no-verify"
+  echo ""
+  exit 1
+fi
+
+echo ""
+echo "✓ 发版前校验通过"
+echo ""
+exit 0
