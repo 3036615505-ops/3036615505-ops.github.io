@@ -54,7 +54,16 @@ const CANDIDATES = {
 const browserPath = (CANDIDATES[process.platform] || []).find(p => fs.existsSync(p));
 
 if (typeof WebSocket === 'undefined' || !browserPath) {
-  console.log('↷ 跳过端到端测试：' + (typeof WebSocket === 'undefined' ? 'Node 版本低于 22（无内置 WebSocket）' : '未找到 Chrome/Edge'));
+  const reason = typeof WebSocket === 'undefined'
+    ? 'Node 版本低于 22（无内置 WebSocket）'
+    : '未找到 Chrome/Edge';
+  /* 本地没有浏览器就跳过，别卡住 push；但 CI 里"跳过"等于假绿，
+     必须报错 —— 否则哪天镜像里没装浏览器，测试会一路绿灯放行。 */
+  if (process.env.CI) {
+    console.error('✗ CI 环境必须能跑端到端测试，但' + reason);
+    process.exit(1);
+  }
+  console.log('↷ 跳过端到端测试：' + reason);
   process.exit(0);
 }
 
