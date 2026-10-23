@@ -2984,10 +2984,11 @@ body.reading-page {
 }
 
 /* 首屏预留高度：目录由 JS 填充，空态高度为 0，填入后会顶动页脚（CLS）。
-   2 条 .date-item 实测约 83.5px（12+19.5+10+0.5 各一条），这里取 86px 留字体差异余量。
-   章节增到 3 条以上时仍会有一行左右的位移，属可接受范围。 */
+   单条 .date-item 实测约 41.5px（12+10 内边距 + 13px 衬线行高），年份条约 38px
+   （14 上内边距 + 22px 年份 + 细分隔线）。3 章 + 1 条年份 ≈ 165px，这里取 168px
+   留字体差异余量。章节继续增加时仍会有一行左右的位移，属可接受范围。 */
 #dateList {
-  min-height: 86px;
+  min-height: 168px;
 }
 
 .date-list-header {
@@ -3005,6 +3006,42 @@ body.reading-page {
 .date-list-total {
   font-size: 11px;
   color: var(--accent);
+}
+
+/* 年份分隔条（2026-10-24）：故事跨年后日期必然重名——明年还有「九月二十七」，
+   光看日期分不出是哪一年。所以年份独立成条，字号拉到 22px（章节行是 13px），
+   视觉上当作「分卷」用。同一年只出现一次，条数与年份数相等。 */
+.date-year {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0 2px;
+}
+
+.date-year:first-child {
+  padding-top: 2px;
+}
+
+.date-year-label {
+  flex-shrink: 0;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  color: var(--text);
+}
+
+.date-year-rule {
+  flex: 1;
+  height: 0.5px;
+  background: var(--border-light);
+}
+
+.date-year-count {
+  flex-shrink: 0;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--text-muted);
 }
 
 .date-item {
