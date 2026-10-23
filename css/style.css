@@ -3073,10 +3073,18 @@ body.reading-page {
 }
 
 .date-item-date {
-  width: 64px;
+  /* 64px 只够放「九月二十七」这种单日。一章可能跨好几天（第一章从九月一日
+     写到九月二十七），要显示成「九月一日–二十七」，所以放到 96px 并禁止折行 ——
+     固定宽度是为了让各行标题左边缘对齐，宁可单日留白也别让列宽随内容跳。
+     跨月的区间（九月二十八–十月三）会更长，极端情况用省略号收尾。 */
+  flex-shrink: 0;
+  width: 96px;
   font-size: 11px;
   color: var(--text-muted);
   margin-left: 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .date-item-title {

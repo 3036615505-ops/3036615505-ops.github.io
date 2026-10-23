@@ -18,9 +18,9 @@
        抢走同一条连接上的带宽（实测冷启动：cover 199ms 起、CSS 201ms 起）。
        这里改指 144x196 的 cover-thumb.webp（5.7KB），
        不再用 528x720 的 cover.webp（69.4KB）去画一个 46x62 的方块。 -->
-  <link rel="stylesheet" href="css/style.css?v=47">
+  <link rel="stylesheet" href="css/style.css?v=48">
   <link rel="preload" as="image" href="assets/cover-thumb.webp">
-  <script src="js/theme.js?v=47"></script>
+  <script src="js/theme.js?v=48"></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame home-page">
@@ -119,8 +119,8 @@
        弱网下 chapters.js 没回来之前整页白屏（首屏可感知卡顿）。
        放在这里首屏骨架先画出来；但必须保持在下面依赖 CHAPTERS 的内联脚本之前
        （经典脚本按文档顺序执行，内联脚本是同步 IIFE，等不到任何异步回调）。 -->
-  <script src="js/chapters.js?v=47"></script>
-  <script src="js/transition.js?v=47"></script>
+  <script src="js/chapters.js?v=48"></script>
+  <script src="js/transition.js?v=48"></script>
 
   <script>
   (function() {
@@ -244,13 +244,28 @@
         return v >= 1 && v <= 12 ? v : 0;
       }
 
+      // 一章里可能有多个日期（第一章从九月一日写到九月二十七）。
+      // dates 写两个以上就显示成区间「九月一日–二十七」，同月时省略重复的「月」；
+      // 只写一个或不写 dates 时退回 date，行为与以前一致。
+      function dateSpanOf(ch) {
+        var list = (ch.dates && ch.dates.length ? ch.dates : [ch.date]).filter(function (d) { return d; });
+        if (!list.length) return '';
+        if (list.length === 1) return list[0];
+        var from = list[0];
+        var to = list[list.length - 1];
+        var a1 = /^(.+?月)(.*)$/.exec(from);
+        var a2 = /^(.+?月)(.*)$/.exec(to);
+        if (a1 && a2 && a1[1] === a2[1]) to = a2[2];
+        return from + '–' + to;
+      }
+
       // 返回 { key, label }：key 相同就归为同一段（跨元旦也归在一起），
       // label 里的年份取该段第一章的年份。
       // 高中以外（推算年级越界）或日期缺失时，退回只按年份分段。
       function termGroupOf(ch) {
         if (!ch.year) return null;
         if (ch.term) return { key: 't' + ch.year + ch.term, label: cnYear(ch.year) + ' · ' + ch.term };
-        var m = monthOf(ch.date);
+        var m = monthOf(ch.dates && ch.dates.length ? ch.dates[0] : ch.date);   // 学期按首日判
         if (!m) return { key: 'y' + ch.year, label: cnYear(ch.year) };
         var academicYear = m >= 9 ? ch.year : ch.year - 1;
         var grade = academicYear - (typeof COHORT_YEAR === 'number' ? COHORT_YEAR : 2022);
@@ -281,7 +296,7 @@
         var badge = (hasNew && isLast) ? '<span class="date-item-new">新</span>' : '';
         html += '<a href="novel/' + ch.file + '" class="date-item">' +
           '<span class="date-item-leaf">' + icon + '</span>' +
-          '<span class="date-item-date">' + (ch.date || '') + '</span>' +
+          '<span class="date-item-date">' + dateSpanOf(ch) + '</span>' +
           '<span class="date-item-title">' + ch.title + '</span>' +
           badge + state +
           '<span class="date-item-words">' + ch.words + '字</span>' +

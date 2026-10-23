@@ -3,7 +3,7 @@
  * new-chapter.js — 从 Markdown 生成新章节页
  *
  * 用法：
- *   node new-chapter.js <原稿.md> [--title "标题"] [--blurb "目录简介"] [--afterglow "章末尾语"] [--year 2022] [--term "高一上"] [--volume "卷名"] [--dry-run]
+ *   node new-chapter.js <原稿.md> [--title "标题"] [--blurb "目录简介"] [--afterglow "章末尾语"] [--year 2022] [--term "高一上"] [--dates "九月一日,九月二十七"] [--volume "卷名"] [--dry-run]
  *
  * 做三件事：
  *   1. 生成 novel/chapter-NN.html（含 SEO/OG/JSON-LD/分享按钮）
@@ -35,7 +35,7 @@ function readChapters(src) {
 }
 
 /** 序列化条目：固定字段在前，未知字段追加在后 —— 加字段不会再把老字段吃掉 */
-const KEY_ORDER = ['num', 'title', 'file', 'words', 'blurb', 'year', 'date', 'seal', 'leaf', 'volume'];
+const KEY_ORDER = ['num', 'title', 'file', 'words', 'blurb', 'year', 'date', 'dates', 'seal', 'leaf', 'volume'];
 
 /** 年份统一存成数字：首页要拿它算学年/年级，存「二〇二二」这种字符串没法减。
     接受 2023 与「二〇二三」「二零二三」两种写法。 */
@@ -57,6 +57,11 @@ function fmtEntry(entry) {
   Object.keys(entry).forEach(function (k) { if (KEY_ORDER.indexOf(k) === -1) keys.push(k); });
   return '  { ' + keys.map(function (k) {
     const v = entry[k];
+    if (Array.isArray(v)) {
+      return k + ': [' + v.map(function (x) {
+        return "'" + String(x).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+      }).join(', ') + ']';
+    }
     if (typeof v === 'number') return k + ': ' + v;
     return k + ": '" + String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
   }).join(', ') + ' }';
@@ -344,7 +349,13 @@ if (opts.blurb) newEntry.blurb = opts.blurb;
 // 首页光阴册按它插年份分隔条，漏写就会并进上一年的组里。
 newEntry.year = toYearValue(opts.year) || (prev && prev.year) || '';
 if (opts.term) newEntry.term = opts.term;   // 学期默认由首页按 date 推算，只有算错时才手写
-if (opts.date) newEntry.date = opts.date;
+// --dates 写一章里的多个日期（逗号分隔）；只有一个就退回 date 字段。
+// 首页据此显示区间「九月一日–二十七」，学期归属按第一个日期算。
+if (opts.dates) {
+  var dateList = String(opts.dates).split(/[,，]/).map(function (x) { return x.trim(); }).filter(Boolean);
+  if (dateList.length > 1) newEntry.dates = dateList;
+  else if (dateList.length === 1) newEntry.date = dateList[0];
+} else if (opts.date) newEntry.date = opts.date;
 if (opts.seal) newEntry.seal = opts.seal;
 newEntry.leaf = (num - 1) % 8;
 if (opts.volume) newEntry.volume = opts.volume;
