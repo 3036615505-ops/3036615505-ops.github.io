@@ -3610,3 +3610,75 @@ body.app-immersive .chapter-content {
 .lightbox-close:active {
   background: rgba(30, 21, 12, 0.75);
 }
+
+/* ===== 自动滚动悬浮条（js/reader.js） =====
+   仅在自动滚动进行时出现；置于底部状态栏上方、弹层（z400）之下。
+   工具栏显示必然伴随一次触摸 → 自动滚动已停，因此不会与底部工具栏重叠。 */
+#autoScrollPill {
+  position: fixed;
+  right: 14px;
+  bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+  z-index: 380;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 3px 6px;
+  background: var(--reader-surface);
+  border: 1px solid var(--reader-border);
+  border-radius: 22px;
+  box-shadow: var(--reader-shadow, 0 4px 16px rgba(60, 40, 20, 0.12));
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+#autoScrollPill.visible {
+  opacity: 0.95;
+  transform: none;
+  pointer-events: auto;
+}
+#autoScrollPill button {
+  appearance: none;
+  border: none;
+  background: none;
+  width: 36px;
+  height: 32px;
+  padding: 0;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--reading-text);
+  cursor: pointer;
+}
+#autoScrollPill button:active { opacity: 0.6; }
+#autoScrollPill .auto-level {
+  min-width: 20px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--reading-text);
+  opacity: 0.72;
+  font-variant-numeric: tabular-nums;
+}
+#autoScrollPill .auto-pp { font-size: 11px; letter-spacing: -1px; }
+#autoScrollPill .auto-stop { font-size: 12px; opacity: 0.8; }
+
+/* 设置面板：自动滚动速度滑杆 */
+.speed-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.speed-cap {
+  font-size: 12px;
+  color: var(--reading-text);
+  opacity: 0.6;
+}
+.speed-slider {
+  flex: 1;
+  height: 22px;
+  accent-color: var(--accent);
+  background: none;
+  border: none;
+  padding: 0;
+}

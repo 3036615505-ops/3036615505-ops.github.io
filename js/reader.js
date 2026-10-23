@@ -336,15 +336,18 @@
     tap.innerHTML = '<button type="button" class="reader-tap-zone top" aria-label="向上翻页"></button><button type="button" class="reader-tap-zone middle" aria-label="显示工具栏"></button><button type="button" class="reader-tap-zone bottom" aria-label="向下翻页"></button>';
 
     tap.querySelector('.reader-tap-zone.top').addEventListener('click', function() {
+      stopAutoScroll(false);
       if (state.barsVisible) hideBars();
       window.scrollBy({ top: -window.innerHeight * 0.85, behavior: 'smooth' });
     });
 
     tap.querySelector('.reader-tap-zone.middle').addEventListener('click', function() {
+      stopAutoScroll(false);
       state.barsVisible ? hideBars() : showBars();
     });
 
     tap.querySelector('.reader-tap-zone.bottom').addEventListener('click', function() {
+      stopAutoScroll(false);
       if (state.barsVisible) hideBars();
       window.scrollBy({ top: window.innerHeight * 0.85, behavior: 'smooth' });
     });
@@ -891,10 +894,28 @@
               '<button id="readWidthToggle" class="mode-toggle-btn" onclick="toggleReadWidth()"><span id="readWidthLabel">' + (state.readWidth === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关') + '</span></button>' +
             '</div>' +
           '</div>' +
+          '<div class="setting-group"><div class="setting-label">自动滚动</div>' +
+            '<div class="mode-toggle-row">' +
+              '<button id="autoScrollToggle" class="mode-toggle-btn" onclick="toggleAutoScroll()"><span id="autoScrollLabel">关</span></button>' +
+            '</div>' +
+            '<div class="speed-row"><span class="speed-cap">慢</span>' +
+              '<input type="range" id="autoScrollSpeed" class="speed-slider" min="1" max="10" step="1" value="' + autoScroll.level + '" aria-label="自动滚动速度">' +
+              '<span class="speed-cap">快</span>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
     ov.querySelector('.modal-backdrop').addEventListener('click', closeSettings);
+    var asSlider = ov.querySelector('#autoScrollSpeed');
+    if (asSlider) {
+      asSlider.value = autoScroll.level;
+      asSlider.addEventListener('input', function() {
+        autoScroll.level = parseInt(asSlider.value, 10) || 3;
+        saveAutoSpeed();
+        updateAutoUI();
+      });
+    }
   }
 
   window.openSettings = function() {
@@ -906,6 +927,10 @@
     if (fl) fl.textContent = fontFamilyLabels[state.fontFamily] || '黑体';
     var rw = document.getElementById('readWidthLabel');
     if (rw) rw.textContent = state.readWidth === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关';
+    var asLabel = document.getElementById('autoScrollLabel');
+    if (asLabel) asLabel.textContent = autoScroll.active ? (autoScroll.paused ? '已暂停' : '进行中') : '关';
+    var asSliderOpen = document.getElementById('autoScrollSpeed');
+    if (asSliderOpen) asSliderOpen.value = autoScroll.level;
     if (ov) { ov.classList.add('visible'); document.body.style.overflow = 'hidden'; }
     if (state.barsVisible) { stopAutoClose(); startAutoClose(); }
   };
@@ -914,6 +939,125 @@
     var ov = document.getElementById('settingsOverlay');
     if (ov) { ov.classList.remove('visible'); document.body.style.overflow = ''; }
   };
+
+  /* ===== 自动滚动（自动下滑翻页） =====
+     rAF 逐帧滚动，速度按时间计算（与帧率无关）；速度 10 档存 localStorage。
+     停止条件：点屏幕（touchstart/mousedown，悬浮条除外）、点悬浮条 ✕、到章末。
+     打开任何面板/工具栏也必然经过一次触摸 → 自动停止，与站点交互一致。 */
+  var autoScroll = { active: false, paused: false, level: 3, raf: 0, lastT: 0, pos: 0 };
+  var AS_SPEEDS = [8, 15, 24, 35, 48, 64, 84, 108, 136, 170]; /* px/s */
+
+  function loadAutoSpeed() {
+    var v = parseInt(localStorage.getItem('reader-autoscroll-speed') || '3', 10);
+    autoScroll.level = isNaN(v) ? 3 : Math.min(10, Math.max(1, v));
+  }
+  function saveAutoSpeed() {
+    localStorage.setItem('reader-autoscroll-speed', String(autoScroll.level));
+  }
+
+  function autoScrollStep(t) {
+    if (!autoScroll.active || autoScroll.paused) return;
+    var dt = autoScroll.lastT ? Math.min(100, t - autoScroll.lastT) : 16; /* 切后台回来不跳变 */
+    autoScroll.lastT = t;
+    var doc = document.documentElement;
+    var max = doc.scrollHeight - window.innerHeight;
+    var y = window.scrollY || doc.scrollTop || 0;
+    if (y >= max - 1) { stopAutoScroll(true); return; } /* 到章末自动停 */
+    /* 慢速档每帧步长 < 1px，直接 scrollTo 会被取整卡死 → 必须浮点累积 */
+    autoScroll.pos = Math.min(max, autoScroll.pos + AS_SPEEDS[autoScroll.level - 1] * dt / 1000);
+    window.scrollTo(0, Math.round(autoScroll.pos));
+    autoScroll.raf = requestAnimationFrame(autoScrollStep);
+  }
+
+  function startAutoScroll() {
+    if (autoScroll.active) return;
+    loadAutoSpeed();
+    autoScroll.active = true; autoScroll.paused = false; autoScroll.lastT = 0;
+    autoScroll.pos = window.scrollY || 0; /* 从当前位置起步 */
+    ensureAutoPill();
+    updateAutoUI();
+    autoScroll.raf = requestAnimationFrame(autoScrollStep);
+  }
+
+  function stopAutoScroll(reachedEnd) {
+    if (!autoScroll.active) return;
+    autoScroll.active = false; autoScroll.paused = false;
+    cancelAnimationFrame(autoScroll.raf);
+    updateAutoUI();
+    if (reachedEnd) showToast('已到本章末尾');
+  }
+
+  function pauseAutoScroll(paused) {
+    if (!autoScroll.active) return;
+    autoScroll.paused = paused;
+    autoScroll.lastT = 0;
+    autoScroll.pos = window.scrollY || 0; /* 位置与实际滚动对齐 */
+    if (!paused) autoScroll.raf = requestAnimationFrame(autoScrollStep);
+    updateAutoUI();
+  }
+
+  function nudgeAutoScroll(delta) {
+    autoScroll.level = Math.min(10, Math.max(1, autoScroll.level + delta));
+    saveAutoSpeed();
+    updateAutoUI();
+  }
+
+  function updateAutoUI() {
+    var label = document.getElementById('autoScrollLabel');
+    if (label) label.textContent = autoScroll.active ? (autoScroll.paused ? '已暂停' : '进行中') : '关';
+    var pill = document.getElementById('autoScrollPill');
+    if (!pill) return;
+    pill.classList.toggle('visible', autoScroll.active);
+    var lv = pill.querySelector('.auto-level');
+    if (lv) lv.textContent = autoScroll.level;
+    var pp = pill.querySelector('.auto-pp');
+    if (pp) pp.textContent = autoScroll.paused ? '\u25B6' : '\u275A\u275A';
+  }
+
+  function ensureAutoPill() {
+    if (document.getElementById('autoScrollPill')) return;
+    var pill = document.createElement('div');
+    pill.id = 'autoScrollPill';
+    pill.innerHTML =
+      '<button type="button" data-act="slower" aria-label="减速">\u2212</button>' +
+      '<span class="auto-level">3</span>' +
+      '<button type="button" data-act="faster" aria-label="加速">\uFF0B</button>' +
+      '<button type="button" class="auto-pp" data-act="pause" aria-label="暂停或继续">\u275A\u275A</button>' +
+      '<button type="button" class="auto-stop" data-act="stop" aria-label="停止">\u2715</button>';
+    document.body.appendChild(pill);
+    pill.addEventListener('click', function(e) {
+      var b = e.target.closest ? e.target.closest('button') : null;
+      if (!b) return;
+      var act = b.getAttribute('data-act');
+      if (act === 'slower') nudgeAutoScroll(-1);
+      else if (act === 'faster') nudgeAutoScroll(1);
+      else if (act === 'pause') pauseAutoScroll(!autoScroll.paused);
+      else if (act === 'stop') stopAutoScroll(false);
+    });
+  }
+
+  window.toggleAutoScroll = function() {
+    if (autoScroll.active) {
+      stopAutoScroll(false);
+    } else {
+      startAutoScroll();
+      if (typeof closeSettings === 'function') closeSettings();
+      showToast('自动滚动开始，点屏幕即可停止');
+    }
+  };
+
+  /* 触摸/按下即停：悬浮条以外的任何按下都视为接管（面板、工具栏、正文一视同仁） */
+  function autoScrollUserStop(e) {
+    if (!autoScroll.active) return;
+    var t = e.target;
+    while (t && t !== document.body) {
+      if (t.id === 'autoScrollPill') return;
+      t = t.parentElement;
+    }
+    stopAutoScroll(false);
+  }
+  document.addEventListener('touchstart', autoScrollUserStop, { passive: true });
+  document.addEventListener('mousedown', autoScrollUserStop);
 
   /* ===== START ===== */
   if ('serviceWorker' in navigator) {
