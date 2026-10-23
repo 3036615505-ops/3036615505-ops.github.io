@@ -199,12 +199,20 @@
       if (!src) return;
       /* button 本来就没有默认动作，preventDefault 只是双保险 */
       e.preventDefault();
-      open(src, btn.getAttribute('data-lightbox-name') || '', btn);
+      /* 卡片上的同文件图片通常已解码：把它的自然尺寸当「宽高比提示」传给灯箱，
+         让 measure() 在灯箱图还没解码的这几毫秒里也能算出正确的非等比占位尺寸
+         （v3 立绘是 1024×898/954 非方形，没有提示会先按正方形显示再跳变）。 */
+      var hint = null;
+      var cardImg = btn.querySelector('img');
+      if (cardImg && cardImg.naturalWidth && cardImg.naturalHeight) {
+        hint = { w: cardImg.naturalWidth, h: cardImg.naturalHeight };
+      }
+      open(src, btn.getAttribute('data-lightbox-name') || '', btn, hint);
     });
   }
 
   /* ------------------------------------------------------------ 开 / 关 */
-  function open(src, name, trigger) {
+  function open(src, name, trigger, hint) {
     if (!overlay || state.open || !src) return;
     state.open = true;
     lastTrigger = trigger || null;
@@ -220,7 +228,7 @@
     document.body.style.overflow = 'hidden';
     overlay.classList.add('visible');
     overlay.setAttribute('aria-hidden', 'false');
-    measure();
+    measure(hint);
     resetZoom(false);
     if (closeBtn && closeBtn.focus) closeBtn.focus({ preventScroll: true });
     /* 缓存命中时 src 是同步解码的，loaded 事件不会再触发，这里补一次度量 */
@@ -261,27 +269,27 @@
   /* ------------------------------------------------------ 尺寸与变换 */
   /**
    * 度量「初始显示尺寸」（scale=1 时图片占多少 CSS px）。
-   * 封顶为原图像素尺寸：512×512 铺满手机屏需要约 1.5~2 倍拉伸（源像素被拉糊），
-   * 桌面 1:1 显示反而最锐利。放大交给用户主动的双击 / 捏合 —— 那是有意识的
-   * 细节查看，糊是预期代价，报告里如实写。
+   * 封顶为原图像素尺寸：铺满屏幕需要拉伸源像素（会发糊），桌面 1:1 显示反而最锐利。
+   * 放大交给用户主动的双击 / 捏合 —— 那是有意识的细节查看，糊是预期代价。
    *
    * 用 offsetWidth/offsetHeight（布局盒）而不是 getBoundingClientRect（变化后
    * 的视觉盒）：.lightbox-stage 入场时带 scale(0.94)→1 的过渡，open() 是同步
    * 紧接着加 .visible 的，那一刻视觉盒还缩着 6%——用视觉盒会把图片量小 6%，
    * 而 250ms 过渡结束后夹取边界又按稳定后的尺寸算，两者不一致。布局盒不受
    * transform 影响，任何时刻都是终值。
+   *
+   * @param {Object=} hint 宽高比提示 {w, h}（来自卡片上同文件已解码的 img）。
+   *   灯箱图刚设 src、尚未解码时用它算占位尺寸；解码完成后 load 事件会按真实
+   *   像素再度量。都没有时兜底按 512×512 正方形（本站旧立绘规格）。
    */
-  function measure() {
+  function measure(hint) {
     if (!image) return;
-    var natW = image.naturalWidth || 0;
-    var natH = image.naturalHeight || 0;
+    var natW = image.naturalWidth || (hint && hint.w) || 0;
+    var natH = image.naturalHeight || (hint && hint.h) || 0;
     var availW = frame.offsetWidth || 0;
     var availH = frame.offsetHeight || 0;
     if (!availW || !availH) return;
     if (!natW || !natH) {
-      /* src 刚设置、尚未解码完成：先按 512×512 正方形给占位尺寸，避免打开后
-         有一瞬「无尺寸图片」。本站三张立绘均为 512×512，这条兜底实际上就是
-         终值；decode 完成后 load 事件会按真实像素再度量一次。 */
       natW = 512;
       natH = 512;
     }

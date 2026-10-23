@@ -19,7 +19,7 @@
  *      NETWORK_TIMEOUT（500ms），所以它们必须走缓存优先。
  *   3. /app/ 前缀（安装包、version.json）不拦截，直接交给网络
  */
-var CACHE = 'linyuan-v17';
+var CACHE = 'linyuan-v19';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
@@ -62,9 +62,14 @@ var PRECACHE = [
   '/assets/cover.webp',
   '/assets/cover-thumb.webp',
   '/assets/paper.webp',
-  '/assets/portrait-linshu.webp',
-  '/assets/portrait-nanheng.webp',
-  '/assets/portrait-jiangbuqiu.webp',
+  /* 人物立绘 1024 母版（3 张共 490KB，用户 2026-10 定稿版：徽章统一为圆形
+     金色校徽、右下角水印以底部裁切物理消除，故高矮为 898/954/898 非方形）。
+     灯箱全屏与 3x 捏合的清晰度全靠它。512 旧版（portrait-{key}.webp）已删除。
+     ⚠ v18→v19 必须升 CACHE 名：文件名与 7e3dc92 那次误部署的旧图相同，
+     不换名 activate 不会删旧缓存，用户会一直吃到 v18 里的错图。 */
+  '/assets/portrait-linshu-1024.webp',
+  '/assets/portrait-nanheng-1024.webp',
+  '/assets/portrait-jiangbuqiu-1024.webp',
   /* 梧桐阶段图（6 张共 153.4KB）：首页进度带的核心意象。
      装上后切页零网络、断网也长得出树。 */
   '/assets/tree-bare.webp',
