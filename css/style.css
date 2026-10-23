@@ -1394,6 +1394,34 @@ a { color: inherit; text-decoration: none; }
   gap: 14px;
 }
 
+/* ---- 书架页脚「检查更新」 ----
+   只在 App 壳里真正可用（走原生桥强制检查）；浏览器里点它会显示
+   「请在 App 内使用此功能」。刻意用最小的视觉权重（11px 细下划线、--text-muted），
+   不跟目录、tab bar 抢注意力。 */
+.app-update-row {
+  padding: 6px 18px 30px;
+  text-align: center;
+}
+
+.app-update-link {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  cursor: pointer;
+}
+
+.app-update-link:active {
+  color: var(--text-secondary);
+}
+
 .chapter-item {
   display: block;
   padding: 16px 16px 18px;
