@@ -2,16 +2,19 @@
  * sw.js — 临渊羡鱼 Service Worker
  *
  * 策略（linyuan-v16 起）：
- *   1. 页面导航（任何 HTML）+ 章节列表 js/chapters.js → 网络优先
+ *   1. `mode === 'navigate'` 的导航请求 + 章节列表 js/chapters.js → 网络优先
+ *      （判据是 fetch 事件的 `e.request.mode`，不是文件后缀：用 fetch() 去拉一个
+ *      `.html` 走的是第 2 条缓存优先，不是这条。）
  *      网络秒回就用网络；**若该请求的精确 URL 已在缓存中命中**，则最多等
  *      NETWORK_TIMEOUT 就回落缓存（弱网不空等）。精确 URL 未命中时没有超时兜底，
  *      会一直等网络——所以「最多 500ms」是有前提的，不是无条件保证。
  *   2. 其余静态资源（CSS/JS/图片/字体）→ 缓存优先
  *      **命中就立刻返回缓存，热路径零网络请求**；只有当该缓存条目「太旧」时
  *      才在后台补一次刷新（按 date 头算年龄，文本 24h / 二进制 7d，见 CACHE_TTL）。
- *      这些引用都带版本号（如 css/style.css?v=25），改版时版本号 +1 → URL 变 →
+ *      这些引用都带版本号（如 css/style.css?v=NN），改版时版本号 +1 → URL 变 →
  *      旧条目自然没人再请求，所以正常情况下根本轮不到 TTL 生效；
- *      TTL 只是「忘了 +1 版本号」时的自愈护栏，把「永久陈旧」变成「最多陈旧一个 TTL」。
+ *      TTL 只是「忘了 +1 版本号」时的自愈护栏，把「永久陈旧」收敛成有界陈旧
+ *      （真实边界与两个前提见下面 cacheFirst 的注释，别只看这一行）。
  *      CSS 与 <head> 里的 JS 是渲染阻塞资源，走网络优先会为首屏多等最多
  *      NETWORK_TIMEOUT（500ms），所以它们必须走缓存优先。
  *   3. /app/ 前缀（安装包、version.json）不拦截，直接交给网络
@@ -21,9 +24,11 @@ var CACHE = 'linyuan-v16';
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
  * 分两档是因为变更频率差得很远：
- *   - 文本（HTML / CSS / JS / JSON）：24 小时。发版后最坏一天内一定自愈。
- *   - 二进制（图片 / 字体）：7 天。它们几乎不变，勤刷只是浪费流量。
+ *   - 文本（具体后缀见下面的 TEXT_EXTENSIONS：html/htm/css/js/mjs/json/svg/txt/xml）
+ *     24 小时。
+ *   - 二进制（图片 / 字体，即 TEXT_EXTENSIONS 之外的一切）：7 天，勤刷只是浪费流量。
  * 注意：TTL 只管「后台刷新」，**不影响本次响应** —— 命中永远先用缓存秒回。
+ * 改后缀名单时只改 TEXT_EXTENSIONS，别在这里再列一遍（一次漏改就漂移）。
  */
 var CACHE_TTL = {
   text: 24 * 60 * 60 * 1000,
@@ -84,7 +89,7 @@ var PRECACHE = [
 /**
  * 逐条预缓存，失败的只 warn、不阻断 install。
  *
- * 改前是 caches.addAll(PRECACHE)：**全有全无** —— 任意一条 404（改名、删图、
+ * 改前是 cache.addAll(PRECACHE)（Cache 实例上的方法；`caches` 本身没有 addAll）：**全有全无** —— 任意一条 404（改名、删图、
  * 新增文件忘了提交）都会让整个 install reject，于是 SW 永远装不上新版本，
  * 用户被钉在旧缓存上，而且表现为「明明发了版却没变化」，很难查。
  * 现在改用 Promise.allSettled：n-1 条成功也照常激活，坏的那条记日志，
@@ -214,8 +219,30 @@ function refreshInBackground(request) {
  *     命中 → 立刻返回缓存（热路径仍是 0 额外请求、0 额外字节）
  *     命中且条目年龄 > TTL → 顺手发一次后台刷新（不阻塞本次响应）
  *     未命中 → 请求网络 → 写缓存 → 返回；失败才用 ignoreSearch 的预缓存兜底
- *     于是「忘了 +1 版本号」最坏也就陈旧一个 TTL（文本 24h / 二进制 7d），
- *     而不是永久。版本号仍是第一道防线（tools/bump-assets.mjs + pre-push hook）。
+ *     于是「忘了 +1 版本号」不再是永久陈旧。版本号仍是第一道防线
+ *     （tools/bump-assets.mjs + pre-push hook），TTL 只是兜底。
+ *
+ * ⚠ 「忘了 +1 版本号」时的**真实陈旧上界**不是「一个 TTL」，而是：
+ *
+ *       TTL  +  HTTP 缓存 max-age  +  1 次页面加载
+ *
+ *   ① +1 次页面加载：触发刷新的那一次导航仍然返回旧内容（我们不等刷新结果，
+ *      否则热路径就退化成网络优先了）；新内容要到**下一次**加载才可见。
+ *   ② +HTTP 缓存 max-age：refreshInBackground 里的 fetch(request) 本身也要过
+ *      浏览器 HTTP 缓存。线上 GitHub Pages 发 Cache-Control: max-age=600，
+ *      所以最多再叠 10 分钟才真摸到源站。
+ *   按文本 24h 算，实测口径下最坏约 24h + 10min + 一次加载的等待。
+ *
+ * ⚠ 还有一个 TTL **收敛不了**的边界（必须知道，否则会误以为 TTL 失灵）：
+ *
+ *   若该 URL 之后**永远不再返回 200**（文件被删/改名，但 HTML 或 PRECACHE 里
+ *   还引用着它），putCache 只接受 status===200 && type==='basic'，刷新结果写不进
+ *   缓存 → 这个条目会**永久陈旧**，而且**每次命中都会白发一次刷新请求**
+ *   （等于多出一份永久流量，还会在控制台留下 404）。
+ *
+ *   也就是说 TTL 自愈的隐含前提是：**该 URL 最终还能返回新内容**。
+ *   「删文件/改名」这类变更必须靠 ?v= 换 URL 或 +1 CACHE 名来解决，
+ *   而不是指望 TTL —— 这也是为什么 pre-push hook 必查 PRECACHE 条目是否存在。
  */
 function cacheFirst(request) {
   return caches.match(request).then(function(cached) {
