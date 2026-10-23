@@ -126,10 +126,17 @@
   animation: leafSway 1.2s ease-in-out infinite;
 }
 
+/* 环绕叶片的两个动画（loadingPulse + 5×loadingLeafOrbit）原来**没有作用域**，
+   每个页面从加载起就有 6 个无限动画在跑，而遮罩 opacity:0 根本看不见 —— 纯烧电。
+   和 .transition-inner svg 的 leafSway / leafDraw 一样限定在 .active 下，
+   只在真正 loading（遮罩显示）时才跑，视觉表现不变。 */
 .transition-leaves {
   position: absolute;
   inset: 0;
   z-index: 1;
+}
+
+.page-transition.active .transition-leaves {
   animation: loadingPulse 1.8s ease-in-out infinite;
 }
 
@@ -147,16 +154,15 @@
   box-shadow: 0 2px 6px rgba(109,74,46,0.10);
 }
 
-.transition-leaves .gold { background: var(--leaf-gold); animation: loadingLeafOrbit 1.85s linear infinite; }
-.transition-leaves .green { background: var(--leaf-green); animation: loadingLeafOrbit 1.85s linear -0.37s infinite; }
-.transition-leaves .brown { background: var(--leaf-brown); animation: loadingLeafOrbit 1.85s linear -0.74s infinite; }
+.transition-leaves .gold { background: var(--leaf-gold); }
+.transition-leaves .green { background: var(--leaf-green); }
+.transition-leaves .brown { background: var(--leaf-brown); }
 .transition-leaves .gold.soft {
   width: 9px;
   height: 13px;
   margin-left: -4.5px;
   margin-top: -6.5px;
   background: color-mix(in srgb, var(--leaf-gold) 78%, white 22%);
-  animation: loadingLeafOrbit 1.85s linear -1.11s infinite;
 }
 .transition-leaves .green.soft {
   width: 9px;
@@ -164,8 +170,13 @@
   margin-left: -4.5px;
   margin-top: -6.5px;
   background: color-mix(in srgb, var(--leaf-green) 76%, white 24%);
-  animation: loadingLeafOrbit 1.85s linear -1.48s infinite;
 }
+
+.page-transition.active .transition-leaves .gold { animation: loadingLeafOrbit 1.85s linear infinite; }
+.page-transition.active .transition-leaves .green { animation: loadingLeafOrbit 1.85s linear -0.37s infinite; }
+.page-transition.active .transition-leaves .brown { animation: loadingLeafOrbit 1.85s linear -0.74s infinite; }
+.page-transition.active .transition-leaves .gold.soft { animation: loadingLeafOrbit 1.85s linear -1.11s infinite; }
+.page-transition.active .transition-leaves .green.soft { animation: loadingLeafOrbit 1.85s linear -1.48s infinite; }
 
 .transition-text {
   position: absolute;
@@ -276,8 +287,13 @@
   --bg-card: #221f18;
   --bg-warm: #1b1913;
   --text: #e9decb;
-  --text-secondary: #b5a68c;
-  --text-muted: #8d7f68;
+  /* 深色下的小字亮度：原来 --text-secondary:#b5a68c / --text-muted:#8d7f68 是照
+     「深色审美」定的，实测在深色表面上只有 3.79~4.43:1（10~13px 正文要求 4.5:1）。
+     这里只调深色令牌、不动浅色，并按原来的三级层次等比抬亮，保证
+     text(0.73) : secondary(0.50) : muted(0.34) 的相对亮度阶梯仍然均匀
+     （相邻两级对比 1.42 / 1.39，浅色下是 1.35 左右）。 */
+  --text-secondary: #c9ba9c;
+  --text-muted: #ab9d81;
   --accent: #d4a050;
   --accent-hover: #e2b268;
   --accent-light: rgba(212,160,80,0.12);
@@ -2447,11 +2463,33 @@ body.reading-page {
 }
 
 /* ===== 全站深色：硬编码浅色表面覆盖 ===== */
+
+/* .phone-frame 本体：这是首页/同学录/剪贴本所有正文的最终底色。
+   浅色版在这里盖了一层暖白纱（rgba(255,252,246,.70)…），深色版以前**没有覆盖**，
+   于是 body 的深夜渐变被一层暖白纱盖住 → 表面仍是亮的，而文字跟着 --text 变成
+   近白的 #e9decb → 实测对比度 1.14~1.47:1（首页标题、光阴目录章节名、
+   同学录标题、剪贴本标题全部几乎不可见）。
+   这里按同样的三段结构反过来盖一层暖深纱：上端略浅、下端更深，
+   与 --site-bg(#1b1812→#16130d→#100e09) 以及 .home-hero 的深色渐变同一色系。 */
+[data-theme="dark"] .phone-frame {
+  background: linear-gradient(180deg,
+    rgba(38, 33, 24, 0.62) 0%,
+    rgba(28, 24, 17, 0.78) 28%,
+    rgba(20, 17, 12, 0.90) 100%);
+}
+
 [data-theme="dark"] .phone-frame::before {
   background:
     radial-gradient(circle at top center, rgba(212,160,80,0.05), transparent 40%),
     radial-gradient(circle at 20% 18%, rgba(196,162,78,0.07), transparent 22%),
     radial-gradient(circle at 80% 12%, rgba(138,158,108,0.07), transparent 18%);
+}
+
+/* 同学录里没有照片的人物用「姓氏大字」占位，底板写死 #FFFFFF。
+   深色下白底 + --accent-hover(#e2b268) 只有 1.94:1，四张占位卡都糊掉。 */
+[data-theme="dark"] .char-photo {
+  background: #2a251c;
+  border-color: var(--border);
 }
 
 [data-theme="dark"] .home-hero {

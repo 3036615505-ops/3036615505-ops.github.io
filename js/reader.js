@@ -16,14 +16,6 @@
     autoCloseTimer: null
   };
 
-  var transitionLines = [
-    '风从走廊尽头吹过来',
-    '有些话还没说，故事已经往前了',
-    '夕阳落下去的时候，影子会变长',
-    '下一页有人会抬头看你一眼',
-    '梧桐影子轻轻翻过一页'
-  ];
-
   var fontSizes = ['small', 'medium', 'large'];
   var fontSizeLabels = { small: '小', medium: '中', large: '大' };
   var fontSizeValues = { small: 19, medium: 22, large: 25 };
@@ -288,102 +280,23 @@
   };
 
   /* ===== PAGE TRANSITION =====
-   * 与首页/书架同一套约定（三处实现必须保持一致，否则遮罩会互相误触发）：
-   *   标记 = sessionStorage['page-transitioning'] = { t: 时间戳, to: 目标页 pathname }
-   *   只有 to === location.pathname 才认这个标记
-   *   入场停留 ENTER_HOLD（原 650ms，改为 200ms）
-   *   遮罩的 pointer-events 由 CSS 永久置为 none，不再拦点击
+   * 实现在 js/transition.js（全站唯一一份，与首页/书架同一套状态机）。
+   * 这里只传章节页的差异参数：
+   *   mount        —— 遮罩挂在 .reading-wrapper 内（沿用原来的层级，不影响 fixed 定位）
+   *   delegate     —— 事件委托：目录/设置面板里的链接是运行时插入的，必须委托才抓得到
+   *   hashScroll   —— 同页锚点链接改为平滑滚动，不触发过渡
+   *   leaves/icon  —— 与原来一致：5 片环绕叶 + 中间叶片图标
+   *   entryText    —— 入场时把文案换成随机诗句
+   * 不传 skipSelector：章节页没有底部 tab bar。
    */
-  var ENTER_HOLD = 200;   // 入场遮罩停留（ms），原 650
-  var ENTER_TTL = 8000;   // 标记兜底有效期（ms）
-
-  /** 把相对 href 解析成站内绝对路径，用来和 location.pathname 比对 */
-  function targetPath(href) {
-    var a = document.createElement('a');
-    a.href = href;
-    return a.pathname;
-  }
-
-  /** 读取并消费过渡标记：只有目标页就是当前页才算数 */
-  function consumeEntryFlag() {
-    var raw = sessionStorage.getItem('page-transitioning');
-    if (raw === null) return false;
-    sessionStorage.removeItem('page-transitioning');
-    var data = null;
-    try { data = JSON.parse(raw); } catch (err) { return false; }
-    if (!data || !data.to || !data.t) return false;
-    if (Math.abs(Date.now() - data.t) > ENTER_TTL) return false;
-    return data.to === location.pathname;
-  }
-
-  function prefersReducedMotion() {
-    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  }
-
   function initPageTransition() {
-    var ov = document.createElement('div');
-    ov.className = 'page-transition';
-    ov.id = 'pageTransition';
-    ov.innerHTML =
-      '<div class="transition-inner">' +
-        '<div class="transition-leaves"><span class="leaf gold"></span><span class="leaf green"></span><span class="leaf brown"></span><span class="leaf gold soft"></span><span class="leaf green soft"></span></div>' +
-        '<svg viewBox="0 0 40 40" fill="none" width="40" height="40">' +
-          '<path class="leaf-path" d="M20 4c0 0-8 4-10 12s4 16 10 20c6-4 12-12 10-20S20 4 20 4z" stroke="var(--accent)" stroke-width="1.2" fill="none" stroke-linecap="round"/>' +
-          '<path class="leaf-vein" d="M20 8v24M20 14l-4 4M20 14l4 4M20 20l-5 3M20 20l5 3" stroke="var(--accent)" stroke-width="0.8" opacity="0.5" stroke-linecap="round"/>' +
-        '</svg>' +
-        '<div class="transition-text">' + getTransitionLine() + '</div>' +
-      '</div>';
-    (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
-
-    // 入场动画（只有真正发起过过渡、且目标就是本页时才显示）
-    if (consumeEntryFlag()) {
-      if (prefersReducedMotion()) return;
-      requestAnimationFrame(function() {
-        ov.classList.add('active');
-        // 停留计时放在第二帧起算，避免弱 CPU 下首帧推迟导致遮罩没淡满就退场
-        requestAnimationFrame(function() {
-          setTimeout(function() { ov.classList.remove('active'); }, ENTER_HOLD);
-        });
-      });
-    }
-
-    // 安全网：清除任何残留的遮罩
-    function resetOverlay() {
-      document.querySelectorAll('.page-transition.active').forEach(function(el) { el.classList.remove('active'); });
-    }
-    window.addEventListener('pageshow', function() { setTimeout(resetOverlay, 700); });
-    window.addEventListener('focus', function() { setTimeout(resetOverlay, 700); });
-    document.addEventListener('visibilitychange', function() { if (!document.hidden) setTimeout(resetOverlay, 700); });
-
-    // 点击跳转
-    document.addEventListener('click', function(e) {
-      var link = e.target.closest('a[href]');
-      if (!link) return;
-      var href = link.getAttribute('href');
-      if (!href || href.startsWith('javascript') || link.getAttribute('onclick') || link.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-
-	      // 同页锚点链接：不触发过渡动画，直接滚动
-	      if (href.startsWith('#')) {
-	        var target = document.getElementById(href.slice(1));
-	        if (target) { target.scrollIntoView({ behavior: 'smooth' }); }
-	        return;
-	      }
-	      var hashIdx = href.indexOf('#');
-	      if (hashIdx > 0) {
-	        var base = href.substring(0, hashIdx);
-	        var currentPage = window.location.pathname.split('/').pop() || '';
-	        if (base === currentPage) {
-	          var target = document.getElementById(href.slice(hashIdx + 1));
-	          if (target) { target.scrollIntoView({ behavior: 'smooth' }); }
-	          return;
-	        }
-	      }
-      e.preventDefault();
-      if (prefersReducedMotion()) { window.location.href = href; return; }
-      ov.querySelector('.transition-text').textContent = pickTransitionLine();
-      ov.classList.add('active');
-      sessionStorage.setItem('page-transitioning', JSON.stringify({ t: Date.now(), to: targetPath(href) }));
-      setTimeout(function() { window.location.href = href; }, 120);
+    PageTransition.init({
+      mount: document.querySelector('.reading-wrapper') || document.body,
+      delegate: true,
+      hashScroll: true,
+      leaves: 5,
+      icon: true,
+      entryText: 'random'
     });
   }
 
@@ -925,21 +838,6 @@
   function getCurrentChapterTitle() {
     var el = document.querySelector('.chapter-content h1');
     return el ? el.textContent.trim() : document.title;
-  }
-
-  function getTransitionLine() {
-    var saved = sessionStorage.getItem('page-transition-text');
-    if (saved) {
-      sessionStorage.removeItem('page-transition-text');
-      return saved;
-    }
-    return transitionLines[Math.floor(Math.random() * transitionLines.length)];
-  }
-
-  function pickTransitionLine() {
-    var line = transitionLines[Math.floor(Math.random() * transitionLines.length)];
-    sessionStorage.setItem('page-transition-text', line);
-    return line;
   }
 
   function escapeHtml(text) {

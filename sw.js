@@ -14,7 +14,7 @@
  *      所以它们必须走缓存优先。
  *   3. /app/ 前缀（安装包、version.json）不拦截，直接交给网络
  */
-var CACHE = 'linyuan-v14';
+var CACHE = 'linyuan-v15';
 
 /**
  * 仍然需要「网络优先 + 500ms 超时兜底」的资源：
@@ -46,9 +46,7 @@ var PRECACHE = [
   '/assets/portrait-nanheng.webp',
   '/assets/portrait-jiangbuqiu.webp',
   /* 梧桐阶段图（6 张共 153.4KB）：首页进度带的核心意象。
-     原先一张都不在预缓存里，每次切回首页都要现场取 tree-*.webp；
-     装上后切页零网络、断网也长得出树。任一 404 会让 install 整体失败，
-     所以这 6 条已逐条核对过文件存在。 */
+     装上后切页零网络、断网也长得出树。 */
   '/assets/tree-bare.webp',
   '/assets/tree-s1.webp',
   '/assets/tree-s2.webp',
@@ -57,6 +55,7 @@ var PRECACHE = [
   '/assets/tree-s5.webp',
   '/assets/fonts/zcool-xiaowei-subset.woff2',
   '/css/style.css',
+  '/js/transition.js',
   '/js/reader.js',
   '/js/chapters.js',
   '/js/theme.js',
@@ -67,10 +66,27 @@ var PRECACHE = [
   '/novel/characters.html'
 ];
 
+/**
+ * 逐条预缓存，失败的只 warn、不阻断 install。
+ *
+ * 改前是 caches.addAll(PRECACHE)：**全有全无** —— 任意一条 404（改名、删图、
+ * 新增文件忘了提交）都会让整个 install reject，于是 SW 永远装不上新版本，
+ * 用户被钉在旧缓存上，而且表现为「明明发了版却没变化」，很难查。
+ * 现在改用 Promise.allSettled：n-1 条成功也照常激活，坏的那条记日志，
+ * 运行时该资源走一次网络后由 cacheFirst 写回缓存。
+ *
+ * 代价（必须知道）：预缓存的「齐全」不再由 install 失败来保证，
+ * 所以新增资源时必须自己确认路径存在 —— tools/check-precache.mjs 就是干这个的。
+ */
 self.addEventListener('install', function(e) {
   e.waitUntil(
-    caches.open(CACHE).then(function(c) { return c.addAll(PRECACHE); })
-      .then(function() { return self.skipWaiting(); })
+    caches.open(CACHE).then(function(c) {
+      return Promise.allSettled(PRECACHE.map(function(url) {
+        return c.add(url).catch(function(err) {
+          console.warn('[sw] 预缓存失败，跳过（运行时会走网络兜底）:', url, err && err.message);
+        });
+      }));
+    }).then(function() { return self.skipWaiting(); })
   );
 });
 
@@ -135,23 +151,29 @@ function networkFirst(request) {
 }
 
 /**
- * 缓存优先（stale-while-revalidate）：
- * - 命中缓存 → 立刻返回缓存（首屏零等待），同时后台静默拉新写回缓存
- * - 未命中 → 等网络；网络也失败时，退一步按「忽略查询串」再找一次
- *   （PRECACHE 里存的是不带 ?v= 的裸路径，这样断网首屏也能拿到样式/脚本）
+ * 缓存优先。
+ *
+ * 改前这里是无条件 stale-while-revalidate：命中缓存也照样发一次 fetch(request)
+ * 去刷新。理由本来是「样式改完第一次打开就生效」，但实际上全站 CSS/JS/HTML 都带
+ * ?v= 版本号、图片与字体几乎不变 —— 版本号已经把新鲜度问题解决了，
+ * 这次后台刷新纯属浪费：实测在 HTTP 缓存不可用（被驱逐）时，
+ * 单次导航服务器仍收到 267,783B（字体 201KB + CSS 16KB + 图片…）。
+ *
+ * 现在：
+ *   命中 → 直接返回缓存，不发网络请求
+ *   未命中 → 请求网络 → 写缓存 → 返回；失败才用 ignoreSearch 的预缓存兜底
+ * 代价：改了 css/js 但忘了 +1 版本号，用户会继续用旧缓存 ——
+ *       所以版本号递增必须机械化（tools/bump-assets.mjs）。
  */
 function cacheFirst(request) {
   return caches.match(request).then(function(cached) {
-    // 无论命中与否，都发一次网络请求用于刷新缓存；失败不影响本次响应
-    var revalidate = fetch(request).then(function(res) {
-      putCache(request, res);
-      return res;
-    }).catch(function() { return null; });
-
     if (cached) return cached;
 
-    return revalidate.then(function(res) {
-      if (res) return res;
+    return fetch(request).then(function(res) {
+      putCache(request, res);
+      return res;
+    }).catch(function() {
+      // 网络失败：PRECACHE 里存的是不带 ?v= 的裸路径，按忽略查询串再找一次
       return caches.match(request, { ignoreSearch: true });
     });
   });
