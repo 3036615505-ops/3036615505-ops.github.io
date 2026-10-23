@@ -1,8 +1,9 @@
 {
-  "versionCode": 9,
-  "versionName": "1.8",
+  "versionCode": 10,
+  "versionName": "1.8.1",
   "apkUrl": "https://zephyrw.site/app/linyuan-latest.apk",
   "size": 99686,
-  "notes": "1.8 版更新：\n· 更新弹窗换成 App 风格的米色纸卡（衬线标题 + 金色按钮）\n· 修复弱网时读到旧样式导致的顶部章节名残留\n· 阅读界面顶部更干净",
+  "sha256": "8454594ae8c695286136fb5be1f470c87cc3a357c4ee229aeab9f9b3965d515a",
+  "notes": "1.8.1 版更新：\n· 更新包下载完成后先校验完整性（字节数 + SHA-256），坏包不再进安装器，可直接重试\n· 书架页新增「检查更新」，可随时手动检查（已是最新会提示当前版本）\n· 修复弱网下更新包只下了一半仍提示安装的问题",
   "publishedAt": "2026-10-23"
 }
