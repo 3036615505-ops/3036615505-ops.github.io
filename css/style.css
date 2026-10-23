@@ -69,10 +69,15 @@
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   z-index: 9999;
+  /* 只做视觉：任何时候都不接收指针事件。
+     改前这里在 .active 下是 pointer-events:auto，入场遮罩停留的整段时间里
+     （实测 632~650ms）全屏点击都被吃掉，表现为「切页后点哪儿都没反应」。 */
   pointer-events: none;
   background: radial-gradient(circle at 50% 38%, rgba(255,255,255,0.55), transparent 34%), var(--site-bg);
   opacity: 0;
-  transition: opacity 0.25s ease;
+  /* 0.25s → 0.18s：入场停留压到 200ms 后，淡入必须在停留期内走完，
+     否则遮罩永远到不了全不透明，看起来像一层半透明的脏雾 */
+  transition: opacity 0.18s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -80,7 +85,7 @@
 
 .page-transition.active {
   opacity: 1;
-  pointer-events: auto;
+  /* 刻意不再写 pointer-events: auto —— 遮罩不该拦点击 */
 }
 
 .transition-inner {

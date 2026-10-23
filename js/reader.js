@@ -287,7 +287,35 @@
     applyTheme(state.theme === 'dark' ? 'wheat' : 'dark');
   };
 
-  /* ===== PAGE TRANSITION ===== */
+  /* ===== PAGE TRANSITION =====
+   * 与首页/书架同一套约定（三处实现必须保持一致，否则遮罩会互相误触发）：
+   *   标记 = sessionStorage['page-transitioning'] = { t: 时间戳, to: 目标页 pathname }
+   *   只有 to === location.pathname 才认这个标记
+   *   入场停留 ENTER_HOLD（原 650ms，改为 200ms）
+   *   遮罩的 pointer-events 由 CSS 永久置为 none，不再拦点击
+   */
+  var ENTER_HOLD = 200;   // 入场遮罩停留（ms），原 650
+  var ENTER_TTL = 8000;   // 标记兜底有效期（ms）
+
+  /** 把相对 href 解析成站内绝对路径，用来和 location.pathname 比对 */
+  function targetPath(href) {
+    var a = document.createElement('a');
+    a.href = href;
+    return a.pathname;
+  }
+
+  /** 读取并消费过渡标记：只有目标页就是当前页才算数 */
+  function consumeEntryFlag() {
+    var raw = sessionStorage.getItem('page-transitioning');
+    if (raw === null) return false;
+    sessionStorage.removeItem('page-transitioning');
+    var data = null;
+    try { data = JSON.parse(raw); } catch (err) { return false; }
+    if (!data || !data.to || !data.t) return false;
+    if (Math.abs(Date.now() - data.t) > ENTER_TTL) return false;
+    return data.to === location.pathname;
+  }
+
   function prefersReducedMotion() {
     return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
@@ -307,13 +335,15 @@
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
 
-    // 入场动画（从站内跳转过来时显示；系统减弱动态效果时跳过）
-    if (sessionStorage.getItem('page-transitioning')) {
-      sessionStorage.removeItem('page-transitioning');
+    // 入场动画（只有真正发起过过渡、且目标就是本页时才显示）
+    if (consumeEntryFlag()) {
       if (prefersReducedMotion()) return;
       requestAnimationFrame(function() {
         ov.classList.add('active');
-        setTimeout(function() { ov.classList.remove('active'); }, 650);
+        // 停留计时放在第二帧起算，避免弱 CPU 下首帧推迟导致遮罩没淡满就退场
+        requestAnimationFrame(function() {
+          setTimeout(function() { ov.classList.remove('active'); }, ENTER_HOLD);
+        });
       });
     }
 
@@ -352,7 +382,7 @@
       if (prefersReducedMotion()) { window.location.href = href; return; }
       ov.querySelector('.transition-text').textContent = pickTransitionLine();
       ov.classList.add('active');
-      sessionStorage.setItem('page-transitioning', '1');
+      sessionStorage.setItem('page-transitioning', JSON.stringify({ t: Date.now(), to: targetPath(href) }));
       setTimeout(function() { window.location.href = href; }, 120);
     });
   }

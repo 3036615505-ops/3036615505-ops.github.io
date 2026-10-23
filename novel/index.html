@@ -24,8 +24,8 @@
     "author": { "@type": "Person", "name": "叶南衡" }
   }
   </script>
-  <link rel="stylesheet" href="../css/style.css?v=21">
-  <script src="../js/theme.js?v=21"></script>
+  <link rel="stylesheet" href="../css/style.css?v=22">
+  <script src="../js/theme.js?v=22"></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame">
@@ -118,11 +118,13 @@
     </div>
   </div>
 
-  <!-- 底部 tab bar 必须留在下面这段内联脚本之前：
-       ① 冷缓存下 chapters.js 要等网络（最坏近 1s），内联脚本会给 4 个 tab 挂上
-          页面切换动效（querySelectorAll('a[href]')），脚本在前才抓得到；
-       ② 反过来说，脚本在 tab bar 之前执行时 tab 链接是抓不到的（首页即此顺序）。
-       .tab-bar 是 position:fixed，DOM 位置不影响布局，放这里只为执行顺序。 -->
+  <!-- tab bar 放在下面这段内联脚本之前，只因执行顺序（DOM 位置不影响布局，
+       .tab-bar 是 position:fixed）。
+       现在 tab 链接是**刻意不参与**页面切换动效的（见下面 isTabLink：同层级切换
+       不该被遮罩挡住），所以「脚本必须先跑才能给 tab 挂动效」这个理由已不成立；
+       真正的约束只剩内联脚本要在 chapters.js 之后、依赖 CHAPTERS 渲染目录。
+       把 tab bar 留在脚本之前也没有副作用：querySelectorAll('a[href]') 仍会给它
+       挂上监听，只是回调里对 .tab-bar 内的链接直接 return，走浏览器默认跳转。 -->
   <nav class="tab-bar">
     <a class="tab-item" href="../index.html">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
@@ -146,7 +148,7 @@
        弱网下 chapters.js 没回来之前整页白屏（书架页首屏可感知卡顿）。
        放在这里首屏骨架先画出来；但必须保持在下面依赖 CHAPTERS 的内联脚本之前
        （经典脚本按文档顺序执行，内联脚本是同步 IIFE，等不到任何异步回调）。 -->
-  <script src="../js/chapters.js?v=21"></script>
+  <script src="../js/chapters.js?v=22"></script>
 
   <script>
   (function() {
@@ -174,6 +176,53 @@
     }
 
     // ===== 页面切换动画 =====
+    // 三段耗时（改前实测，4x CPU + 缓存预热）：
+    //   来源页：点击 → setTimeout 120ms 才跳转
+    //   目标页：到达后 650ms 才摘掉 .active，而 .active 带 pointer-events:auto
+    //          → 这 650ms 内所有点击被遮罩吃掉
+    //   结果：首页→书架 点击后 137ms 才起跳、落地再被拦 646ms，合计约 780ms
+    //         而人物/剪贴本没有这段代码，所以「切人物页不卡」。
+    //
+    // 改法：
+    //   ① tab 栏之间是同层级切换，遮罩没有叙事价值、只会被感知成「卡住」
+    //      → tab 链接完全不参与过渡：不写标记、不加延迟，直接交给浏览器默认跳转
+    //   ② 内容跳转（开始/继续阅读、卡片里的链接等非 tab 链接）保留叶子过渡，
+    //      但落地停留 650ms → 200ms
+    //   ③ .active 不再接收指针事件（CSS 里去掉 pointer-events:auto）
+    //      → 遮罩只做视觉，任何时候都不拦点击
+    var ENTER_HOLD = 200;   // 入场遮罩停留（ms），原 650
+    var ENTER_TTL = 8000;   // 标记兜底有效期（ms）：只防「陈年脏数据」，真正的判定靠 to
+
+    /** tab 栏内的链接：同层级切换，不走遮罩 */
+    function isTabLink(link) {
+      return !!(link.closest && link.closest('.tab-bar'));
+    }
+
+    /** 把相对 href 解析成站内绝对路径，用来和 location.pathname 比对 */
+    function targetPath(href) {
+      var a = document.createElement('a');
+      a.href = href;
+      return a.pathname;
+    }
+
+    /**
+     * 读取并消费「上一页发起过过渡」的标记。
+     * 标记形如 { t: 时间戳, to: '目标页 pathname' }。
+     * 只有 to 等于当前页才认 —— 这一条是 tab 切换不闪遮罩的关键：
+     * 人物页/剪贴本没有这段代码、不消费标记，如果只看「标记存在」，
+     * 残留的标记就会在下一次进首页/书架时误触发一层遮罩。
+     */
+    function consumeEntryFlag() {
+      var raw = sessionStorage.getItem('page-transitioning');
+      if (raw === null) return false;
+      sessionStorage.removeItem('page-transitioning');
+      var data = null;
+      try { data = JSON.parse(raw); } catch (err) { return false; }
+      if (!data || !data.to || !data.t) return false;
+      if (Math.abs(Date.now() - data.t) > ENTER_TTL) return false;
+      return data.to === location.pathname;
+    }
+
     var transition = document.getElementById('pageTransition');
 
     function prefersReducedMotion() {
@@ -187,19 +236,21 @@
       }
       transition.classList.add('active');
       transition.querySelector('.transition-text').textContent = pickTransitionLine();
-      sessionStorage.setItem('page-transitioning', '1');
+      sessionStorage.setItem('page-transitioning', JSON.stringify({ t: Date.now(), to: targetPath(href) }));
       setTimeout(function() { window.location.href = href; }, 120);
     }
 
-    // 入场动画（从站内跳转过来时显示；系统减弱动态效果时跳过）
-    if (sessionStorage.getItem('page-transitioning')) {
-      sessionStorage.removeItem('page-transitioning');
+    // 入场动画（只有真正发起过过渡、且目标就是本页时才显示）
+    if (consumeEntryFlag()) {
       if (transition && !prefersReducedMotion()) {
         requestAnimationFrame(function() {
           transition.classList.add('active');
           var textEl = transition.querySelector('.transition-text');
           if (textEl) textEl.textContent = getTransitionLine();
-          setTimeout(function() { transition.classList.remove('active'); }, 650);
+          // 停留计时放在第二帧起算，避免弱 CPU 下首帧推迟导致遮罩没淡满就退场
+          requestAnimationFrame(function() {
+            setTimeout(function() { transition.classList.remove('active'); }, ENTER_HOLD);
+          });
         });
       }
     }
@@ -217,6 +268,8 @@
       link.addEventListener('click', function(e) {
         var href = link.getAttribute('href');
         if (!href || href.startsWith('#') || href.startsWith('javascript') || link.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        // tab 栏：同层级切换，直接走默认跳转（不 preventDefault、不等待）
+        if (isTabLink(link)) return;
         e.preventDefault();
         startPageTransition(href);
       });
