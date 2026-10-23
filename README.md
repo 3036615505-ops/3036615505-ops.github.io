@@ -25,6 +25,7 @@ js/types.d.ts         共享类型声明（只给 JSDoc / 编辑器用，不产�
 jsconfig.json         类型检查配置（npx tsc -p jsconfig.json --noEmit）
 sw.js                 Service Worker
 tools/                开发/校验脚本（不参与页面运行）
+.github/workflows/    服务端校验（每次 push 跑四项静态校验 + 端到端）
 app/                  安装包与 version.json（SW 不拦截，直连网络）
 ```
 
@@ -121,19 +122,22 @@ node tools/e2e.mjs --verbose  # 顺带打印每项的实际值
 npx -p typescript tsc -p jsconfig.json --noEmit
 ```
 
-## 服务端校验（GitHub Actions，待启用）
+## 服务端校验（GitHub Actions）
 
-`tools/ci-verify.yml` 是准备好的工作流：四项静态校验 + 端到端测试。
-理由很实际：pre-push 钩子只在**配过 `core.hooksPath` 的那个 clone** 里生效，
+`.github/workflows/verify.yml` —— 每次 push / PR 跑两个 job：
+
+| job | 内容 |
+|---|---|
+| 静态校验 | ① `?v=` 统一 ② 预缓存条目 ③ 楷体子集覆盖 ④ 正文与源稿一致 |
+| 端到端 | 27 项真浏览器断言（ubuntu 自带 Chrome，`CI=true` 时自动补 `--no-sandbox`） |
+
+为什么还要 CI：pre-push 钩子只在**配过 `core.hooksPath` 的那个 clone** 里生效。
 换台机器（比如 Mac 上）改完推上去，一项都不会跑；CI 在服务端跑，谁的机器都一样。
 
-**为什么还没启用**：本仓库推送用的 Personal Access Token 没有 `workflow` 权限，
-GitHub 拒绝任何对 `.github/workflows/` 的写入。启用二选一：
+首次运行 28 秒（2026-10-24，run #1 通过）。两点提醒：
 
-1. 给 token 勾上 `workflow` 权限后，`git mv tools/ci-verify.yml .github/workflows/verify.yml`；
-2. 直接在 GitHub 网页端新建 `.github/workflows/verify.yml`，把 `tools/ci-verify.yml` 的内容贴进去。
-
-启用后每次 push / PR 都会自动跑，红灯在 Actions 页面上看。
+- 改这个文件需要带 `workflow` 权限的 token，当前 PAT 没有 —— 要么重签，要么在网页端编辑；
+- `tools/e2e.mjs` 在 `CI` 环境下找不到浏览器会**直接失败**（本地才跳过），避免"假绿"。
 
 ## 其它工具
 
