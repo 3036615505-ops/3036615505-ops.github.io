@@ -7,6 +7,15 @@
   font-display: swap;
   src: url('../assets/fonts/zcool-xiaowei-subset.woff2') format('woff2');
 }
+/* 阅读页「楷体」：霞鹜文楷 Lite 子集（OFL 1.1，可自由再分发）。
+   只包含正文实际用到的字 + 常用字，所以体积很小；不预缓存，用户选到楷体时才下载。 */
+@font-face {
+  font-family: 'LinyuanKai';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/linyuan-kai-subset.woff2?f=1') format('woff2');
+}
 /* 正文 serif 走系统字体栈：Noto Serif SC（部分安卓/Linux）→ Songti SC（macOS）→ SimSun（Windows） */
 
 /* ===== 动画 ===== */
@@ -2416,6 +2425,23 @@ body.reading-page {
 /* 阅读模式切换 */
 .mode-toggle-row {
   display: flex;
+  gap: 8px;
+}
+
+/* 字体三选（黑体/系统/楷体）：选中态用金底白字，和站点主按钮同一套色 */
+.mode-toggle-btn.is-on {
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
+  color: #FFFDF8;
+  font-weight: 600;
+}
+
+/* 设置面板里的解释性小字 */
+.setting-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
 }
 
 .mode-toggle-btn {

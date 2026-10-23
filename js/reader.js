@@ -20,8 +20,10 @@
   var fontSizeLabels = { small: '小', medium: '中', large: '大' };
   var fontSizeValues = { small: 19, medium: 22, large: 25 };
 
-  var fontFamilies = ['fzyouhei', 'serif'];
-  var fontFamilyLabels = { fzyouhei: '黑体', serif: '衬线' };
+  /* 字体三选：黑体（强制中文无衬线）/ 系统（跟随手机系统字体）/ 楷体（站点自带）
+     旧的「衬线」已移除——安卓几乎没有中文衬线字体，两个选项落到同一套字形，等于假按钮。 */
+  var fontFamilies = ['fzyouhei', 'system', 'kai'];
+  var fontFamilyLabels = { fzyouhei: '黑体', system: '系统', kai: '楷体' };
 
   var chapterId = window.location.pathname.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-');
 
@@ -177,51 +179,72 @@
   };
 
   /* ===== FONT FAMILY =====
-     安卓上 PingFang / 宋体 / 微软雅黑 都不存在，原先那串字体名最后全落到同一个
-     系统默认黑体，所以按钮看着像失效。这里做两件事：
-       1. 用 canvas 实测系统有没有真正的中文衬线字体；
-       2. 没有的话用站点自带的小薇字体（已随 SW 预缓存，不额外下载）作为衬线选项。 */
-  var systemSerifAvailable = null;
+     三个选项的区别（这是用户真正能感知到的部分）：
+       黑体 —— 明确点名中文无衬线（Noto Sans CJK / 思源黑体 / 苹方 / 雅黑）。
+               手机装了主题字体时，这里仍然回到黑体，不会被系统字体带跑。
+       系统 —— 只写 system-ui，完全交给手机自己的字体。MIUI / 鸿蒙 / 三星换了
+               系统字体，阅读正文会跟着变——这也是它和「黑体」的唯一区别。
+       楷体 —— 站点自带（霞鹜文楷子集，OFL 授权）。安卓基本没有系统楷体，
+               所以这里必须自带字体文件；首次选择时才下载，不选的人不付流量。 */
+  var KAI_FAMILY = 'LinyuanKai';
+  var kaiLoading = false;
 
-  function detectSystemSerif() {
-    if (systemSerifAvailable !== null) return systemSerifAvailable;
-    try {
-      var ctx = document.createElement('canvas').getContext('2d');
-      ctx.font = '40px serif';
-      var serifW = ctx.measureText('临渊羡鱼梧桐').width;
-      ctx.font = '40px sans-serif';
-      var sansW = ctx.measureText('临渊羡鱼梧桐').width;
-      // 宽度一致说明 serif 回退到了同一套字形
-      systemSerifAvailable = Math.abs(serifW - sansW) > 0.5;
-    } catch (e) {
-      systemSerifAvailable = false;
+  function fontStackFor(family) {
+    if (family === 'kai') {
+      /* 自带楷体优先；万一字体没加载成功，退回系统的楷/宋，最后才是 serif */
+      return '"' + KAI_FAMILY + '","Kaiti SC","STKaiti","KaiTi","楷体","Noto Serif CJK SC",serif';
     }
-    return systemSerifAvailable;
+    if (family === 'system') {
+      return 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
+    }
+    return '"Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif';
   }
 
-  function serifStack() {
-    return detectSystemSerif()
-      ? '"Noto Serif CJK SC","Noto Serif SC","Source Han Serif SC","Songti SC",serif'
-      : '"ZCOOL XiaoWei","Noto Serif CJK SC",serif';
+  /* 楷体按需加载：第一次选到它才拉 woff2，避免没用的人白付流量 */
+  function ensureKaiLoaded() {
+    if (!document.fonts || !document.fonts.load) return;
+    try {
+      if (document.fonts.check('16px ' + KAI_FAMILY, '临渊羡鱼')) return;
+    } catch (e) { /* 忽略，继续走加载 */ }
+    if (kaiLoading) return;
+    kaiLoading = true;
+    showToast('正在加载楷体…');
+    document.fonts.load('16px ' + KAI_FAMILY, '临渊羡鱼').then(function () {
+      kaiLoading = false;
+    }, function () {
+      kaiLoading = false;
+    });
+  }
+
+  function refreshFontButtons() {
+    var wrap = document.getElementById('fontFamilyChoices');
+    if (!wrap) return;
+    var btns = wrap.querySelectorAll('button[data-font]');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle('is-on', btns[i].getAttribute('data-font') === state.fontFamily);
+    }
   }
 
   function applyFontFamily(family) {
+    /* 老版本存过 'serif'，这里兜底回黑体，避免空字体栈 */
+    if (fontFamilies.indexOf(family) < 0) family = 'fzyouhei';
     state.fontFamily = family;
     localStorage.setItem('reader-fontfamily', family);
     var content = document.querySelector('.chapter-content');
-    if (content) {
-      content.style.fontFamily = family === 'serif'
-        ? serifStack()
-        : '-apple-system,"PingFang SC","Noto Sans CJK SC","Noto Sans SC","Microsoft YaHei",sans-serif';
-    }
+    if (content) content.style.fontFamily = fontStackFor(family);
+    if (family === 'kai') ensureKaiLoaded();
     var label = document.getElementById('fontFamilyLabel');
     if (label) label.textContent = fontFamilyLabels[family] || '黑体';
+    refreshFontButtons();
   }
 
-  window.toggleFontFamily = function() {
+  window.setFontFamily = function (family) { applyFontFamily(family); };
+
+  /* 保留旧函数名，防止其它地方还有引用 */
+  window.toggleFontFamily = function () {
     var idx = fontFamilies.indexOf(state.fontFamily);
-    idx = (idx + 1) % fontFamilies.length;
-    applyFontFamily(fontFamilies[idx]);
+    if (idx < 0) idx = 0;
+    applyFontFamily(fontFamilies[(idx + 1) % fontFamilies.length]);
   };
 
   /* ===== 宽屏阅读（桌面端生效） ===== */
@@ -882,9 +905,12 @@
             '</div>' +
           '</div>' +
           '<div class="setting-group"><div class="setting-label">字体</div>' +
-            '<div class="mode-toggle-row">' +
-              '<button id="fontFamilyToggle" class="mode-toggle-btn" onclick="toggleFontFamily()"><span id="fontFamilyLabel">' + (fontFamilyLabels[state.fontFamily] || '黑体') + '</span></button>' +
+            '<div class="mode-toggle-row" id="fontFamilyChoices">' +
+              '<button class="mode-toggle-btn" data-font="fzyouhei" onclick="setFontFamily(\'fzyouhei\')">黑体</button>' +
+              '<button class="mode-toggle-btn" data-font="system" onclick="setFontFamily(\'system\')">系统</button>' +
+              '<button class="mode-toggle-btn" data-font="kai" onclick="setFontFamily(\'kai\')">楷体</button>' +
             '</div>' +
+            '<div class="setting-hint">「系统」跟随手机的字体设置；「楷体」首次选择需下载约 0.85MB</div>' +
           '</div>' +
           '<div class="setting-group"><div class="setting-label">版式</div>' +
             '<div class="mode-toggle-row">' +
@@ -902,8 +928,7 @@
     if (!ov) { initSettingsPanel(); ov = document.getElementById('settingsOverlay'); }
     var circles = ov.querySelectorAll('.theme-circle');
     circles.forEach(function(c) { c.classList.toggle('active', c.dataset.theme === state.theme); });
-    var fl = document.getElementById('fontFamilyLabel');
-    if (fl) fl.textContent = fontFamilyLabels[state.fontFamily] || '黑体';
+    refreshFontButtons();
     var rw = document.getElementById('readWidthLabel');
     if (rw) rw.textContent = state.readWidth === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关';
     if (ov) { ov.classList.add('visible'); document.body.style.overflow = 'hidden'; }
