@@ -1,0 +1,23 @@
+{
+  "//": "只给阅读器模块做类型检查，不产出任何文件。VS Code 打开即生效；命令行可用 npx tsc -p jsconfig.json --noEmit。",
+  "compilerOptions": {
+    "target": "ES2019",
+    "lib": [
+      "ES2019",
+      "DOM"
+    ],
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "types": []
+  },
+  "include": [
+    "js/types.d.ts",
+    "js/reader.store.js",
+    "js/reader.engine.js",
+    "js/reader.ui.js",
+    "js/reader.js"
+  ]
+}
