@@ -27,6 +27,21 @@
 
   var chapterId = window.location.pathname.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-');
 
+  /* ===== 存储版本 =====
+     阅读数据全部住在 localStorage 的 reader-* 键里，是「本地优先」的唯一副本
+     —— 所以两件事必须做对：加字段时能迁移，数据能导出。
+     v1 → v2：footprints 增补 time（累计秒）与 dayTime（按天秒数）。 */
+  var STORAGE_SCHEMA = 2;
+
+  function migrateStorage() {
+    var ver = parseInt(localStorage.getItem('reader-schema'), 10);
+    if (isNaN(ver)) ver = 1;
+    if (ver >= STORAGE_SCHEMA) return;
+    /* 旧数据缺 time/dayTime，normalizeFootprints 会补零；写回一次即完成迁移 */
+    localStorage.setItem('reader-footprints', JSON.stringify(readFootprints()));
+    localStorage.setItem('reader-schema', String(STORAGE_SCHEMA));
+  }
+
   function clampProgress(pct) {
     pct = parseInt(pct, 10);
     if (isNaN(pct)) pct = 0;
@@ -53,9 +68,68 @@
     updateProgressFill(pct);
   }
 
+  /* ===== 位置锚点 =====
+     只存百分比时，改字号 / 行距 / 宽度 / 字体都会让整章重新排版，
+     「47% 对应的像素位置」和「47% 对应的那句话」就分家了 —— 回来会偏半屏。
+     所以额外存「第几段 + 段内比例」：恢复时按段落定位，百分比只作兜底。
+     段落取 .chapter-content 里的 <p>，与正文结构一一对应，改版式不影响序号。 */
+  var PROBE_RATIO = 0.15;   /* 取视口上方 15% 处的段落做锚点，避开固定章节名条 */
+  var userScrolled = false; /* 用户自己滚过之后，就不再强行把我们记的位置按回去 */
+  var restoring = false;    /* 恢复过程中不要写盘：否则会用错位的中间态覆盖好锚点 */
+
+  function contentParagraphs() {
+    var article = document.querySelector('.chapter-content');
+    if (!article) return [];
+    return article.querySelectorAll('p');
+  }
+
+  function getCurrentAnchor() {
+    var paras = contentParagraphs();
+    if (!paras.length) return null;
+    var probeY = window.innerHeight * PROBE_RATIO;
+    var idx = 0;
+    var off = 0;
+    var hit = false;
+    for (var i = 0; i < paras.length; i++) {
+      var r = paras[i].getBoundingClientRect();
+      if (r.bottom > probeY) {
+        idx = i;
+        off = r.height > 0 ? Math.min(1, Math.max(0, (probeY - r.top) / r.height)) : 0;
+        hit = true;
+        break;
+      }
+    }
+    /* 探测线已经在所有段落之下（章末留白很长时）：锚到最后一段末尾 */
+    if (!hit) { idx = paras.length - 1; off = 1; }
+    return { p: getCurrentProgressPct(), i: idx, o: Math.round(off * 1000) / 1000 };
+  }
+
+  function scrollToAnchor(anchor) {
+    if (!anchor || typeof anchor.i !== 'number' || anchor.i < 0) return false;
+    var paras = contentParagraphs();
+    if (!paras.length || !paras[anchor.i]) return false;
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    if (max <= 0) return false;
+    var r = paras[anchor.i].getBoundingClientRect();
+    var probeY = window.innerHeight * PROBE_RATIO;
+    var target = window.scrollY + r.top + (anchor.o || 0) * r.height - probeY;
+    window.scrollTo({ top: Math.max(0, Math.min(max, target)), behavior: 'auto' });
+    return true;
+  }
+
+  function readAnchor() {
+    var raw = localStorage.getItem('reader-anchor-' + chapterId);
+    if (!raw) return null;
+    try {
+      var a = JSON.parse(raw);
+      return (a && typeof a.i === 'number') ? a : null;
+    } catch (err) { return null; }
+  }
+
 
   /* ===== INIT ===== */
   function init() {
+    migrateStorage();
     applyFontSize(state.fontSize);
     applyFontFamily(state.fontFamily);
     applyReadWidth(state.readWidth);
@@ -70,9 +144,11 @@
     initModalKeys();
     initSwipeHint();
     recordFootprints();
+    initReadingTime();
     restoreProgress();
     initImmersive();
     initReadingAids();
+    ready = true;
   }
 
   /* ===== 沉浸模式：隐藏系统状态栏 + 底部固定状态条 =====
@@ -177,8 +253,22 @@
     idx += dir;
     if (idx < 0) idx = 0;
     if (idx >= fontSizes.length) idx = fontSizes.length - 1;
-    applyFontSize(fontSizes[idx]);
+    keepPositionWhile(function() { applyFontSize(fontSizes[idx]); });
   };
+
+  /* 改版式（字号/字体/宽度）会让整章重排。用户的心智是「我还是在那一句」，
+     不是「我还是在 47%」——所以先把锚点记下来，应用后再落回同一段。
+     初始化阶段不这么做（那时锚点还是空的，而且 restoreProgress 稍后会接手）。 */
+  var ready = false;
+  function keepPositionWhile(fn) {
+    var anchor = ready ? getCurrentAnchor() : null;
+    fn();
+    if (!anchor) return;
+    requestAnimationFrame(function() {
+      scrollToAnchor(anchor);
+      saveProgress(undefined, true);
+    });
+  }
 
   /* ===== FONT FAMILY =====
      三个选项的区别（这是用户真正能感知到的部分）：
@@ -283,7 +373,9 @@
     refreshFontButtons();
   }
 
-  window.setFontFamily = function (family) { applyFontFamily(family); };
+  window.setFontFamily = function (family) {
+    keepPositionWhile(function() { applyFontFamily(family); });
+  };
 
   /* 保留旧函数名，防止其它地方还有引用 */
   window.toggleFontFamily = function () {
@@ -306,7 +398,9 @@
   }
 
   window.toggleReadWidth = function() {
-    applyReadWidth(state.readWidth === 'wide' ? 'normal' : 'wide');
+    keepPositionWhile(function() {
+      applyReadWidth(state.readWidth === 'wide' ? 'normal' : 'wide');
+    });
   };
 
   /* ===== 首次手势提示（仅触屏设备，显示一次） ===== */
@@ -460,8 +554,15 @@
     // 页面隐藏/卸载时传 force=true 补最后一把，保证离开前进度是准的。
     var now = Date.now();
     if (!force && now - lastProgressSave < 320) return;
+    if (restoring && !force) return;
     lastProgressSave = now;
     localStorage.setItem('reader-pos-' + chapterId, pct);
+    /* 同时存锚点：百分比用于显示与兜底，段落序号用于真正定位 */
+    var anchor = getCurrentAnchor();
+    if (anchor) {
+      anchor.p = pct;
+      localStorage.setItem('reader-anchor-' + chapterId, JSON.stringify(anchor));
+    }
     if (pct >= 95) {
       localStorage.setItem('reader-done-' + chapterId, '1');
     } else {
@@ -469,12 +570,56 @@
     }
   }
 
+  /* 恢复位置：首帧 → 120ms → 600ms → 字体就绪 → load 各试一次，
+     并在随后几秒里盯着页面高度：懒加载图片撑开正文会把位置顶跑，
+     高度一变就按锚点重新落位。只要用户自己滚过，全部让位。
+     为什么不一次到位：正文高度取决于字体度量与图片，字体没就位时算出来的
+     段落位置会偏低，锚点会把人送到错的地方。 */
   function restoreProgress() {
     var pct = clampProgress(localStorage.getItem('reader-pos-' + chapterId));
-    if (pct > 0 && pct < 95) {
-      setTimeout(function() { scrollToProgress(pct); }, 200);
-    }
+    var anchor = readAnchor();
     refreshProgressControls(pct);
+    if (!(pct > 0 && pct < 95)) return;
+
+    var observer = null;
+    var finished = false;
+
+    function apply() {
+      if (userScrolled) { finish(); return; }
+      if (anchor && scrollToAnchor(anchor)) return;
+      scrollToProgress(pct);
+    }
+    function finish() {
+      if (finished) return;
+      finished = true;
+      if (observer) { observer.disconnect(); observer = null; }
+      restoring = false;
+    }
+
+    restoring = true;
+    apply();
+    setTimeout(apply, 120);
+    setTimeout(apply, 600);
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function() { apply(); }, function() {});
+    }
+    window.addEventListener('load', apply, { once: true });
+
+    /* 懒加载图片的坑：视口在章首时，位于恢复点**上方**的图片根本没被加载，
+       一跳过去它们才开始下载，每张撑开一点就把人往下推 —— 只靠定时器永远追不上。
+       所以直接盯 scrollHeight，变化超过 4px 就重新落位。 */
+    if (window.ResizeObserver) {
+      var lastH = 0;
+      observer = new ResizeObserver(function() {
+        var h = document.documentElement.scrollHeight;
+        if (Math.abs(h - lastH) < 4) return;
+        lastH = h;
+        apply();
+      });
+      observer.observe(document.documentElement);
+    }
+    /* 兜底收尾：网络慢也给足 5 秒；之后不再干预 */
+    setTimeout(finish, 5000);
   }
 
   function updateProgressFill(pct) {
@@ -495,6 +640,7 @@
       function updateFromPointer(e) {
         var rect = progressBar.getBoundingClientRect();
         var pct = clampProgress(Math.round(((e.clientX - rect.left) / rect.width) * 100));
+        markUserScroll();
         scrollToProgress(pct);
         saveProgress(pct);
       }
@@ -541,6 +687,22 @@
     document.addEventListener('visibilitychange', function() {
       if (document.visibilityState === 'hidden') saveProgress(undefined, true);
     });
+
+    /* 「用户自己动了」的判定：只有真实手势才算，脚本滚动（恢复位置、自动滚屏）不算。
+       一旦用户动手，后续的定时恢复就全部让位，不能把人拽回去。 */
+    ['wheel', 'touchmove'].forEach(function(type) {
+      window.addEventListener(type, markUserScroll, { passive: true });
+    });
+    document.addEventListener('keydown', function(e) {
+      if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].indexOf(e.key) >= 0) {
+        markUserScroll();
+      }
+    });
+  }
+
+  function markUserScroll() {
+    userScrolled = true;
+    restoring = false;
   }
 
   /* ===== 键盘：Escape 逐层关闭（设置 -> 摘句簿 -> 目录 -> 工具栏） ===== */
@@ -550,7 +712,9 @@
       var settings = document.getElementById('settingsOverlay');
       var quotes = document.getElementById('quotesOverlay');
       var dir = document.getElementById('dirOverlay');
-      if (settings && settings.classList.contains('visible')) { closeSettings(); }
+      var dataOv = document.getElementById('dataOverlay');
+      if (dataOv && dataOv.classList.contains('visible')) { closeDataModal(); }
+      else if (settings && settings.classList.contains('visible')) { closeSettings(); }
       else if (quotes && quotes.classList.contains('visible')) { closeQuotes(); }
       else if (dir && dir.classList.contains('visible')) { closeDirectory(); }
       else if (state.barsVisible) { hideBars(); }
@@ -884,13 +1048,73 @@
   function mergeFootprints(mutator) {
     var data = readFootprints();
     data = mutator(data) || data;
-    localStorage.setItem('reader-footprints', JSON.stringify(data));
+    localStorage.setItem('reader-footprints', JSON.stringify(normalizeFootprints(data)));
   }
 
   function readFootprints() {
     var raw = localStorage.getItem('reader-footprints');
-    if (!raw) return {};
-    try { return JSON.parse(raw) || {}; } catch (err) { return {}; }
+    if (!raw) return normalizeFootprints(null);
+    try { return normalizeFootprints(JSON.parse(raw)); } catch (err) { return normalizeFootprints(null); }
+  }
+
+  /* 单一入口保证形状：读的时候补、写的时候补，任何一处少字段都不会
+     在别处变成 undefined。加字段就写在这里 + 升 STORAGE_SCHEMA。 */
+  function normalizeFootprints(data) {
+    if (!data || typeof data !== 'object') data = {};
+    if (!Array.isArray(data.days)) data.days = [];
+    if (!Array.isArray(data.quotes)) data.quotes = [];
+    if (!data.themeCounts || typeof data.themeCounts !== 'object') data.themeCounts = {};
+    if (typeof data.time !== 'number' || !isFinite(data.time) || data.time < 0) data.time = 0;
+    if (!data.dayTime || typeof data.dayTime !== 'object') data.dayTime = {};
+    data.v = STORAGE_SCHEMA;
+    return data;
+  }
+
+  /* ===== 阅读时长 =====
+     只在阅读页计时，且只算「页面可见」的时间：切后台、锁屏期间不计。
+     15s 打一次点，攒满 60s 才落盘 —— 即每分钟最多一次同步写盘，
+     和滚动写进度错开，不会在滚动时卡帧。 */
+  var readingTime = { last: 0, pending: 0, timer: 0 };
+
+  function initReadingTime() {
+    readingTime.last = Date.now();
+    readingTime.timer = setInterval(tickReadingTime, 15000);
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden) { tickReadingTime(); flushReadingTime(); }
+      else { readingTime.last = Date.now(); }
+    });
+    window.addEventListener('pagehide', function() { tickReadingTime(); flushReadingTime(); });
+  }
+
+  function tickReadingTime() {
+    var now = Date.now();
+    var delta = now - readingTime.last;
+    readingTime.last = now;
+    /* 后台/休眠回来会一次跳出几分钟，超过 60s 的间隔直接丢弃 */
+    if (document.hidden || delta <= 0 || delta > 60000) return;
+    readingTime.pending += Math.round(delta / 1000);
+    if (readingTime.pending >= 60) flushReadingTime();
+  }
+
+  function flushReadingTime() {
+    var sec = readingTime.pending;
+    readingTime.pending = 0;
+    if (sec < 5) return;  /* 随手点开就走的不算读过 */
+    mergeFootprints(function(data) {
+      data.time += sec;
+      var day = getTodayToken();
+      data.dayTime[day] = (data.dayTime[day] || 0) + sec;
+      trimDayTime(data.dayTime);
+      return data;
+    });
+  }
+
+  /* 只留最近 180 天：老数据对「连续天数」没用，但会把 localStorage 撑大 */
+  function trimDayTime(map) {
+    var keys = Object.keys(map);
+    if (keys.length <= 180) return;
+    keys.sort();
+    for (var i = 0; i < keys.length - 180; i++) delete map[keys[i]];
   }
 
   function getTodayToken() {
@@ -972,6 +1196,12 @@
               '<button class="mode-toggle-btn' + (readingAids.remainTime ? ' is-on' : '') + '" data-aid="remainTime" onclick="toggleReadingAid(\'remainTime\')">' + aidLabel('remainTime') + '</button>' +
             '</div>' +
           '</div>' +
+          '<div class="setting-group"><div class="setting-label">阅读数据</div>' +
+            '<div class="mode-toggle-row">' +
+              '<button class="mode-toggle-btn" onclick="openDataModal(\'export\')">备份数据</button>' +
+              '<button class="mode-toggle-btn" onclick="openDataModal(\'import\')">恢复数据</button>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
@@ -1000,6 +1230,216 @@
     var ov = document.getElementById('settingsOverlay');
     if (ov) { ov.classList.remove('visible'); document.body.style.overflow = ''; }
   };
+
+  /* ===== 阅读数据备份 =====
+     本站是本地优先：进度、摘句、足迹、设置全都只存在这台机器的 localStorage，
+     换手机、清缓存、重装 App 就是全丢。所以给两个出口：
+       备份 —— 把 reader-* 键打包成一段 JSON，可复制、可存文件
+       恢复 —— 把那段 JSON 原样写回
+     为什么用文本框而不是直接触发下载：Android WebView 里 a[download] 基本
+     不会真的下载（没有 DownloadListener），静默失败比没做更糟。 */
+  var DATA_KEY_RE = /^reader-[a-z0-9-]+$/;
+  var dataMode = 'export';
+  var dataConfirmUntil = 0;
+
+  function collectReaderData() {
+    var data = {};
+    for (var i = 0; i < localStorage.length; i++) {
+      var key = localStorage.key(i);
+      if (!key || !DATA_KEY_RE.test(key)) continue;
+      data[key] = localStorage.getItem(key);
+    }
+    var counts = {
+      chapters: 0, quotes: 0, seconds: 0
+    };
+    for (var k in data) {
+      if (k.indexOf('reader-pos-') === 0) counts.chapters++;
+    }
+    var fp = readFootprints();
+    counts.quotes = fp.quotes.length;
+    counts.seconds = fp.time;
+    return {
+      app: 'linyuan-reader',
+      schema: STORAGE_SCHEMA,
+      exportedAt: new Date().toISOString(),
+      summary: counts,
+      data: data
+    };
+  }
+
+  function formatDuration(sec) {
+    if (!sec) return '0 分钟';
+    if (sec < 60) return '不到 1 分钟';
+    var min = Math.round(sec / 60);
+    if (min < 60) return min + ' 分钟';
+    var h = Math.floor(min / 60);
+    var m = min % 60;
+    return m ? h + ' 小时 ' + m + ' 分钟' : h + ' 小时';
+  }
+
+  function openDataModal(mode) {
+    var ov = document.getElementById('dataOverlay');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'dataOverlay';
+      ov.className = 'modal-overlay';
+      ov.innerHTML =
+        '<div class="modal-backdrop"></div>' +
+        '<div class="modal-panel data-modal" role="dialog" aria-modal="true" aria-label="阅读数据">' +
+          '<div class="modal-header"><span id="dataTitle">阅读数据</span>' +
+            '<button class="modal-close" onclick="closeDataModal()">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+            '</button>' +
+          '</div>' +
+          '<div class="modal-body">' +
+            '<div class="data-hint" id="dataHint"></div>' +
+            '<textarea id="dataText" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="在这里粘贴备份内容"></textarea>' +
+            '<div class="data-actions">' +
+              '<button class="mode-toggle-btn" id="dataPrimary" onclick="dataPrimaryAction()">复制</button>' +
+              '<button class="mode-toggle-btn" onclick="dataDownload()" id="dataDownloadBtn">存为文件</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
+      ov.querySelector('.modal-backdrop').addEventListener('click', closeDataModal);
+    }
+
+    dataMode = mode;
+    dataConfirmUntil = 0;
+    var title = document.getElementById('dataTitle');
+    var hint = document.getElementById('dataHint');
+    var ta = document.getElementById('dataText');
+    var primary = document.getElementById('dataPrimary');
+    var dl = document.getElementById('dataDownloadBtn');
+
+    if (mode === 'export') {
+      var payload = collectReaderData();
+      title.textContent = '备份阅读数据';
+      hint.textContent = '包含 ' + payload.summary.chapters + ' 章的进度、' +
+        payload.summary.quotes + ' 条摘句、阅读 ' + formatDuration(payload.summary.seconds) +
+        '。复制后自己存好，换设备时用「恢复数据」贴回来。';
+      ta.value = JSON.stringify(payload, null, 2);
+      ta.setAttribute('readonly', 'readonly');
+      primary.textContent = '复制';
+      /* 壳里下不了文件，按钮直接不出现，免得更糟的静默失败 */
+      dl.style.display = window.LinyuanApp ? 'none' : '';
+    } else {
+      title.textContent = '恢复阅读数据';
+      hint.textContent = '把备份内容整段贴进下面的框里，会覆盖这台设备上现有的进度、摘句和设置。';
+      ta.value = '';
+      ta.removeAttribute('readonly');
+      primary.textContent = '导入并覆盖';
+      dl.style.display = 'none';
+    }
+
+    ov.classList.add('visible');
+    document.body.style.overflow = 'hidden';
+    if (state.barsVisible) { stopAutoClose(); }
+    if (mode === 'import') setTimeout(function() { ta.focus(); }, 220);
+  }
+
+  window.openDataModal = openDataModal;
+
+  window.closeDataModal = function() {
+    var ov = document.getElementById('dataOverlay');
+    if (!ov) return;
+    ov.classList.remove('visible');
+    document.body.style.overflow = '';
+    if (state.barsVisible) startAutoClose();
+  };
+
+  window.dataPrimaryAction = function() {
+    if (dataMode === 'export') {
+      var ta = document.getElementById('dataText');
+      copyText(ta.value).then(function() {
+        showToast('备份内容已复制');
+      }, function() {
+        showToast('请长按文本框，全选复制');
+        ta.focus();
+        ta.setSelectionRange(0, ta.value.length);
+      });
+      return;
+    }
+    /* 导入会覆盖现有数据：第一次点击只「上膛」，3 秒内再点一次才真的写入 */
+    var primary = document.getElementById('dataPrimary');
+    var now = Date.now();
+    if (now > dataConfirmUntil) {
+      dataConfirmUntil = now + 3000;
+      primary.textContent = '确认覆盖？';
+      setTimeout(function() {
+        if (Date.now() >= dataConfirmUntil && dataMode === 'import') {
+          var btn = document.getElementById('dataPrimary');
+          if (btn) btn.textContent = '导入并覆盖';
+        }
+      }, 3100);
+      return;
+    }
+    dataConfirmUntil = 0;
+    var err = importReaderData(document.getElementById('dataText').value);
+    if (err) {
+      showToast(err);
+      primary.textContent = '导入并覆盖';
+      return;
+    }
+    showToast('已恢复，正在重新载入…');
+    setTimeout(function() { window.location.reload(); }, 700);
+  };
+
+  function importReaderData(text) {
+    var payload;
+    try { payload = JSON.parse(text); } catch (e) { return '内容不是合法的备份格式'; }
+    if (!payload || typeof payload !== 'object' || !payload.data || typeof payload.data !== 'object') {
+      return '内容不像阅读数据备份';
+    }
+    var keys = Object.keys(payload.data);
+    var applied = 0;
+    keys.forEach(function(k) {
+      if (!DATA_KEY_RE.test(k)) return;
+      var v = payload.data[k];
+      if (typeof v !== 'string') return;
+      localStorage.setItem(k, v);
+      applied++;
+    });
+    if (!applied) return '备份里没有可恢复的阅读数据';
+    localStorage.setItem('reader-schema', String(STORAGE_SCHEMA));
+    return '';
+  }
+
+  window.dataDownload = function() {
+    try {
+      var blob = new Blob([document.getElementById('dataText').value], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      var d = new Date();
+      a.href = url;
+      a.download = '临渊羡鱼-阅读数据-' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(url); }, 4000);
+    } catch (e) {
+      showToast('无法保存文件，请改用复制');
+    }
+  };
+
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function(resolve, reject) {
+      var ta = document.getElementById('dataText');
+      if (!ta) { reject(); return; }
+      ta.removeAttribute('readonly');
+      ta.focus();
+      ta.setSelectionRange(0, text.length);
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      ta.setAttribute('readonly', 'readonly');
+      ok ? resolve() : reject();
+    });
+  }
 
   /* ===== 自动滚动（自动下滑翻页） =====
      rAF 逐帧滚动，速度按时间计算（与帧率无关）；速度 10 档存 localStorage。

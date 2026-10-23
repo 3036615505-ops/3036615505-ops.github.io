@@ -1736,8 +1736,10 @@ body.reading-page {
   margin-bottom: 22px;
   word-break: break-all;
   font-weight: 400;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 2em;
+  /* 这里曾经用 content-visibility: auto + contain-intrinsic-size: 2em 省渲染，
+     但它让「没进过视口的段落」高度只是估算值：跳进章节中间时整章高度是假的，
+     进度百分比、底部页码、剩余时间全部跟着偏，位置恢复也会一路漂。
+     一章不过几十段、几千字，全量排版本来就是毫秒级的事 —— 性能收益抵不上正确性。 */
 }
 
 .chapter-content blockquote {
@@ -2442,6 +2444,60 @@ body.reading-page {
   font-size: 12px;
   line-height: 1.5;
   color: var(--text-muted);
+}
+
+/* ===== 阅读数据备份弹窗 ===== */
+.data-modal .modal-panel,
+.modal-panel.data-modal {
+  width: min(92vw, 400px);
+  border-radius: 24px;
+  background: var(--reader-surface);
+  box-shadow: 0 24px 64px rgba(37, 24, 10, 0.24);
+}
+
+.data-modal .modal-header {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--reader-border);
+}
+
+.data-modal .modal-body {
+  padding: 16px 20px 18px;
+}
+
+.data-hint {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+/* 备份内容要能整段看清、整段选中：等宽字体 + 可滚动 */
+.data-modal textarea {
+  width: 100%;
+  height: 176px;
+  resize: none;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--reader-border);
+  background: var(--reader-surface-soft);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  box-sizing: border-box;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.data-modal textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.data-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .mode-toggle-btn {
