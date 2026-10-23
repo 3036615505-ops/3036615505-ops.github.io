@@ -3410,3 +3410,191 @@ body.app-immersive .chapter-content {
 }
 
 [data-theme="dark"] #readerStatus { opacity: 0.55; }
+
+/* ===== 同学录立绘灯箱（js/lightbox.js） =====
+   复用弹窗通用基建（.modal-overlay / .modal-backdrop / .modal-close / .visible），
+   不另造 z-index 与过渡体系；.modal-panel 是 370px 白底面板，灯箱要全屏舞台，
+   所以舞台部分用 .lightbox-* 自理。深浅两主题共用同一套暖白文字 + 深色遮罩
+   配色（遮罩永远是深的，不需要按主题分叉）。 */
+
+/* 真实立绘整块是可点击按钮（<button> 无 href，transition.js 不会接管）。
+   按钮重置照 .reader-tap-zone 的既有写法。 */
+.char-photo {
+  position: relative; /* 给 .char-photo-btn::after 的放大提示图标当定位锚 */
+}
+
+.char-photo-btn {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: none;
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  touch-action: manipulation; /* 去掉移动端双击缩放延迟，按下即时反馈 */
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease;
+}
+
+.char-photo-btn:active {
+  transform: scale(0.955);
+}
+
+/* 键盘聚焦才出焦点环（鼠标点击不出）；::after 的放大镜同步亮起 */
+.char-photo-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* 悬停 / 键盘聚焦 / 按压时，右下角露出放大镜——桌面端给「可点」的视觉线索。
+   触屏没有 hover，靠灯箱内的提示行 teaching（双击放大 · 捏合缩放 · 拖动查看）。 */
+.char-photo-btn::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: rgba(40, 28, 16, 0.55)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f7ecd9' stroke-width='2.6' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6.6'/%3E%3Cline x1='15.8' y1='15.8' x2='20.5' y2='20.5'/%3E%3C/svg%3E")
+    center / 10px 10px no-repeat;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+
+.char-photo-btn:hover::after,
+.char-photo-btn:active::after,
+.char-photo-btn:focus-visible::after {
+  opacity: 1;
+}
+
+/* ---- 遮罩：比通用弹窗的 0.46 更深，立绘要压暗环境 ----
+   实测口径：0.84×#20160c 叠在最亮的页面底色（浅色主题 #fbf7ef）上约为 #423626，
+   暖白说明文字对比 ≥5.9:1，浅/深主题都过 4.5:1（复跑 tools/contrast-audit.mjs）。 */
+.lightbox-overlay {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.lightbox-overlay .modal-backdrop {
+  background: rgba(32, 22, 12, 0.84);
+}
+
+/* ---- 舞台：整屏 flex 列，上图下文 ----
+   z-index 压过遮罩；关闭按钮 z-index 再压一层（浮在立绘右上角）。 */
+.lightbox-stage {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: calc(20px + env(safe-area-inset-top, 0px)) 16px
+            calc(16px + env(safe-area-inset-bottom, 0px));
+  opacity: 0;
+  transform: scale(0.94);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.lightbox-overlay.visible .lightbox-stage {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ---- 图片容器：度量基准 + 手势接管区 ----
+   overflow:hidden 把放大后探出的部分裁掉（不遮说明文字）；
+   touch-action:none 把捏合 / 拖动从浏览器手势里抢过来交给 JS。 */
+.lightbox-frame {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.lightbox-image {
+  display: block;
+  transform-origin: center center;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 只在打开期间提升层，不做常驻 will-change（本项目刚清理过空转动画） */
+.lightbox-overlay.visible .lightbox-image {
+  will-change: transform;
+}
+
+/* 双击 / 回弹的一次性补间；捏合与拖动期间 JS 会摘掉这个类，保证 1:1 跟手 */
+.lightbox-image.smooth {
+  transition: transform 0.3s ease;
+}
+
+.lightbox-caption {
+  flex-shrink: 0;
+  text-align: center;
+  padding-top: 14px;
+}
+
+/* ---- 说明文字：人物名 + 一行手势提示 ----
+   固定暖白配色，不跟主题令牌走——遮罩永远是深的，两个主题下同一套值。
+   未打开时自身 opacity:0（而不是只靠父级 .lightbox-stage 的 0）：元素自身的
+   computed opacity 为 0 才算真正的「不可见」，对比度审计（tools/contrast-audit.mjs）
+   也只认这一条，否则关闭状态下的静态文案会被误报成未达标。 */
+.lightbox-name {
+  display: block;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  color: #f7ecd9;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.lightbox-hint {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: #cdbb9c;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.lightbox-overlay.visible .lightbox-name,
+.lightbox-overlay.visible .lightbox-hint {
+  opacity: 1;
+}
+
+/* ---- 关闭按钮：沿用 .modal-close 的外形与按压反馈，按深色遮罩重调配色 ----
+   40×40 触控目标；top/right 都计入 env(safe-area-inset-*)，刘海/圆角不遮挡。 */
+.lightbox-close {
+  position: absolute;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  right: calc(10px + env(safe-area-inset-right, 0px));
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 21, 12, 0.55);
+  border: 1px solid rgba(247, 236, 217, 0.28);
+  color: #f7ecd9;
+}
+
+.lightbox-close svg {
+  width: 20px;
+  height: 20px;
+}
+
+.lightbox-close:active {
+  background: rgba(30, 21, 12, 0.75);
+}

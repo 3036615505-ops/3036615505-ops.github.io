@@ -69,7 +69,8 @@ console.log(`\n合计 ${(totalBytes / 1024).toFixed(1)} KB（未压缩）`);
 const needed = [
   ['/js/transition.js', ['index.html', 'novel/index.html', 'novel/chapter-01.html', 'novel/chapter-02.html']],
   ['/js/reader.js', ['novel/chapter-01.html', 'novel/chapter-02.html']],
-  ['/js/chapters.js', ['index.html', 'novel/index.html', 'novel/chapter-01.html', 'novel/chapter-02.html']]
+  ['/js/chapters.js', ['index.html', 'novel/index.html', 'novel/chapter-01.html', 'novel/chapter-02.html']],
+  ['/js/lightbox.js', ['novel/characters.html']]
 ];
 console.log('\n脚本引用自检：');
 let refMissing = 0;
