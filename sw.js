@@ -19,7 +19,7 @@
  *      NETWORK_TIMEOUT（500ms），所以它们必须走缓存优先。
  *   3. /app/ 前缀（安装包、version.json）不拦截，直接交给网络
  */
-var CACHE = 'linyuan-v18';
+var CACHE = 'linyuan-v17';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
@@ -62,13 +62,9 @@ var PRECACHE = [
   '/assets/cover.webp',
   '/assets/cover-thumb.webp',
   '/assets/paper.webp',
-  /* 人物立绘 1024 母版（3 张共 618.2KB）：2026-10 用户选定的第一版生成图，
-     灯箱全屏/3x 捏合都靠它保证清晰度（512 旧版已下线，不再预缓存）。
-     注意：assets/ 下的 portrait-{key}.webp（512 旧版）已无任何引用，
-     待观察一个版本周期后可删。 */
-  '/assets/portrait-linshu-1024.webp',
-  '/assets/portrait-nanheng-1024.webp',
-  '/assets/portrait-jiangbuqiu-1024.webp',
+  '/assets/portrait-linshu.webp',
+  '/assets/portrait-nanheng.webp',
+  '/assets/portrait-jiangbuqiu.webp',
   /* 梧桐阶段图（6 张共 153.4KB）：首页进度带的核心意象。
      装上后切页零网络、断网也长得出树。 */
   '/assets/tree-bare.webp',
