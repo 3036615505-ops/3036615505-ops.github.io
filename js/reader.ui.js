@@ -241,7 +241,13 @@
   /* 系统字体名：WebView 不会自动跟随 ROM 主题字体，只能向壳要名字再交给 CSS。
      壳在 1.8.3 之后用的方法名不统一（dex 里 getSystemFontFamily 与
      getSystemFontFamilyName 同时存在），所以这里按候选表逐个试，谁能给出
-     合法值就用谁 —— 只认一个名字的话，壳一旦改名，「系统」就静默退回默认字体。 */
+     合法值就用谁 —— 只认一个名字的话，壳一旦改名，「系统」就静默退回默认字体。
+
+     实测（荣耀，v1.8.4 壳）：三个方法都在，但返回的是 "sans-serif" —— 也就是
+     Java 侧的默认 Typeface 只能报出「通用无衬线族」，报不出主题字体的名字。
+     这不是壳写错了，Typeface 本来就没有「当前主题字体叫什么」的接口；
+     要真拿到，得靠 SystemFonts.getAvailableFonts() 枚举家族名 + 把字体文件
+     交给网页，见 app/FONT-BRIDGE.md。 */
 
   var SYSTEM_FONT_METHODS = ['getSystemFontFamily', 'getSystemFontFamilyName', 'getSystemFont'];
 
@@ -253,6 +259,20 @@
 
   var fontAvailCache = {};
 
+  /* 「系统」档的字体栈。把 sans-serif 放在 system-ui 前面是有意的：
+     ROM 换主题字体时替换的是字体配置文件里那个「默认无衬线族」，也就是
+     sans-serif 指向的东西；system-ui 走的是 WebView 自己的 UI 字体，
+     两者在真机上常常不是同一套。先写 sans-serif，等于先给主题字体一次机会。 */
+  var SYSTEM_STACK = 'sans-serif,system-ui';
+
+  /* 这些是 CSS 通用族名 / 占位词，不是某个具体字体。壳返回它们说明
+     「只知道是默认无衬线，叫不出名字」—— 不是错误，只是没有信息量。 */
+  var GENERIC_FAMILIES = { 'sans-serif': 1, 'system-ui': 1, 'default': 1, 'serif': 1, 'monospace': 1, 'none': 1, 'null': 1, 'undefined': 1 };
+
+  function isGenericFamily(s) {
+    return !!s && Object.prototype.hasOwnProperty.call(GENERIC_FAMILIES, String(s).toLowerCase());
+  }
+
 
   /* 壳可能把 Java 对象直接 toString 回来（android.graphics.Typeface@1a2b3c），
      也可能返回 'default' / 'sans-serif' 这类占位词。这些都不是字体家族名，
@@ -263,7 +283,7 @@
     if (s.length > 60) return false;
     if (/[@{};<>]/.test(s)) return false;
     if (/android\.|Typeface/i.test(s)) return false;
-    if (/^(default|sans-serif|null|undefined|none)$/i.test(s)) return false;
+    if (isGenericFamily(s)) return false;
     return true;
   }
 
@@ -319,7 +339,7 @@
      这个结论比「已跟随系统字体」有用得多：它直接告诉用户，问题在手机那边，
      不是这个开关没点。 */
   function systemLooksSameAsHeiti() {
-    var a = fontSignature('system-ui,sans-serif');
+    var a = fontSignature(SYSTEM_STACK);
     var b = fontSignature(HEITI_STACK);
     return a !== null && b !== null && a === b;
   }
@@ -364,7 +384,7 @@
          WebView 里并不存在，那样点名等于白点，最后还是渲染成默认字体，
          而界面上写着「已跟随」，用户只会觉得功能没生效。 */
       var name = detectSystemFontName();
-      return (name && fontAvailable(name)) ? '"' + name + '",system-ui,sans-serif' : 'system-ui,sans-serif';
+      return (name && fontAvailable(name)) ? '"' + name + '",system-ui,sans-serif' : SYSTEM_STACK;
     }
     return HEITI_STACK;
   }
@@ -388,26 +408,29 @@
 
 
   function fontHintText() {
-    /* 平时不显示提示；只有选中「系统」时说明一句现状。
-       几种情况必须说清楚，否则用户只会得到一句没有信息量的「没生效」：
-         拿到名字且能渲染，且与「黑体」不同 → 真的跟随了
-         拿到名字且能渲染，但和「黑体」一模一样 → 这台手机的默认字体本来就是它
-         拿到名字但渲染不出来 → 名字是 Java 侧的叫法，网页里没这个字体
-         方法在但返回空/被过滤 → 手机没给名字（或给的不是字体名）
-         方法根本不存在 → App 太旧 */
+    /* 平时不显示提示；只有选中「系统」时才用一句话说清现状，而且要能据此判断。
+       不把技术噪音丢给读者看 —— 上一版把壳返回的原文直接写成「不是网页能用的格式」，
+       读者只会以为这个开关坏了。
+         拿到名字 + 网页里能渲染 + 与「黑体」不同 → 真的跟随了
+         拿到名字 + 网页里能渲染 + 与「黑体」相同 → 手机没给网页换字体
+         名字渲染不出来 → 那是 App 那边的叫法，网页里没有这个字体
+         壳只给通用族名（sans-serif）→ 只知道「默认无衬线」，叫不出名字
+         壳根本没有这个方法 → App 太旧
+       真机上最后两种情况最常见：荣耀 / 华为的主题字体只对原生界面生效，WebView
+       读的是系统字体配置文件，看不到主题字体 —— 这一条网页端无解，只能靠壳把
+       字体文件或字体家族名交出来（见 app/FONT-BRIDGE.md）。 */
     if (state.fontFamily !== 'system') return '';
     var name = detectSystemFontName();
     if (name) {
-      if (!fontAvailable(name)) return '手机给的字体名是「' + name + '」，但网页里渲染不出它，已退回默认字体';
-      if (systemLooksSameAsHeiti()) return '已跟随系统字体（' + name + '），它与「黑体」是同一个字体，看不出差别是正常的';
+      if (!fontAvailable(name)) return '手机给的名字（' + name + '）网页里没有，已用默认黑体';
+      if (systemLooksSameAsHeiti()) return '手机当前字体与「黑体」相同，看起来不会变';
       return '已跟随系统字体：' + name;
     }
-    /* 没拿到名字，但实测系统字体和「黑体」不一样 —— 说明 WebView 自己就跟上了，
-       这种情况要给出肯定答复，不能因为壳没给名字就说「App 太旧」。 */
-    if (!systemLooksSameAsHeiti()) return '网页已用上手机当前字体（手机没给名字，但确实和「黑体」不同）';
-    if (systemFontBridge === false) return '当前 App 版本没有提供系统字体信息，更新到最新版再试';
-    if (systemFontRaw) return '手机的字体信息不是网页能用的格式（' + systemFontRaw + '），已退回默认字体';
-    return '手机没有提供字体名，网页也只能用默认字体（可到「设置 → 显示和亮度 → 字体」确认是否换了主题字体）';
+    if (!systemLooksSameAsHeiti()) return '已用上手机当前字体';
+    if (systemFontBridge === false) return '当前 App 版本读不到手机字体，已用默认黑体';
+    if (isGenericFamily(systemFontRaw)) return '手机只给了通用字体名（' + systemFontRaw + '），网页用默认黑体，主题字体进不来';
+    if (systemFontRaw) return '手机给的字体名不可用（' + systemFontRaw + '），已用默认黑体';
+    return '手机没有提供字体名，已用默认黑体';
   }
 
 
