@@ -8,13 +8,14 @@
 | 项 | 值 |
 |---|---|
 | 线上 | <https://zephyrw.site>（GitHub Pages，push 即发布） |
-| 站点资源版本 | `?v=50`（7 个 HTML 引用统一） |
-| SW 缓存名 | `linyuan-v33` |
-| 阅读器模块 | dom 77 行 · flags 86 · store 226 · engine 467 · ui 1356 · 入口 30 |
-| 样式 | `css/style.css` 3860 行（4 套主题令牌） |
+| 站点资源版本 | `?v=53`（7 个 HTML 引用统一） |
+| SW 缓存名 | `linyuan-v37` |
+| 阅读器模块 | dom 77 行 · flags 86 · store 226 · engine 467 · ui 1706 · 入口 30 |
+| 样式 | `css/style.css` 3909 行（4 套主题令牌） |
 | 章节 | 3 章（ch01 2858 / ch02 2347 / ch03 2029 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末 |
+| 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）；系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
 | Android 壳 | v1.8.4 / versionCode 13（**本轮无壳改动，不需要重新打包**） |
-| 校验 | 本地 pre-push 4 项 · CI 2 个 job · 端到端 27 项 |
+| 校验 | 本地 pre-push 4 项 · CI 2 个 job · 端到端 32 项 |
 
 ## 常用命令
 
