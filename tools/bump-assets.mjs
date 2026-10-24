@@ -123,6 +123,10 @@ for (const r of results) {
 }
 console.log(`\n合计替换 ${total} 处（${results.filter((r) => r.n).length} 个文件）`);
 console.log(WRITE ? `✓ 已写入，全部为 ?v=${next}` : '（dry-run，未写盘；加 --write 才生效）');
+/* 这条命令是纯 Node 读写，跟操作系统无关 —— Mac / Windows / Linux 都能跑。
+   之前有人因为「版本号要在某台机器上改」的说法绕了远路，其实只有打 APK
+   才受限于 Android SDK 装在哪台机器。 */
+console.log('  （本命令与操作系统无关，任何装了 Node 的机器都能执行；只有打 APK 才受限于 SDK 所在机器）');
 if (WRITE) {
   console.log('\n下一步：');
   console.log(`  1) 若改了 sw.js 的 PRECACHE，记得同步 CACHE 版本`);

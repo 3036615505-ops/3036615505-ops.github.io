@@ -8,19 +8,19 @@
 | 项 | 值 |
 |---|---|
 | 线上 | <https://zephyrw.site>（GitHub Pages，push 即发布） |
-| 站点资源版本 | `?v=53`（7 个 HTML 引用统一） |
-| SW 缓存名 | `linyuan-v37` |
+| 站点资源版本 | `?v=54`（全站 HTML 引用统一） |
+| SW 缓存名 | `linyuan-v38` |
 | 阅读器模块 | dom 77 行 · flags 86 · store 226 · engine 467 · ui 1706 · 入口 30 |
 | 样式 | `css/style.css` 3909 行（4 套主题令牌） |
 | 章节 | 3 章（ch01 2858 / ch02 2347 / ch03 2029 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末 |
 | 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）；系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
 | Android 壳 | v1.8.4 / versionCode 13（**本轮无壳改动，不需要重新打包**） |
-| 校验 | 本地 pre-push 4 项 · CI 2 个 job · 端到端 32 项 |
+| 校验 | 本地 pre-push 4 项 · CI 2 个 job · 端到端 34 项 |
 
 ## 常用命令
 
 ```bash
-node tools/e2e.mjs                 # 27 项端到端（真浏览器，约 40 秒）
+node tools/e2e.mjs                 # 34 项端到端（真浏览器，约 40 秒）
 node tools/e2e.mjs --verbose       # 附带每项实测值
 npx -p typescript tsc -p jsconfig.json --noEmit   # 类型检查（零产出）
 node tools/bump-assets.mjs --write # 发版前必做：全站 ?v= 统一 +1
@@ -62,6 +62,28 @@ reader.dom.js     DOM 工具 el()/html()/escapeHtml（谁都能用）
 
 加字段的流程：`normalizeFootprints` 补默认值 → `STORAGE_SCHEMA` +1 → `migrateStorage` 里写迁移。备份导出会自动带上所有 `reader-*` 键。
 
+## 多机协作：版本号到底在哪台机器改
+
+**「版本」有两个，平台限制只有一个。**
+
+| 要改的东西 | 改在哪 | 有平台限制吗 |
+|---|---|---|
+| 站点资源版本 `?v=` + SW `CACHE` | 任何装了 Node 的机器 | **没有**。就是 `node tools/bump-assets.mjs --write`，Mac / Windows 完全一样 |
+| App 版本 `versionCode` / `versionName`（`twa/app/build.gradle`） | 装了 Android SDK + JDK 的那台 | **有**。SDK 目前在 Windows 这台（`E:/novel-site/android-sdk`）；Mac 上若也装了 SDK 同样能打 |
+
+所以「升版本号必须在 Windows 改」是句误解：站点版本号在哪台改都行，
+mac 端已经改过很多次（现在 `?v=54` / `linyuan-v38`）。**只有要打 APK 时才必须去那台机器**，
+因为 Android SDK 只装在那里。
+
+每个 clone 配一次本地钩子（Mac 上如果没配，本地四项校验不会跑，CI 会兜住）：
+
+```bash
+git config core.hooksPath .githooks
+```
+
+两台机器改同一个仓库时的规矩：**谁改谁 bump**（`?v=` 与改动一起提交），
+不要攒着一起改 —— 攒多了中间任何一次 push 都可能带着别人的旧缓存。
+
 ## 两类改动，两种流程
 
 **A. 只改站点（绝大多数情况）**——HTML/CSS/JS/章节/图片：
@@ -75,7 +97,8 @@ git commit && git push               # ③ pre-push 会跑 4 项校验，CI 会�
 **B. 改到壳**（图标、应用名、权限、Manifest、WebView 设置、原生桥）——才需要：
 
 ```bash
-cd E:/novel-site/twa && ./publish-apk.sh "更新说明"
+cd <装有 android-sdk 的那台机器>/twa && ./publish-apk.sh "更新说明"
+#   目前 SDK 在 Windows 这台：E:/novel-site/twa（Mac 上按本机实际路径替换）
 ```
 
 ## 加新章节（一条命令，其余全自动）
@@ -111,7 +134,7 @@ node new-chapter.js 原稿.md --blurb "目录页一句话" --date "十月十日"
 5. **`a[download]` 在 WebView 里不可靠**，所以备份以「复制」为主路径，「存为文件」只在浏览器里出现。
 6. **改 `.github/workflows/` 需要带 `workflow` 权限的 token**，当前 PAT 没有 → 走网页端编辑。
 7. **`.mailmap` 不能让 GitHub 的 Contributors 面板消失**，它只影响本地 `git shortlog`。
-8. `E:/novel-site/src|novels|dist` 是已退役的旧生成器（`dist/.git` 已隔离），**别跑 `build.js`**，它有熔断会拒绝执行。
+8. 外层 `src|novels|dist` 是已退役的旧生成器（Windows 这台在 `E:/novel-site/`，Mac 上按本机 checkout 位置找）（`dist/.git` 已隔离），**别跑 `build.js`**，它有熔断会拒绝执行。
 
 ## 远程开关（出问题时先关功能，别回滚整站）
 
