@@ -403,5 +403,38 @@
     </a>
   </nav>
   <script src="../js/lightbox.js?v=58"></script>
+  <script>
+  (function () {
+    var KEY_Y = 'linyuan.charListY';
+    var KEY_BACK = 'linyuan.charListBack';
+    document.addEventListener('click', function (e) {
+      var el = e.target;
+      while (el && el !== document && el.tagName !== 'A') el = el.parentNode;
+      if (!el || el === document) return;
+      var href = el.getAttribute('href') || '';
+      if (href.indexOf('character-') !== 0) return;
+      try {
+        sessionStorage.setItem(KEY_Y, String(window.scrollY || window.pageYOffset || 0));
+        sessionStorage.setItem(KEY_BACK, '1');
+      } catch (err) {}
+    }, true);
+    var y = 0;
+    try {
+      if (sessionStorage.getItem(KEY_BACK) === '1') {
+        sessionStorage.removeItem(KEY_BACK);
+        y = parseInt(sessionStorage.getItem(KEY_Y) || '0', 10) || 0;
+      }
+    } catch (err) {}
+    if (!y) return;
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    var tries = 0;
+    (function restore() {
+      window.scrollTo(0, y);
+      tries++;
+      var cur = window.scrollY || window.pageYOffset || 0;
+      if (Math.abs(cur - y) > 4 && tries < 6) setTimeout(restore, 150);
+    })();
+  })();
+  </script>
 </body>
 </html>

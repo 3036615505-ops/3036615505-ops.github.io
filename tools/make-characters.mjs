@@ -157,6 +157,48 @@ const TAB_BAR = [
 const GROUP_NAMES = { xinlei: '新叶', qiaomu: '乔木' };
 
 /* ---------- 1. 列表页 ---------- */
+/* 滚动位置记忆（ES5，照顾老 WebView）：
+   点进任何 character-*.html 之前，capture 阶段把当前 scrollY + 返回标记写进
+   sessionStorage（capture 先于 transition.js 的接管，但两条路都在导航前执行，
+   顺序无关）；列表页加载时见标记才恢复 —— 直接进列表 / 底部 tab 切换不受影响。
+   卡片高度固定（.char-photo 48×56），恢复不依赖懒加载图；
+   150ms × 6 次短重试只兜「布局比脚本晚一拍」的极端抖动，到位即停。 */
+const LIST_SCROLL_SNIPPET = [
+  '  <script>',
+  '  (function () {',
+  '    var KEY_Y = \'linyuan.charListY\';',
+  '    var KEY_BACK = \'linyuan.charListBack\';',
+  '    document.addEventListener(\'click\', function (e) {',
+  '      var el = e.target;',
+  '      while (el && el !== document && el.tagName !== \'A\') el = el.parentNode;',
+  '      if (!el || el === document) return;',
+  '      var href = el.getAttribute(\'href\') || \'\';',
+  '      if (href.indexOf(\'character-\') !== 0) return;',
+  '      try {',
+  '        sessionStorage.setItem(KEY_Y, String(window.scrollY || window.pageYOffset || 0));',
+  '        sessionStorage.setItem(KEY_BACK, \'1\');',
+  '      } catch (err) {}',
+  '    }, true);',
+  '    var y = 0;',
+  '    try {',
+  '      if (sessionStorage.getItem(KEY_BACK) === \'1\') {',
+  '        sessionStorage.removeItem(KEY_BACK);',
+  '        y = parseInt(sessionStorage.getItem(KEY_Y) || \'0\', 10) || 0;',
+  '      }',
+  '    } catch (err) {}',
+  '    if (!y) return;',
+  '    if (\'scrollRestoration\' in history) history.scrollRestoration = \'manual\';',
+  '    var tries = 0;',
+  '    (function restore() {',
+  '      window.scrollTo(0, y);',
+  '      tries++;',
+  '      var cur = window.scrollY || window.pageYOffset || 0;',
+  '      if (Math.abs(cur - y) > 4 && tries < 6) setTimeout(restore, 150);',
+  '    })();',
+  '  })();',
+  '  </script>'
+].join('\n');
+
 function buildListPage(chars) {
   const cards = [];
   let lastGroup = null;
@@ -209,6 +251,7 @@ function buildListPage(chars) {
     '\n' +
     TAB_BAR + '\n' +
     '  <script src="../js/lightbox.js?v=' + ASSET_V + '"></script>\n' +
+    LIST_SCROLL_SNIPPET + '\n' +
     '</body>\n' +
     '</html>\n';
 }
