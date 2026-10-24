@@ -52,7 +52,7 @@ git config core.hooksPath .githooks
 |---|---|---|
 | 全站 `?v=` 是否统一 | `node tools/bump-assets.mjs --check` | 有人拿到旧 CSS/JS（混版缓存） |
 | PRECACHE 条目是否都存在、脚本引用是否齐全 | `node tools/check-precache.mjs` | SW 预缓存里放了一条 404 |
-| 楷体子集是否覆盖正文 | `python tools/make-kai-subset.py --check` | 新章节用了子集里没有的字，显示成豆腐块 |
+| 楷体子集是否覆盖正文 | `python tools/make-kai-subset.py --check` | 正文用了子集外的字（GB2312 一级字之外的生僻字）会显示成豆腐块 |
 | 章节正文与源稿是否一致 | `node tools/manuscript-sync.mjs` | 正文被误改而没人发现 |
 
 任一失败会**阻止 push** 并打印修复命令；hook 只做拦截，不改你的文件。

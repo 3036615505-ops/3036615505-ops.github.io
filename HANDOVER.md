@@ -8,12 +8,12 @@
 | 项 | 值 |
 |---|---|
 | 线上 | <https://zephyrw.site>（GitHub Pages，push 即发布） |
-| 站点资源版本 | `?v=55`（全站 8 个 HTML 引用统一；楷体子集另有 `?f=6`） |
+| 站点资源版本 | `?v=56`（全站 8 个 HTML 引用统一；楷体子集另有 `?f=7`） |
 | SW 缓存名 | `linyuan-v39` |
 | 阅读器模块 | dom 77 行 · flags 86 · store 226 · engine 467 · ui 1706 · 入口 30 |
 | 样式 | `css/style.css` 3909 行（4 套主题令牌） |
 | 章节 | 4 章（ch01 2858 / ch02 2347 / ch03 2029 / ch04 2496 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
-| 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）；系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
+| 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 852KB**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
 | Android 壳 | v1.8.4 / versionCode 13（**本轮无壳改动，不需要重新打包**） |
 | 校验 | 本地 pre-push 4 项 · CI 2 个 job · 端到端 32 项 |
 
@@ -72,7 +72,7 @@ reader.dom.js     DOM 工具 el()/html()/escapeHtml（谁都能用）
 | App 版本 `versionCode` / `versionName`（`twa/app/build.gradle`） | 装了 Android SDK + JDK 的那台 | **有**。SDK 目前在 Windows 这台（`E:/novel-site/android-sdk`）；Mac 上若也装了 SDK 同样能打 |
 
 所以「升版本号必须在 Windows 改」是句误解：站点版本号在哪台改都行，
-mac 端已经改过很多次（现在 `?v=54` / `linyuan-v38`）。**只有要打 APK 时才必须去那台机器**，
+mac 端已经改过很多次（现在 `?v=56`）。**只有要打 APK 时才必须去那台机器**，
 因为 Android SDK 只装在那里。
 
 每个 clone 配一次本地钩子（Mac 上如果没配，本地四项校验不会跑，CI 会兜住）：
