@@ -1,9 +1,9 @@
 {
-  "versionCode": 15,
-  "versionName": "1.8.6",
+  "versionCode": 16,
+  "versionName": "1.8.7",
   "apkUrl": "https://zephyrw.site/app/linyuan-latest.apk",
-  "size": 103838,
-  "sha256": "c8c228b4a95c8930a017fee6956ba044b0e18425d14d9d4e2c05bb86c337f70d",
-  "notes": "修复更新包下载卡住：下载过程有进度条可取消，30 秒无进展会自动判定失败并给出「重新下载 / 用浏览器下载」两条出路，不再无限停在「正在下载」",
+  "size": 107934,
+  "sha256": "a7290d333fa4134b7ae18d33956174f13ee4dbe38dd3dcc956dca5ef4ea13c8b",
+  "notes": "修好了返回键：现在按返回是逐级后退，退到首页再按才退出；从人物详情返回同学录也会停在原来的位置。顺带：断网时稳定显示离线页并可点重试，不再露出系统报错页",
   "publishedAt": "2026-10-24"
 }
