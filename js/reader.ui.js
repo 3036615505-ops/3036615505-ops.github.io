@@ -1096,7 +1096,7 @@
     if (!list) return;
     var quotes = getStoredQuotes();
     if (!quotes.length) {
-      list.innerHTML = '<div class="quotes-empty">还没有收进摘句。等你在某一段前停下来，这里就会亮起来。</div>';
+      list.innerHTML = '<div class="quotes-empty">暂未摘句，等待你为某段文字驻足。</div>';
       return;
     }
     list.innerHTML = quotes.slice().reverse().map(function(item) {
@@ -1119,9 +1119,9 @@
     var text = quote.text + ' ——《' + quote.chapterTitle + '》';
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(function() {
-        showToast('这一句已经抄好');
+        showToast('已摘句');
       }, function() {
-        showToast('没抄走，再试一次');
+        showToast('摘句失败，请重试');
       });
     } else {
       showToast('当前环境不支持复制');
@@ -1134,7 +1134,7 @@
     saveStoredQuotes(quotes);
     refreshAllParagraphQuoteStates();
     renderQuotesPanel();
-    showToast('这一句轻轻放回页边了');
+    showToast('已将文字送回，等待您的下一次目光');
   };
 
 
@@ -1198,7 +1198,7 @@
       saveStoredQuotes(quotes);
       refreshParagraphQuoteState(p);
       renderQuotesPanel();
-      showToast('这一句轻轻放回页边了');
+      showToast('已将文字送回，等待您的下一次目光');
       return;
     }
     quotes.push({
