@@ -1,9 +1,9 @@
 {
-  "versionCode": 14,
-  "versionName": "1.8.5",
+  "versionCode": 15,
+  "versionName": "1.8.6",
   "apkUrl": "https://zephyrw.site/app/linyuan-latest.apk",
-  "size": 103782,
-  "sha256": "096720ed9658d902d4164ea244154e8e488c5eb06a737a2999c5b15afc53be78",
-  "notes": "导入自己的字体：App 内现在能真的弹出系统文件选择器（此前点了没反应），设置里的「导入自己的字体」在 App 里可用了",
+  "size": 103838,
+  "sha256": "c8c228b4a95c8930a017fee6956ba044b0e18425d14d9d4e2c05bb86c337f70d",
+  "notes": "修复更新包下载卡住：下载过程有进度条可取消，30 秒无进展会自动判定失败并给出「重新下载 / 用浏览器下载」两条出路，不再无限停在「正在下载」",
   "publishedAt": "2026-10-24"
 }
