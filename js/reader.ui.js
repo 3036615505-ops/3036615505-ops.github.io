@@ -239,11 +239,90 @@
   var kaiLoading = false;
 
   /* 系统字体名：WebView 不会自动跟随 ROM 主题字体，只能向壳要名字再交给 CSS。
-     壳（v1.8.3+）通过 getSystemFontFamily() 返回，老壳没有这个方法 → 返回空串。 */
+     壳在 1.8.3 之后用的方法名不统一（dex 里 getSystemFontFamily 与
+     getSystemFontFamilyName 同时存在），所以这里按候选表逐个试，谁能给出
+     合法值就用谁 —— 只认一个名字的话，壳一旦改名，「系统」就静默退回默认字体。 */
+
+  var SYSTEM_FONT_METHODS = ['getSystemFontFamily', 'getSystemFontFamilyName', 'getSystemFont'];
 
   var systemFontName = null;
 
-  var systemFontBridge = null;   /* null=未探测，false=壳太旧没有这个方法 */
+  var systemFontBridge = null;   /* null=未探测，false=壳里一个方法都没有 */
+
+  var systemFontRaw = '';        /* 壳返回的原文，提示语里回显，便于反馈问题 */
+
+  var fontAvailCache = {};
+
+
+  /* 壳可能把 Java 对象直接 toString 回来（android.graphics.Typeface@1a2b3c），
+     也可能返回 'default' / 'sans-serif' 这类占位词。这些都不是字体家族名，
+     拼进 font-family 只会变成一个谁也不认识的字符串，必须挡掉。 */
+
+  function looksLikeFontName(s) {
+    if (!s) return false;
+    if (s.length > 60) return false;
+    if (/[@{};<>]/.test(s)) return false;
+    if (/android\.|Typeface/i.test(s)) return false;
+    if (/^(default|sans-serif|null|undefined|none)$/i.test(s)) return false;
+    return true;
+  }
+
+
+  /* 关键一步：壳给的名字，WebView 里未必真的有这个字体。
+     判据是「换字体后画出来的像素有没有变」，做法是以 monospace 为基准：
+     名字不存在时浏览器会落到基准字体，像素完全一致；存在时必然不同。
+     只用中文样本 —— 我们关心的是正文字形，拉丁字母的差异说明不了问题。 */
+
+  var HEITI_STACK = '"Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif';
+
+  var fontSigCache = {};
+
+  function fontSignature(family) {
+    if (Object.prototype.hasOwnProperty.call(fontSigCache, family)) return fontSigCache[family];
+    var sig = null;
+    try {
+      var canvas = document.createElement('canvas');
+      var ctx = canvas.getContext && canvas.getContext('2d');
+      if (ctx) {
+        var sample = '临渊羡鱼永';
+        var w = 220, h = 90;
+        canvas.width = w; canvas.height = h;
+        ctx.clearRect(0, 0, w, h);
+        ctx.font = '48px ' + family;
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillStyle = '#000';
+        ctx.fillText(sample, 6, 62);
+        var d = ctx.getImageData(0, 0, w, h).data;
+        var s = 0;
+        for (var i = 3; i < d.length; i += 4) s = (s * 33 + d[i]) | 0;
+        sig = s;
+      }
+    } catch (e) {
+      sig = null;
+    }
+    fontSigCache[family] = sig;
+    return sig;
+  }
+
+  function fontAvailable(name) {
+    if (!name) return false;
+    if (Object.prototype.hasOwnProperty.call(fontAvailCache, name)) return fontAvailCache[name];
+    var a = fontSignature('"' + name + '",monospace');
+    var b = fontSignature('monospace');
+    var ok = (a !== null && b !== null) ? a !== b : false;
+    fontAvailCache[name] = ok;
+    return ok;
+  }
+
+  /* 「系统」和「黑体」画出来一模一样，就说明这台手机的默认字体本来就是
+     我们在「黑体」里点名的那个 —— 手机上通常表现为「换了主题字体，正文没变」。
+     这个结论比「已跟随系统字体」有用得多：它直接告诉用户，问题在手机那边，
+     不是这个开关没点。 */
+  function systemLooksSameAsHeiti() {
+    var a = fontSignature('system-ui,sans-serif');
+    var b = fontSignature(HEITI_STACK);
+    return a !== null && b !== null && a === b;
+  }
 
 
   function detectSystemFontName() {
@@ -252,12 +331,18 @@
     systemFontBridge = false;
     try {
       var bridge = window.LinyuanApp;
-      if (bridge && typeof bridge.getSystemFontFamily === 'function') {
-        systemFontBridge = true;
-        var raw = String(bridge.getSystemFontFamily() || '').trim();
-        // 去掉可能存在的引号，避免拼进 CSS 时把字体栈写坏
-        raw = raw.replace(/["']/g, '');
-        if (raw && raw !== 'sans-serif' && raw !== 'default') systemFontName = raw;
+      if (bridge) {
+        for (var i = 0; i < SYSTEM_FONT_METHODS.length; i++) {
+          var key = SYSTEM_FONT_METHODS[i];
+          if (typeof bridge[key] !== 'function') continue;
+          systemFontBridge = true;
+          var out = '';
+          try { out = String(bridge[key]() || ''); } catch (e) { out = ''; }
+          // 去掉引号并压掉多余空白，避免拼进 CSS 时把字体栈写坏
+          out = out.replace(/["']/g, '').replace(/\s+/g, ' ').trim();
+          if (!systemFontRaw && out) systemFontRaw = out;
+          if (looksLikeFontName(out)) { systemFontName = out; break; }
+        }
       }
     } catch (e) {
       systemFontName = '';
@@ -274,11 +359,14 @@
     if (family === 'system') {
       /* 不能点名叫 Roboto / Segoe UI：装了主题字体的 ROM 替换的是「默认字体族」，
          一旦显式写 Roboto，浏览器会优先命中 Roboto，系统字体就被挡在外面。
-         所以只在拿到系统字体名时点名它，否则直接交给 system-ui / sans-serif。 */
+         所以只在拿到系统字体名时点名它，否则直接交给 system-ui / sans-serif。
+         点名之前先验证这个字体真的存在 —— 壳给的名字可能是 Java 侧的叫法，
+         WebView 里并不存在，那样点名等于白点，最后还是渲染成默认字体，
+         而界面上写着「已跟随」，用户只会觉得功能没生效。 */
       var name = detectSystemFontName();
-      return name ? '"' + name + '",system-ui,sans-serif' : 'system-ui,sans-serif';
+      return (name && fontAvailable(name)) ? '"' + name + '",system-ui,sans-serif' : 'system-ui,sans-serif';
     }
-    return '"Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif';
+    return HEITI_STACK;
   }
 
   /* 楷体按需加载：第一次选到它才拉 woff2，避免没用的人白付流量 */
@@ -300,13 +388,26 @@
 
 
   function fontHintText() {
-    /* 平时不显示提示；只有选中「系统」时说明一句现状，
-       并且能区分「手机没开放字体名」与「App 版本太旧」。 */
+    /* 平时不显示提示；只有选中「系统」时说明一句现状。
+       几种情况必须说清楚，否则用户只会得到一句没有信息量的「没生效」：
+         拿到名字且能渲染，且与「黑体」不同 → 真的跟随了
+         拿到名字且能渲染，但和「黑体」一模一样 → 这台手机的默认字体本来就是它
+         拿到名字但渲染不出来 → 名字是 Java 侧的叫法，网页里没这个字体
+         方法在但返回空/被过滤 → 手机没给名字（或给的不是字体名）
+         方法根本不存在 → App 太旧 */
     if (state.fontFamily !== 'system') return '';
     var name = detectSystemFontName();
-    if (name) return '已跟随系统字体：' + name;
-    if (systemFontBridge === false) return '跟随系统默认字体（App 需更新到 1.8.3 以上）';
-    return '跟随系统默认字体（手机未提供字体名）';
+    if (name) {
+      if (!fontAvailable(name)) return '手机给的字体名是「' + name + '」，但网页里渲染不出它，已退回默认字体';
+      if (systemLooksSameAsHeiti()) return '已跟随系统字体（' + name + '），它与「黑体」是同一个字体，看不出差别是正常的';
+      return '已跟随系统字体：' + name;
+    }
+    /* 没拿到名字，但实测系统字体和「黑体」不一样 —— 说明 WebView 自己就跟上了，
+       这种情况要给出肯定答复，不能因为壳没给名字就说「App 太旧」。 */
+    if (!systemLooksSameAsHeiti()) return '网页已用上手机当前字体（手机没给名字，但确实和「黑体」不同）';
+    if (systemFontBridge === false) return '当前 App 版本没有提供系统字体信息，更新到最新版再试';
+    if (systemFontRaw) return '手机的字体信息不是网页能用的格式（' + systemFontRaw + '），已退回默认字体';
+    return '手机没有提供字体名，网页也只能用默认字体（可到「设置 → 显示和亮度 → 字体」确认是否换了主题字体）';
   }
 
 
