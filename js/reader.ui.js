@@ -96,6 +96,35 @@
 
   var USER_FONT_MAX = 24 * 1024 * 1024;   /* 字体文件再大就不像话了，也怕撑爆配额 */
 
+  /* 壳（Android App）里 <input type=file> 不是网页想弹就能弹的：
+     必须壳实现 WebChromeClient.onShowFileChooser 并把结果回给 filePathCallback。
+     v1.8.4 的壳没有这个回调（解包 dex 查过，只有下载相关的逻辑），
+     在 App 里点「导入」就是字面意义的没反应。
+     所以壳内且版本过旧时不装死，直接说明原因；壳升级后版本判断自动放行。 */
+  var SHELL_PICKER_MIN = '1.8.5';
+
+  function shellAppVersion() {
+    try {
+      var b = window.LinyuanApp;
+      if (b && typeof b.getAppVersion === 'function') return String(b.getAppVersion() || '').trim();
+    } catch (e) {}
+    return '';
+  }
+
+  function shellPickerUnsupported() {
+    var v = shellAppVersion();
+    if (!v) return false;   /* 不在壳里 —— 手机/电脑浏览器原生就支持选文件 */
+    function parse(s) {
+      var m = String(s).match(/(\d+)\.(\d+)(?:\.(\d+))?/);
+      return m ? [+m[1], +m[2], +(m[3] || 0)] : null;
+    }
+    var a = parse(v), min = parse(SHELL_PICKER_MIN);
+    if (!a || !min) return true;   /* 版本号读不出来，按不支持处理，宁可多说一句 */
+    if (a[0] !== min[0]) return a[0] < min[0];
+    if (a[1] !== min[1]) return a[1] < min[1];
+    return a[2] < min[2];
+  }
+
 
   function refreshProgressControls(pct) {
     pct = clampProgress(pct);
@@ -622,6 +651,10 @@
 
 
   window.pickFontFile = function () {
+    if (shellPickerUnsupported()) {
+      showToast('这版 App 还不支持选文件，先用手机浏览器打开本站试试');
+      return;
+    }
     var input = document.getElementById('fontFileInput');
     if (input) input.click();
   };
@@ -648,6 +681,14 @@
     var has = !!userFontName;
     if (btn) btn.textContent = has ? '更换字体文件' : '导入自己的字体';
     if (clearBtn) clearBtn.style.display = has ? '' : 'none';
+    var hint = document.getElementById('fontImportHint');
+    if (hint) {
+      /* 只在「壳内且这版壳没接文件选择」时亮出来，别去打扰浏览器用户 */
+      hint.textContent = shellPickerUnsupported()
+        ? 'App 暂不支持选文件（需壳更新到 ' + SHELL_PICKER_MIN + ' 以上）；可先用手机浏览器打开本站导入，注意导入只对当前浏览器生效'
+        : '';
+      hint.style.display = hint.textContent ? '' : 'none';
+    }
   }
 
 
@@ -1262,6 +1303,7 @@
               '<button class="font-import-clear" id="fontImportClear" onclick="clearFontFile()" style="display:none">移除</button>' +
             '</div>' +
             '<input type="file" id="fontFileInput" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" style="display:none">' +
+            '<div class="setting-hint" id="fontImportHint" style="display:none"></div>' +
           '</div>' +
           '<div class="setting-group"><div class="setting-label">版式</div>' +
             '<div class="mode-toggle-row">' +

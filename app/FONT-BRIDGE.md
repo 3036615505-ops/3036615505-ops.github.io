@@ -62,7 +62,69 @@ public String getSystemFontFamilies() {
 `FontFace` + IndexedDB 存下来并应用到正文。不依赖 ROM，也不需要改壳，
 代价是需要读者自己准备字体文件。
 
-## 网页侧的对应改动
+## 实测确认（2026-10-24）：v1.8.4 壳点「导入字体」没反应
+
+读者反馈导入按钮点了没反应。解包 `classes.dex` 确认：壳里只有下载相关的逻辑
+（`getUriForDownloadedFile` / `setDestinationInExternalFilesDir` 等），
+**没有 `onShowFileChooser` / `filePathCallback` / `startActivityForResult`**。
+
+Android WebView 里 `<input type="file">` 必须由壳的 `WebChromeClient` 实现
+文件选择回调，否则 JS 侧 `input.click()` 什么都不会发生 —— 不是网页的 bug。
+
+### 壳要补的代码（Kotlin）
+
+```kotlin
+private var filePathCallback: ValueCallback<Array<Uri>>? = null
+private val FILE_CHOOSER_REQUEST = 1001
+
+webView.webChromeClient = object : WebChromeClient() {
+    override fun onShowFileChooser(
+        webView: WebView?,
+        callback: ValueCallback<Array<Uri>>,
+        params: FileChooserParams
+    ): Boolean {
+        filePathCallback?.onReceiveValue(null)   // 上一次没回来的先清掉，防止回调失效
+        filePathCallback = callback
+        return try {
+            startActivityForResult(params.createIntent(), FILE_CHOOSER_REQUEST)
+            true
+        } catch (e: ActivityNotFoundException) {
+            filePathCallback = null
+            false
+        }
+    }
+}
+
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    if (requestCode == FILE_CHOOSER_REQUEST) {
+        val callback = filePathCallback
+        filePathCallback = null
+        callback?.onReceiveValue(
+            WebChromeClient.FileChooserParams.parseResult(resultCode, data)
+        )
+        return
+    }
+    super.onActivityResult(requestCode, resultCode, data)
+}
+```
+
+注意：
+
+- 系统的 SAF 文件选择器（`ACTION_GET_CONTENT`）**不需要** `READ_EXTERNAL_STORAGE` 权限，
+  不用改 manifest。
+- `onReceiveValue` 必须在拿到结果后**恰好调用一次**（取消也要用 `null` 调一次），
+  否则下一次选择会静默失效 —— 这是最常见的翻车点。
+- 壳加上这段后把版本号升到 **1.8.5+**：网页侧用 `LinyuanApp.getAppVersion()`
+  判断，低于 1.8.5 时会直接提示「这版 App 还不支持选文件」，不再让按钮装死；
+  升级后无需改网页，自动放行。
+
+### 网页侧的对应处理（已实现）
+
+`js/reader.ui.js`：`shellPickerUnsupported()` 读 `getAppVersion()` 与
+`SHELL_PICKER_MIN = '1.8.5'` 比较；壳内且过旧时，点按钮弹 toast 说明、
+字体区显示一行灰字提示；浏览器里一切照常。
+
+### 方案 A 的网页侧配套（壳实装后要做）
 
 壳一旦提供 `getSystemFontFamilies()`，需要同步改 `js/reader.ui.js`：
 
