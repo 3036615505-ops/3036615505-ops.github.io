@@ -280,6 +280,10 @@ chars.forEach((c) => {
     if (!c[k]) throw new Error(c.slug + ' 缺少字段 ' + k);
   });
   if (!c.portrait && !c.initial) throw new Error(c.slug + ' 既没有 portrait 也没有 initial');
+  if (c.portrait && !fs.existsSync(path.join(ROOT, 'assets', c.portrait))) {
+    throw new Error(c.slug + ' 的立绘文件不存在：assets/' + c.portrait +
+      '（先把图放进 assets/ 再跑本脚本）');
+  }
   if (!Array.isArray(c.bio) || c.bio.length === 0) throw new Error(c.slug + ' 没有 bio');
 });
 
@@ -294,15 +298,21 @@ chars.forEach((c) => {
 });
 console.log('✓ 人物详细页：novel/character-*.html × ' + chars.length);
 
-// 登记预缓存 + 升 CACHE 名
+// 登记预缓存（详细页 + 立绘）+ 升 CACHE 名
+// 立绘也要登记：漏了就是「离线打开同学录，新人物是破图」。文件名不带 ?v=，
+// 全靠 PRECACHE 保证首次安装时就进缓存。
 let sw = fs.readFileSync(SW_JS, 'utf8');
 const anchor = "  '/novel/characters.html'";
 if (sw.indexOf(anchor) === -1) throw new Error('sw.js 里找不到 PRECACHE 的 characters.html 条目');
 const toAdd = chars
   .map((c) => "  '/novel/character-" + c.slug + ".html',")
   .filter((e) => sw.indexOf(e) === -1);
-if (toAdd.length) {
-  sw = sw.replace(anchor, anchor + ',\n' + toAdd.join('\n'));
+const portraitsToAdd = chars
+  .filter((c) => c.portrait)
+  .map((c) => "  '/assets/" + c.portrait + "',")
+  .filter((e) => sw.indexOf(e) === -1);
+if (toAdd.length || portraitsToAdd.length) {
+  sw = sw.replace(anchor, anchor + ',\n' + toAdd.concat(portraitsToAdd).join('\n'));
   const m = sw.match(/var CACHE = '([a-z-]+)-v(\d+)'/);
   if (m) {
     const next = m[1] + '-v' + (parseInt(m[2], 10) + 1);
@@ -310,7 +320,8 @@ if (toAdd.length) {
     console.log('🔁 SW 缓存名 → ' + next + '（老用户的 SW 才会重新 install）');
   }
   fs.writeFileSync(SW_JS, sw);
-  console.log('📦 已登记预缓存 ' + toAdd.length + ' 条：/novel/character-*.html');
+  console.log('📦 已登记预缓存 ' + (toAdd.length + portraitsToAdd.length) +
+    ' 条（详细页 ' + toAdd.length + ' · 立绘 ' + portraitsToAdd.length + '）');
 } else {
   console.log('· 预缓存已全部登记，CACHE 名未动');
 }
