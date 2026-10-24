@@ -63,8 +63,9 @@ function detectAssetVersion() {
 const CN_DIGIT = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
 
 function cnNumber(n) {
-  if (n <= 10) return CN_DIGIT[n];
-  if (n < 20) return '十' + (n % 10 ? CN_DIGIT[n % 10] : '');
+  if (n < 10) return CN_DIGIT[n];
+  if (n === 10) return '十';
+  if (n < 20) return '十' + CN_DIGIT[n % 10];
   const tens = Math.floor(n / 10), ones = n % 10;
   return CN_DIGIT[tens] + '十' + (ones ? CN_DIGIT[ones] : '');
 }
