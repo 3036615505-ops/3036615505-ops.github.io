@@ -3,7 +3,7 @@
 这份文档记录「跟随系统字体」这个开关为什么在部分手机上点了没反应，
 以及要真正修好，Android 壳那边需要提供什么。
 
-## 现状（v1.8.4 壳实测）
+## 现状（v1.8.4 壳实测；文件选择这条已在 v1.8.5 补上）
 
 `js/reader.ui.js` 会依次调用 `LinyuanApp.getSystemFontFamily()` /
 `getSystemFontFamilyName()` / `getSystemFont()`，把返回值当字体家族名交给 CSS。
@@ -70,6 +70,24 @@ public String getSystemFontFamilies() {
 
 Android WebView 里 `<input type="file">` 必须由壳的 `WebChromeClient` 实现
 文件选择回调，否则 JS 侧 `input.click()` 什么都不会发生 —— 不是网页的 bug。
+
+### ✅ 已实现（v1.8.5，Java 版）
+
+壳在 v1.8.5 里补上了这条链路（`MainActivity.java`，Java 不是 Kotlin）：
+
+- 新增内部类 `AppWebChromeClient extends WebChromeClient`，只重写 `onShowFileChooser`，
+  其余行为（JS 弹窗等）沿用默认实现；
+- 用 `Intent.ACTION_OPEN_DOCUMENT` + `CATEGORY_OPENABLE` + `setType("*/*")` 选文件。
+  没走 `params.createIntent()`，因为字体文件的 MIME 在很多手机上不是 `font/*`，
+  而是 `application/octet-stream` 甚至空字符串 —— 用 `*/*` 放开类型更稳；
+- `onActivityResult` 把 `data.getData()` 包成 `Uri[]` 交回网页的 `ValueCallback`；
+  用户取消时传 `null`（**必须回调**，否则网页的 `input.files` 会永远空着）；
+- 上一次选择还没回来时，先把旧 callback 作废，免得网页那边一直等。
+
+**网页端不用改**：`SHELL_PICKER_MIN = '1.8.5'` 的门槛会自动放行
+（`getAppVersion()` 返回的是 versionName「1.8.5」）。但用户仍需装新版 App 才有。
+
+注意：这只解决「选自己的字体文件」。下面「系统字体」的方案 A / B 仍未实现。
 
 ### 壳要补的代码（Kotlin）
 
