@@ -8,14 +8,14 @@
 | 项 | 值 |
 |---|---|
 | 线上 | <https://zephyrw.site>（GitHub Pages，push 即发布） |
-| 站点资源版本 | `?v=54`（全站 HTML 引用统一） |
-| SW 缓存名 | `linyuan-v38` |
+| 站点资源版本 | `?v=55`（全站 8 个 HTML 引用统一；楷体子集另有 `?f=6`） |
+| SW 缓存名 | `linyuan-v39` |
 | 阅读器模块 | dom 77 行 · flags 86 · store 226 · engine 467 · ui 1706 · 入口 30 |
 | 样式 | `css/style.css` 3909 行（4 套主题令牌） |
-| 章节 | 3 章（ch01 2858 / ch02 2347 / ch03 2029 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末 |
+| 章节 | 4 章（ch01 2858 / ch02 2347 / ch03 2029 / ch04 2496 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
 | 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）；系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
-| Android 壳 | v1.8.6 / versionCode 15（v1.8.5 补了文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死：进度弹窗 + 30s 无进展判定失败 +「用浏览器下载」兜底；系统字体枚举仍未做，见 `app/FONT-BRIDGE.md`） |
-| 校验 | 本地 pre-push 4 项 · CI 2 个 job · 端到端 34 项 |
+| Android 壳 | v1.8.4 / versionCode 13（**本轮无壳改动，不需要重新打包**） |
+| 校验 | 本地 pre-push 4 项 · CI 2 个 job · 端到端 32 项 |
 
 ## 常用命令
 

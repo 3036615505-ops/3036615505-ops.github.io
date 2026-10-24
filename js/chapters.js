@@ -25,7 +25,8 @@ var COHORT_YEAR = 2022;
 var CHAPTERS = [
   { num: 1, title: '第一章·临渊羡鱼', file: 'chapter-01.html', words: 2722, blurb: '所有的事都还没开始，一切都还来得及。', year: 2022, dates: ['九月一日', '九月十七'], seal: '临渊', leaf: 0 },
   { num: 2, title: '第二章·前桌', file: 'chapter-02.html', words: 2257, blurb: '有些位置只是前后桌，有些位置会慢慢变得不同。', year: 2022, date: '十月十日', seal: '前桌', leaf: 1 },
-  { num: 3, title: '第三章·课上', file: 'chapter-03.html', words: 1999, blurb: '有些课要站起来回答，有些事要站起来走过去。', year: 2022, date: '十月十日', seal: '课上', leaf: 2 }
+  { num: 3, title: '第三章·课上', file: 'chapter-03.html', words: 1999, blurb: '有些课要站起来回答，有些事要站起来走过去。', year: 2022, date: '十月十日', seal: '课上', leaf: 2 },
+  { num: 4, title: '第四章·身位', file: 'chapter-04.html', words: 2451, blurb: '有些距离不用说出来，走近两三步就够了。', year: 2022, date: '十月十日', seal: '身位', leaf: 3 }
 ];
 
 function getChapterStorageId(href) {

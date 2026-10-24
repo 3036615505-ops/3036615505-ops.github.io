@@ -77,6 +77,11 @@ const opts = { dryRun: false };
 const positional = [];
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--dry-run') opts.dryRun = true;
+  /* --nodate：日期照旧写进 chapters.js（光阴册要靠它分组），但章节页不输出日期行。
+     连续几章发生在同一天时用 —— 第二、三、四章都是十月十日，每章都顶一行日期，
+     等于告诉读者"这天又过了一遍"。之前是生成完手工删那行，删第三次之前先记下：
+     手工删出来的漂移，比缺一行日期难查得多。 */
+  else if (args[i] === '--nodate') opts.nodate = true;
   else if (args[i].startsWith('--')) {
     opts[args[i].slice(2)] = args[++i];
   } else positional.push(args[i]);
@@ -111,8 +116,15 @@ const blocks = md.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
 let title = opts.title || '';
 let contentHtml = '';
 for (const block of blocks) {
+  /* md 里的标题行永远不进正文。
+     曾经写成 `if (heading && !title)` —— 一旦命令行也传了 --title，title 已有值，
+     这个判断就落空，标题行被当成普通段落写进 <p>，页面上出现一句孤零零的
+     「# 第四章·身位」，而源稿同步校验还得人工去猜哪里多了字。 */
   const heading = block.match(/^#\s+(.+)$/m);
-  if (heading && !title) { title = heading[1].trim(); continue; }
+  if (heading) {
+    if (!title) title = heading[1].trim();
+    continue;
+  }
   if (/^(---|\*\*\*|\* \* \*)$/.test(block)) { contentHtml += '<div class="scene-break"></div>\n'; continue; }
   const text = block.replace(/\n/g, '');
   contentHtml += '<p>' + escapeText(text) + '</p>\n';
@@ -176,7 +188,8 @@ const pageYear = toYearValue(opts.year) || (prev && prev.year) || '';
 const pageDates = opts.dates
   ? String(opts.dates).split(/[,，]/).map(function (x) { return x.trim(); }).filter(Boolean)
   : (opts.date ? [String(opts.date).trim()] : []);
-const dateLineTop = (pageYear && pageDates.length)
+const showDateLine = !opts.nodate && pageYear && pageDates.length > 0;
+const dateLineTop = showDateLine
   ? '    <div class="chapter-date">' + cnYearStr(pageYear) + ' · ' + pageDates[0] + '</div>\n'
   : '';
 
@@ -185,7 +198,7 @@ const dateLineTop = (pageYear && pageDates.length)
 // 而不是塞在章末 —— 挂在末尾等于说这一章写到那天为止，位置是错的。
 //   --dates "九月一日,九月十七" + 正文一处 ---  →  顶上一个九月一日，切换点后一个九月十七
 //   切换点不够用（日期比切换点多）→ 剩下的退回章末，宁可位置差也别丢日期
-const midDates = pageDates.slice(1);
+const midDates = showDateLine ? pageDates.slice(1) : [];
 if (pageYear && midDates.length) {
   const MARK = '<div class="scene-break"></div>\n';
   const parts = contentHtml.split(MARK);
