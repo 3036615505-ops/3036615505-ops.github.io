@@ -333,6 +333,79 @@ check('导入后自动重载：进度没被抹成 0，且已落回原位', after
 check('导入：第二次点击写入备份值', applied.pos === '88', 'pos=' + applied.pos);
 check('导入：白名单外的键被忽略', applied.foreign === null);
 
+/* ================= 导入字体 ================= */
+section('阅读页 · 导入自己的字体');
+await evaluate(`openSettings(); 1`);
+await sleep(300);
+const fontUi = await evaluate(`({
+  btn: !!document.getElementById('fontImportBtn'),
+  input: !!document.getElementById('fontFileInput'),
+  clearHidden: (() => {
+    const c = document.getElementById('fontImportClear');
+    return !!c && getComputedStyle(c).display === 'none';
+  })()
+})`);
+check('设置面板有导入入口，未导入时不显示「移除」', fontUi.btn && fontUi.input && fontUi.clearHidden, JSON.stringify(fontUi));
+
+/* 拿站点自带的楷体子集当「读者的字体文件」：走真实的 change 事件，
+   所以文件校验、FileReader/arrayBuffer、FontFace、IndexedDB 都会被真的跑一遍。 */
+await evaluate(`(async () => {
+  const res = await fetch('/assets/fonts/linyuan-kai-subset.woff2');
+  const buf = await res.arrayBuffer();
+  const input = document.getElementById('fontFileInput');
+  const dt = new DataTransfer();
+  dt.items.add(new File([buf], '测试字体.woff2', { type: 'font/woff2' }));
+  input.files = dt.files;
+  input.dispatchEvent(new Event('change'));
+  return true;
+})()`);
+await sleep(1600);
+/* 用 FontFaceSet 里的记录判断「装上了没有」，不用 fonts.check()：
+   check 要传样本字，子集字体缺这个字就会误报 false。 */
+const FONT_ON = `Array.from(document.fonts).some(f => f.family.replace(/"/g, '') === 'LinyuanUser' && f.status === 'loaded')`;
+const fontApplied = await evaluate(`({
+  stored: localStorage.getItem('reader-fontfamily'),
+  name: localStorage.getItem('reader-custom-font'),
+  stack: getComputedStyle(document.querySelector('.chapter-content')).fontFamily,
+  loaded: ${FONT_ON},
+  hint: (document.getElementById('fontFamilyHint') || {}).textContent
+})`);
+const stackAtHead = (fontApplied.stack || '').indexOf('LinyuanUser');
+check('导入后正文切到自定义字体栈', fontApplied.stored === 'custom' && stackAtHead >= 0 && stackAtHead < 3, JSON.stringify(fontApplied));
+check('字体真的装进了 FontFaceSet', fontApplied.loaded === true, JSON.stringify(fontApplied));
+check('文件名写进提示语', (fontApplied.hint || '').indexOf('测试字体.woff2') >= 0, fontApplied.hint);
+
+await evaluate(`location.reload(); 1`);
+await sleep(3200);
+const fontRestored = await evaluate(`({
+  stored: localStorage.getItem('reader-fontfamily'),
+  stack: getComputedStyle(document.querySelector('.chapter-content')).fontFamily,
+  loaded: ${FONT_ON}
+})`);
+check('重载后从 IndexedDB 自动装回（不用再导入一次）',
+  fontRestored.stored === 'custom' && (fontRestored.stack || '').indexOf('LinyuanUser') >= 0 && fontRestored.loaded === true,
+  JSON.stringify(fontRestored));
+
+await evaluate(`openSettings(); 1`);
+await sleep(300);
+const beforeClear = await evaluate(`({
+  text: document.getElementById('fontImportBtn').textContent,
+  clearShown: getComputedStyle(document.getElementById('fontImportClear')).display !== 'none'
+})`);
+check('已导入时按钮变「更换字体文件」并出现「移除」', beforeClear.text.indexOf('更换') >= 0 && beforeClear.clearShown, JSON.stringify(beforeClear));
+await evaluate(`clearFontFile(); 1`);
+await sleep(900);
+const fontCleared = await evaluate(`({
+  stored: localStorage.getItem('reader-fontfamily'),
+  name: localStorage.getItem('reader-custom-font'),
+  stack: getComputedStyle(document.querySelector('.chapter-content')).fontFamily,
+  text: document.getElementById('fontImportBtn').textContent
+})`);
+check('移除后回到黑体，记录一并清掉',
+  fontCleared.stored === 'fzyouhei' && fontCleared.name === null && (fontCleared.stack || '').indexOf('LinyuanUser') < 0,
+  JSON.stringify(fontCleared));
+await evaluate(`closeSettings(); 1`);
+
 /* ================= 书架页 ================= */
 section('书架页 · 阅读足迹');
 const today = new Date();

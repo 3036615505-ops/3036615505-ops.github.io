@@ -2454,6 +2454,55 @@ body.reading-page {
   color: var(--text-muted);
 }
 
+/* 字体区最下面那行「导入自己的字体」。
+   故意做成虚线小按钮，不跟上面那排主按钮抢注意力 —— 这是少数人的需求，
+   但也是唯一能把读者手机上的字体真正带进网页的路（系统字体在 WebView 里拿不到）。 */
+.font-import-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.font-import-btn {
+  padding: 6px 11px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.font-import-btn:hover,
+.font-import-btn:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+  outline: none;
+}
+
+.font-import-clear {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.font-import-clear:hover {
+  color: var(--accent);
+}
+
 /* ===== 阅读数据备份弹窗 ===== */
 .data-modal .modal-panel,
 .modal-panel.data-modal {

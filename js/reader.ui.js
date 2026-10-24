@@ -57,12 +57,44 @@
 
   var fontSizeValues = { small: 19, medium: 22, large: 25 };
 
-  /* 字体三选：黑体（强制中文无衬线）/ 系统（跟随手机系统字体）/ 楷体（站点自带）
-     旧的「衬线」已移除——安卓几乎没有中文衬线字体，两个选项落到同一套字形，等于假按钮。 */
+  /* 字体四选：黑体（强制中文无衬线）/ 系统（跟随手机系统字体）/ 楷体（站点自带）
+     / 自定义（读者自己导入的字体文件）。旧的「衬线」已移除——安卓几乎没有中文衬线
+     字体，两个选项落到同一套字形，等于假按钮。 */
 
-  var fontFamilies = ['fzyouhei', 'system', 'kai'];
+  var fontFamilies = ['fzyouhei', 'system', 'kai', 'custom'];
 
-  var fontFamilyLabels = { fzyouhei: '黑体', system: '系统', kai: '楷体' };
+  /* 工具栏那个循环切换只轮前三档：自定义字体没导入时切过去就是一片空白。 */
+  var CYCLE_FAMILIES = ['fzyouhei', 'system', 'kai'];
+
+  var fontFamilyLabels = { fzyouhei: '黑体', system: '系统', kai: '楷体', custom: '自定义' };
+
+  /* ===== 读者自带的字体 =====
+
+     系统字体这条路在 WebView 里走不通：ROM 的主题字体只作用于原生控件，
+     网页拿不到名字也拿不到文件（详见 app/FONT-BRIDGE.md）。但读者手里如果
+     有字体文件，网页可以自己加载 —— FontFace 读 ArrayBuffer，二进制存进
+     IndexedDB，之后每次打开都自动装回去。这是唯一完全不依赖 ROM、也不依赖
+     App 壳的做法。 */
+
+  var USER_FAMILY = 'LinyuanUser';
+
+  var USER_FONT_KEY = 'reader-custom-font';   /* 只存文件名，用于同步显示 */
+
+  var userFontFace = null;
+
+  var userFontName = '';
+
+  var userFontLoading = null;
+
+  try { userFontName = localStorage.getItem(USER_FONT_KEY) || ''; } catch (e) { userFontName = ''; }
+
+  var FONT_DB = 'linyuan-font';
+
+  var FONT_STORE = 'fonts';
+
+  var FONT_REC = 'user';
+
+  var USER_FONT_MAX = 24 * 1024 * 1024;   /* 字体文件再大就不像话了，也怕撑爆配额 */
 
 
   function refreshProgressControls(pct) {
@@ -77,6 +109,7 @@
     migrateStorage();
     applyFontSize(state.fontSize);
     applyFontFamily(state.fontFamily);
+    loadUserFontIfNeeded();
     applyReadWidth(state.readWidth);
     applyTheme(state.theme);
     initPageTransition();
@@ -386,6 +419,10 @@
       var name = detectSystemFontName();
       return (name && fontAvailable(name)) ? '"' + name + '",system-ui,sans-serif' : SYSTEM_STACK;
     }
+    if (family === 'custom') {
+      /* 导入的字体多半是完整的中文 TTF，但万一是残缺的子集，后面的黑体栈兜住缺字 */
+      return '"' + USER_FAMILY + '",' + HEITI_STACK;
+    }
     return HEITI_STACK;
   }
 
@@ -419,6 +456,7 @@
        真机上最后两种情况最常见：荣耀 / 华为的主题字体只对原生界面生效，WebView
        读的是系统字体配置文件，看不到主题字体 —— 这一条网页端无解，只能靠壳把
        字体文件或字体家族名交出来（见 app/FONT-BRIDGE.md）。 */
+    if (state.fontFamily === 'custom') return userFontName ? '已用导入的字体：' + userFontName : '';
     if (state.fontFamily !== 'system') return '';
     var name = detectSystemFontName();
     if (name) {
@@ -431,6 +469,185 @@
     if (isGenericFamily(systemFontRaw)) return '手机只给了通用字体名（' + systemFontRaw + '），网页用默认黑体，主题字体进不来';
     if (systemFontRaw) return '手机给的字体名不可用（' + systemFontRaw + '），已用默认黑体';
     return '手机没有提供字体名，已用默认黑体';
+  }
+
+
+  /* ===== 导入字体：存取 =====
+     用 IndexedDB 而不是 localStorage：localStorage 只能放字符串，
+     一个中文字体 10–20MB，转 base64 再塞进去会翻成 27MB，Chrome 直接抛配额错误。 */
+
+  function idbFontOpen() {
+    return new Promise(function (res, rej) {
+      if (!window.indexedDB) { rej(new Error('no-idb')); return; }
+      var req = indexedDB.open(FONT_DB, 1);
+      req.onupgradeneeded = function () {
+        var db = req.result;
+        if (!db.objectStoreNames.contains(FONT_STORE)) db.createObjectStore(FONT_STORE);
+      };
+      req.onsuccess = function () { res(req.result); };
+      req.onerror = function () { rej(req.error || new Error('idb-open')); };
+      req.onblocked = function () { rej(new Error('idb-blocked')); };
+    });
+  }
+
+  /* 三个操作共用的骨架：开库 → 一个事务 → 关库。失败一律 reject，
+     调用方决定是提示还是静默降级（隐私模式下 IDB 可能整个不可用）。 */
+
+  function idbFontRun(mode, fn) {
+    return idbFontOpen().then(function (db) {
+      return new Promise(function (res, rej) {
+        var out = null;
+        var tx;
+        try {
+          tx = db.transaction(FONT_STORE, mode);
+          fn(tx.objectStore(FONT_STORE), function (v) { out = v; });
+        } catch (e) {
+          try { db.close(); } catch (e2) {}
+          rej(e);
+          return;
+        }
+        tx.oncomplete = function () { try { db.close(); } catch (e) {} res(out); };
+        tx.onabort = tx.onerror = function () {
+          try { db.close(); } catch (e) {}
+          rej(tx.error || new Error('idb-' + mode));
+        };
+      });
+    });
+  }
+
+  function idbFontPut(rec) {
+    return idbFontRun('readwrite', function (store) { store.put(rec, FONT_REC); });
+  }
+
+  function idbFontGet() {
+    return idbFontRun('readonly', function (store, keep) {
+      var req = store.get(FONT_REC);
+      req.onsuccess = function () { keep(req.result || null); };
+    });
+  }
+
+  function idbFontDel() {
+    return idbFontRun('readwrite', function (store) { store['delete'](FONT_REC); });
+  }
+
+
+  function readFileBuffer(file) {
+    /* 老 WebView 没有 Blob.arrayBuffer()，退到 FileReader */
+    if (file.arrayBuffer) return file.arrayBuffer();
+    return new Promise(function (res, rej) {
+      var fr = new FileReader();
+      fr.onload = function () { res(fr.result); };
+      fr.onerror = function () { rej(fr.error || new Error('read')); };
+      fr.readAsArrayBuffer(file);
+    });
+  }
+
+  function isFontFile(file) {
+    var n = String(file.name || '').toLowerCase();
+    if (/\.(ttf|otf|woff2?|ttc)$/.test(n)) return true;
+    var t = String(file.type || '');
+    return /^font\//.test(t) || /^application\/(x-)?font/.test(t);
+  }
+
+  /* 装上字体并（可选）落盘。返回是否真的存住了 —— 隐私模式 / 配额不足时
+     字体本次能用，但下次打开就没了，这一点必须让读者知道。 */
+
+  function installUserFont(buffer, name, persist) {
+    if (!window.FontFace || !document.fonts || !document.fonts.add) {
+      return Promise.reject(new Error('no-fontface'));
+    }
+    var face = new FontFace(USER_FAMILY, buffer);
+    var loaded = face.load();
+    return (loaded && loaded.then ? loaded : Promise.resolve(face)).then(function () {
+      /* 换字体时先把上一张字面注销掉，否则同名 FontFace 会叠着占内存 */
+      if (userFontFace && document.fonts['delete']) {
+        try { document.fonts['delete'](userFontFace); } catch (e) {}
+      }
+      document.fonts.add(face);
+      userFontFace = face;
+      userFontName = name || '自定义';
+      try { localStorage.setItem(USER_FONT_KEY, userFontName); } catch (e) {}
+      if (persist === false) return true;
+      return idbFontPut({ name: userFontName, data: buffer, at: Date.now() })
+        .then(function () { return true; }, function () { return false; });
+    });
+  }
+
+
+  function onFontFileChosen(ev) {
+    var input = ev.target;
+    var file = input && input.files && input.files[0];
+    /* 清空 value，否则选同一个文件第二次不会触发 change */
+    try { input.value = ''; } catch (e) {}
+    if (!file) return;
+    if (!isFontFile(file)) { showToast('这不是字体文件（要 .ttf / .otf / .woff / .woff2）'); return; }
+    if (file.size > USER_FONT_MAX) { showToast('字体文件太大了（超过 24MB）'); return; }
+    showToast('正在读取字体…');
+    readFileBuffer(file).then(function (buf) {
+      return installUserFont(buf, file.name, true);
+    }).then(function (saved) {
+      applyFontFamily('custom');
+      refreshImportRow();
+      showToast(saved ? '已换成你导入的字体' : '字体已应用，但没能保存，下次打开要重新导入');
+    }, function (err) {
+      if (window.console) console.warn('[font] 导入失败', err);
+      showToast('这个字体装不上，换一个试试');
+    });
+  }
+
+
+  /* 打开章节时把上次导入的字体装回来。记录没了（换设备 / 清过缓存 / 隐私模式）
+     就老老实实退回黑体，不能把读者留在一个指向不存在字体的字体栈上。 */
+
+  function loadUserFontIfNeeded() {
+    if (state.fontFamily !== 'custom') return Promise.resolve(false);
+    if (userFontLoading) return userFontLoading;
+    userFontLoading = idbFontGet().then(function (rec) {
+      if (!rec || !rec.data) throw new Error('empty');
+      return installUserFont(rec.data, rec.name || userFontName, false);
+    }).then(function () { return true; }, function () { return false; }).then(function (ok) {
+      userFontLoading = null;
+      if (ok) {
+        applyFontFamily('custom');
+      } else {
+        try { localStorage.removeItem(USER_FONT_KEY); } catch (e) {}
+        userFontName = '';
+        applyFontFamily('fzyouhei');
+        refreshImportRow();
+      }
+      return ok;
+    });
+    return userFontLoading;
+  }
+
+
+  window.pickFontFile = function () {
+    var input = document.getElementById('fontFileInput');
+    if (input) input.click();
+  };
+
+
+  window.clearFontFile = function () {
+    idbFontDel().then(function () {}, function () {}).then(function () {
+      if (userFontFace && document.fonts && document.fonts['delete']) {
+        try { document.fonts['delete'](userFontFace); } catch (e) {}
+      }
+      userFontFace = null;
+      userFontName = '';
+      try { localStorage.removeItem(USER_FONT_KEY); } catch (e) {}
+      if (state.fontFamily === 'custom') applyFontFamily('fzyouhei');
+      refreshImportRow();
+      showToast('已移除导入的字体');
+    });
+  };
+
+
+  function refreshImportRow() {
+    var btn = document.getElementById('fontImportBtn');
+    var clearBtn = document.getElementById('fontImportClear');
+    var has = !!userFontName;
+    if (btn) btn.textContent = has ? '更换字体文件' : '导入自己的字体';
+    if (clearBtn) clearBtn.style.display = has ? '' : 'none';
   }
 
 
@@ -470,9 +687,9 @@
   /* 保留旧函数名，防止其它地方还有引用 */
 
   window.toggleFontFamily = function () {
-    var idx = fontFamilies.indexOf(state.fontFamily);
+    var idx = CYCLE_FAMILIES.indexOf(state.fontFamily);
     if (idx < 0) idx = 0;
-    applyFontFamily(fontFamilies[(idx + 1) % fontFamilies.length]);
+    applyFontFamily(CYCLE_FAMILIES[(idx + 1) % CYCLE_FAMILIES.length]);
   };
 
 
@@ -1040,6 +1257,11 @@
               '<button class="mode-toggle-btn" data-font="kai" onclick="setFontFamily(\'kai\')">楷体</button>' +
             '</div>' +
             '<div class="setting-hint" id="fontFamilyHint"' + (fontHintText() ? '' : ' style="display:none"') + '>' + fontHintText() + '</div>' +
+            '<div class="font-import-row">' +
+              '<button class="font-import-btn" id="fontImportBtn" onclick="pickFontFile()">导入自己的字体</button>' +
+              '<button class="font-import-clear" id="fontImportClear" onclick="clearFontFile()" style="display:none">移除</button>' +
+            '</div>' +
+            '<input type="file" id="fontFileInput" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" style="display:none">' +
           '</div>' +
           '<div class="setting-group"><div class="setting-label">版式</div>' +
             '<div class="mode-toggle-row">' +
@@ -1066,6 +1288,9 @@
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
     ov.querySelector('.modal-backdrop').addEventListener('click', closeSettings);
+    var fileInput = ov.querySelector('#fontFileInput');
+    if (fileInput) fileInput.addEventListener('change', onFontFileChosen);
+    refreshImportRow();
   }
 
 
@@ -1090,6 +1315,7 @@
     var circles = ov.querySelectorAll('.theme-circle');
     circles.forEach(function(c) { c.classList.toggle('active', c.dataset.theme === state.theme); });
     refreshFontButtons();
+    refreshImportRow();
     refreshAidButtons();
     var fontHintBox = document.getElementById('fontFamilyHint');
     if (fontHintBox) {
