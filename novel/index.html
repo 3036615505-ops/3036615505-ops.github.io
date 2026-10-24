@@ -8,7 +8,7 @@
   <link rel="icon" href="../favicon.png" type="image/png">
   <title>临渊羡鱼 - 目录</title>
   <meta property="og:title" content="临渊羡鱼">
-  <meta property="og:description" content="南城的梧桐树还在长——青春 · 校园 · 成长">
+  <meta property="og:description" content="南城的梧桐枝繁未歇——青春 · 校园 · 成长">
   <meta property="og:image" content="https://zephyrw.site/assets/og-cover.jpg">
   <meta property="og:type" content="book">
   <meta name="twitter:card" content="summary_large_image">
@@ -18,7 +18,7 @@
     "@context": "https://schema.org",
     "@type": "Book",
     "name": "临渊羡鱼",
-    "description": "南城的梧桐树还在长，一群人的青春悠远漫长。",
+    "description": "南城的梧桐枝繁未歇，少年的青春悠远漫长。",
     "inLanguage": "zh-CN",
     "genre": ["青春", "校园", "成长"],
     "author": { "@type": "Person", "name": "叶南衡" }
@@ -45,20 +45,20 @@
     </div>
     <div class="detail-meta">
       <h1>临渊羡鱼</h1>
-      <div class="author">南城的梧桐树还在长</div>
+      <div class="author">南城的梧桐枝繁未歇</div>
       <div class="stats" id="novelStats">连载中</div>
     </div>
   </div>
 
   <div class="detail-desc">
-    <div class="desc-text">南城的梧桐树还在长，一群人的青春悠远漫长....</div>
+    <div class="desc-text">南城的梧桐枝繁未歇，少年的青春悠远漫长...</div>
   </div>
 
   <div class="detail-links">
     <a href="characters.html" class="detail-link-card">
       <span class="detail-link-kicker">人物簿</span>
-      <span class="detail-link-title">翻开他们的名字</span>
-      <span class="detail-link-desc">用几句很轻的话，先认识这些会慢慢走近的人。</span>
+      <span class="detail-link-title">翻开名字</span>
+      <span class="detail-link-desc">在这里，慢慢和书中的人相逢。</span>
     </a>
   </div>
 
@@ -366,20 +366,20 @@
     }
 
     function getFootprintsKicker(readPct, daysCount) {
-      if (readPct >= 100) return '你已经把这一段路走完了';
-      if (daysCount >= 3) return '这是一起把页角翻过去的第 ' + daysCount + ' 天';
-      if (readPct >= 50) return '故事已经慢慢有了回声';
-      return '故事刚刚有回声';
+      if (readPct >= 100) return '你已经把这段旅程走完了';
+      if (daysCount >= 3) return '这是我们一同翻过页脚的第 ' + daysCount + ' 天';
+      if (readPct >= 50) return '故事慢慢有了回响';
+      return '故事刚刚启程';
     }
 
     function getFootprintsCopy(readPct, lastChapterTitle) {
       if (lastChapterTitle) {
-        return '上一次停在《' + lastChapterTitle + '》，风还留在那一页。';
+        return '上次读到《' + lastChapterTitle + '》。';
       }
       if (readPct > 0) {
-        return '你已经陪他们走过一段午后。';
+        return '你已经陪着他们走过一段旅程。';
       }
-      return '等你翻开第一页，梧桐影子就会慢慢落下来。';
+      return '等待和你的你相遇。';
     }
 
     function renderMetric(label, value) {
