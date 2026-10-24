@@ -7,10 +7,12 @@
 index.html            首页（梧桐进度带 / 光阴目录 / 金句轮播）
 novel/index.html      书架（目录 + 阅读进度）
 novel/chapter-*.html  章节页
-novel/characters.html 人物
+novel/characters.html 同学录（人物列表，由脚本生成）
+novel/character-*.html  人物详细页（每人一个，由脚本生成）
 quotes.html           剪贴本
 css/style.css         全站样式（含浅色 / 深色两套令牌）
 js/chapters.js        章节数据（唯一数据源，加章节只改这里）
+js/characters-data.js 人物数据（唯一数据源，不参与页面运行，只被生成脚本读取）
 flags.json            线上功能开关（不缓存，改一行即生效，见下）
 manuscript/           章节源稿（原文快照，push 前与章节页逐字比对）
 js/reader.flags.js    阅读页 · 远程开关客户端
@@ -101,6 +103,27 @@ node tools/manuscript-sync.mjs --write --only chapter-02   # 有意改文后重�
 为什么要有它：上周有一段正文被误改（「找我自己」那句），git 只能证明文件变了，
 证明不了原文是什么。有了源稿，这类改动才有据可查。
 
+## 人物录：数据在 js/characters-data.js
+
+同学录列表页和每个人的详细页都是**生成**的，别手改 HTML：
+
+```bash
+node tools/make-characters.mjs     # 改完数据文件后跑这条
+```
+
+人物信息（姓名、分组、徽标、台词、一句话简介、生日、设定、小传）全在
+`js/characters-data.js`，原稿是作者站外的《人物设定.md》。脚本会：
+
+- 生成 `novel/characters.html`（「新叶 / 乔木」分组 + 每张卡片的「详细 ›」入口）
+- 生成 `novel/character-<slug>.html` × 17（立绘或姓氏占位、身份徽标、生日、
+  台词、小传、设定标签）
+- 把新详细页登记进 `sw.js` 的 `PRECACHE` 并把 `CACHE` 名 +1（和加章节同一套逻辑，
+  漏了就是「详细页离线打不开」）
+
+列表页的整卡点击没有用 JS：`.char-more` 的 `::after` 撑满卡片当热区，`.char-photo`
+提了 `z-index`，所以立绘按钮（灯箱）照样能点。也因为这个结构，卡片不能改成 `<a>`
+——卡里的 `<button>` 嵌进 `<a>` 不合法。
+
 ## 改了阅读器之后：跑一遍端到端测试
 
 阅读器的关键逻辑全是布局数学（位置锚点、进度百分比、页码、剩余时间、自动滚屏），
@@ -162,6 +185,7 @@ node new-chapter.js <原稿.md>                  # 从 Markdown 生成新章节�
   都是在把刚拆开的边界重新糊上。
 - 新写的界面用 `LY.dom.el()` 构建，不要拼 innerHTML；老面板下次改到时顺手换，不专门开重构。
 - `js/chapters.js` 是章节的唯一数据源；加章节用 `new-chapter.js`，不要手改目录页。
+- `js/characters-data.js` 是人物的唯一数据源；`novel/characters.html` 与 `novel/character-*.html` 由 `tools/make-characters.mjs` 生成，不要手改。
 - 深浅两套颜色令牌都在 `css/style.css` 的 `:root` / `[data-theme="dark"]` 里，
   新增颜色请走令牌，不要在组件里写死——深色主题的坑基本都来自写死的浅色值。
 - 改 `sw.js` 的 `PRECACHE` 内容时，`CACHE` 版本号要一起 +1，否则老用户不会重新 install。

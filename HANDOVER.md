@@ -8,14 +8,15 @@
 | 项 | 值 |
 |---|---|
 | 线上 | <https://zephyrw.site>（GitHub Pages，push 即发布） |
-| 站点资源版本 | `?v=56`（全站 8 个 HTML 引用统一；楷体子集另有 `?f=7`） |
-| SW 缓存名 | `linyuan-v39` |
-| 阅读器模块 | dom 77 行 · flags 86 · store 226 · engine 467 · ui 1706 · 入口 30 |
-| 样式 | `css/style.css` 3909 行（4 套主题令牌） |
+| 站点资源版本 | `?v=57`（全站 9 个 HTML 引用统一；楷体子集另有 `?f=7`） |
+| SW 缓存名 | `linyuan-v40` |
+| 阅读器模块 | dom 77 行 · flags 86 · store 226 · engine 467 · ui 1748 · 入口 30 |
+| 样式 | `css/style.css` 4048 行（4 套主题令牌） |
 | 章节 | 4 章（ch01 2858 / ch02 2347 / ch03 2029 / ch04 2496 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
+| 人物 | 17 人（新叶 7 / 乔木 10），列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
 | 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 852KB**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
-| Android 壳 | v1.8.4 / versionCode 13（**本轮无壳改动，不需要重新打包**） |
-| 校验 | 本地 pre-push 4 项 · CI 2 个 job · 端到端 32 项 |
+| Android 壳 | v1.8.6 / versionCode 15（v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死） |
+| 校验 | 本地 pre-push 4 项 · CI 2 个 job · 端到端 34 项 |
 
 ## 常用命令
 
@@ -29,6 +30,7 @@ node tools/check-precache.mjs      # SW 预缓存条目是否存在
 node tools/manuscript-sync.mjs     # 正文与 manuscript/ 源稿逐字比对
 python tools/make-kai-subset.py --check            # 楷体子集是否覆盖正文
 node new-chapter.js <原稿.md>       # 加新章节（会自动写 manuscript/）
+node tools/make-characters.mjs     # 改人物后重新生成同学录与详细页
 ```
 
 ## 架构：五层，依赖单向
@@ -125,7 +127,35 @@ node new-chapter.js 原稿.md --blurb "目录页一句话" --date "十月十日"
 
 新增章节**不需要**手动升 `?v=`：章节页是新 URL，导航走网络优先；`CACHE` 由脚本升。
 
+## 人物录（一条命令，其余全自动）
+
+```bash
+node tools/make-characters.mjs
+```
+
+人物信息**只改 `js/characters-data.js`**（唯一数据源，不参与页面运行），然后跑上面
+那条命令。它一次做完：
+
+1. 生成 `novel/characters.html`（列表页，含「新叶 / 乔木」分组与「详细 ›」入口）
+2. 生成 `novel/character-<slug>.html` × 17（详细页：立绘/占位、身份徽标、生日、
+   一句台词、小传、设定标签）
+3. 把新详细页登记进 `sw.js` 的 `PRECACHE` 并把 `CACHE` 名 +1（和 new-chapter.js 同一套逻辑）
+
+两个实现要点：
+
+- **整卡可点但不用 JS**：`.char-more` 的 `::after` 撑满卡片当热区，`.char-photo` 提
+  `z-index` 保证立绘按钮（灯箱）仍可点。没有把卡片改成 `<a>`——卡里的
+  `<button>` 嵌进 `<a>` 不合法。
+- **详细页没有 tab 栏**（和章节页一致）：它是子页面，从列表页进、从左上角返回。
+
+姓氏占位字走 ZCOOL XiaoWei 子集（928 字），樽/颜/澜/灼 不在子集里，会回落到系统
+serif——观感一致，不是 bug。
+
 ## 埋过的坑（每条都是真出过事的）
+
+0. **生成出来的页面别手改**。`novel/characters.html` 与 `novel/character-*.html` 由
+   `tools/make-characters.mjs` 从 `js/characters-data.js` 生成，和章节页同理：手改下次
+   一跑就被覆盖，而且覆盖时没有任何提示。要改内容改数据文件。
 
 1. **`content-visibility: auto` 会毁掉所有位置数学**。没进过视口的段落只有 2em 的估算高度，跳进章节中间时整章高度是假的 → 进度、页码、剩余时间、位置恢复全错。已从 `.chapter-content p` 删除，**别再以“性能”名义加回来**。
 2. **`pagehide` 的强制保存会把好进度写成 0**。现在两条规则：恢复窗口内（`restoring`）连 force 都不写；没滚动过却是 0、而已有进度时，不覆盖。
@@ -161,6 +191,7 @@ node new-chapter.js 原稿.md --blurb "目录页一句话" --date "十月十日"
 
 ## 当前验证状态
 
-- 本地：`node tools/e2e.mjs` 27/27；`tsc --noEmit` 零错误；pre-push 4 项通过
-- CI：`verify` run #2（30s）通过 —— 静态校验 7s、端到端 26s
-- 线上冒烟：5 个模块加载、`flagsLoaded: true`、位置恢复到 50%、零异常
+- 本地：`node tools/e2e.mjs` 34/34；pre-push 4 项通过（?v= 统一 / 预缓存 / 楷体覆盖 / 源稿一致）
+- 同学录专项（2026-10-24，无头 Edge 实测）：17 张卡片 + 2 个分组；点立绘弹灯箱且不跳页，
+  点卡片其它位置跳详细页；详细页内容齐全；页脚不被 tab 栏遮挡；浅/深主题截图正常
+- CI：`verify` 每次 push 都跑（四项静态校验 + 端到端）

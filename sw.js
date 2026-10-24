@@ -19,7 +19,7 @@
  *      NETWORK_TIMEOUT（500ms），所以它们必须走缓存优先。
  *   3. /app/ 前缀（安装包、version.json）不拦截，直接交给网络
  */
-var CACHE = 'linyuan-v39';
+var CACHE = 'linyuan-v40';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
@@ -101,7 +101,24 @@ var PRECACHE = [
   '/novel/chapter-02.html',
   '/novel/chapter-03.html',
   '/novel/chapter-04.html',
-  '/novel/characters.html'
+  '/novel/characters.html',
+  '/novel/character-linshu.html',
+  '/novel/character-nanheng.html',
+  '/novel/character-jiangbuqiu.html',
+  '/novel/character-baiyuhuan.html',
+  '/novel/character-ningzunjiu.html',
+  '/novel/character-liyan.html',
+  '/novel/character-yangmenghan.html',
+  '/novel/character-taoyaoyao.html',
+  '/novel/character-guchiyan.html',
+  '/novel/character-baiyu.html',
+  '/novel/character-yeyuan.html',
+  '/novel/character-linwangshu.html',
+  '/novel/character-yeyulan.html',
+  '/novel/character-xiaozhuo.html',
+  '/novel/character-jiangzhenmo.html',
+  '/novel/character-sujiwen.html',
+  '/novel/character-linxihe.html',
 ];
 
 /**

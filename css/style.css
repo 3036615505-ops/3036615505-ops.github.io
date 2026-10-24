@@ -3352,6 +3352,145 @@ body.reading-page {
   margin: 9px 0 0;
 }
 
+/* ---- 同学录：分组（新叶 / 乔木，与人物设定的分组一致） ---- */
+.char-group-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 2px 12px;
+  font-family: "ZCOOL XiaoWei", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--accent-hover);
+  letter-spacing: 3px;
+}
+
+.char-group-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-light);
+}
+
+/* .character-list 自带 padding，第一组不再另加顶部间距 */
+.char-group-label:first-child {
+  margin-top: 4px;
+}
+
+/* ---- 同学录卡片：整卡可点进详细页 ----
+   做法是把 .char-more 的 ::after 撑满整张卡片当热区（比给 section 绑 JS 轻，
+   也不用把卡片改成 <a> —— 卡里的立绘按钮是 <button>，嵌进 <a> 不合法）。
+   立绘按钮要留在最上面，所以 .char-photo 提了 z-index；
+   点别处 = 点热区，按下时 .char-more 会变淡，作为整卡的按压反馈。 */
+.char-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+
+.char-more svg {
+  width: 12px;
+  height: 12px;
+}
+
+.char-more:active {
+  opacity: 0.55;
+}
+
+.char-more::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.char-photo {
+  z-index: 2;
+}
+
+/* ---- 人物详细页 ---- */
+.char-detail {
+  padding: 14px 14px 8px;
+}
+
+.char-detail-card {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border-light);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 16px 16px 14px;
+}
+
+.char-detail-top {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.char-detail-photo {
+  width: 74px;
+  height: 90px;
+  border-radius: 6px;
+}
+
+.char-detail-id {
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.char-detail-id h1 {
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 21px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: 1px;
+}
+
+.char-detail-birth {
+  margin-top: 9px;
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 1.5px;
+}
+
+.char-detail-quote {
+  margin: 14px 0 0;
+}
+
+.char-detail-section {
+  margin-top: 20px;
+  padding: 0 2px;
+}
+
+.char-detail-section-title {
+  font-family: "ZCOOL XiaoWei", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--accent-hover);
+  letter-spacing: 3px;
+  margin-bottom: 10px;
+}
+
+.char-detail-bio p {
+  font-size: 13px;
+  line-height: 1.95;
+  color: var(--text);
+  margin: 0 0 14px;
+}
+
+.char-detail-bio p:last-child {
+  margin-bottom: 0;
+}
+
+.char-detail-traits {
+  flex-wrap: wrap;
+}
+
 /* ---- 章节页：日期落款 + 角印 ---- */
 .chapter-date {
   font-size: 11px;
