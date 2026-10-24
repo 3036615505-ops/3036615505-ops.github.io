@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f5efe0">
   <meta name="description" content="第三章·课上 - 临渊羡鱼">
-  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="../favicon.png" type="image/png">
   <title>第三章·课上</title>
   <meta property="og:title" content="第三章·课上">
   <meta property="og:description" content="临渊羡鱼 —— 南城的梧桐树还在长">
@@ -22,7 +22,7 @@
     "inLanguage": "zh-CN"
   }
   </script>
-  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/style.css?v=50">
 </head>
 <body class="reading-page">
   <div class="reading-wrapper">
@@ -94,6 +94,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
       分享这一章
     </button>
+    <div class="chapter-seal"><span>课上</span></div>
   </div>
 
   <div class="chapter-bottom-nav">
@@ -121,6 +122,10 @@
       <button onclick="toggleNightMode()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
         <span id="nightModeLabel">夜读</span>
+      </button>
+      <button onclick="toggleAutoScroll();return false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12"/><path d="M8 12l4 4 4-4"/><path d="M6 20h12"/></svg>
+        <span id="autoScrollLabel">自动</span>
       </button>
       <button onclick="openSettings()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>

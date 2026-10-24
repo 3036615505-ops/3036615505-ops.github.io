@@ -209,6 +209,10 @@ const nextNav = '<span>下一章</span>';
 const prevCh = prev ? '<a href="' + prev.file + '" class="prev-ch">上一章</a>' : '<a href="#" class="prev-ch">上一章</a>';
 const afterglow = opts.afterglow || '翻过这一页，故事还在继续。（这一句写在 chapter-afterglow 里，换一句属于这一章的话吧）';
 
+// 章末印章：两字，取 --seal，或直接取标题「第三章·课上」里 · 后面那半截。
+const sealText = opts.seal || (String(title).indexOf('·') >= 0 ? String(title).split('·').pop().trim() : '');
+const sealHtml = sealText ? '    <div class="chapter-seal"><span>' + escapeHtml(sealText) + '</span></div>\n' : '';
+
 const tpl = `<!DOCTYPE html>
 <html lang="zh-CN" data-fontsize="large" data-theme="wheat">
 <head>
@@ -216,7 +220,7 @@ const tpl = `<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f5efe0">
   <meta name="description" content="${escapeHtml(title)} - 临渊羡鱼">
-  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="../favicon.png" type="image/png">
   <title>${escapeHtml(title)}</title>
   <meta property="og:title" content="${escapeHtml(title)}">
   <meta property="og:description" content="临渊羡鱼 —— 南城的梧桐树还在长">
@@ -233,7 +237,7 @@ const tpl = `<!DOCTYPE html>
     "inLanguage": "zh-CN"
   }
   </script>
-  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/style.css?v=${ASSET_V}">
 </head>
 <body class="reading-page">
   <div class="reading-wrapper">
@@ -262,7 +266,7 @@ ${dateLineTop}${contentHtml}  </article>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
       分享这一章
     </button>
-  </div>
+${sealHtml}  </div>
 
   <div class="chapter-bottom-nav">
     ${prevNav}
@@ -289,6 +293,10 @@ ${dateLineTop}${contentHtml}  </article>
       <button onclick="toggleNightMode()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
         <span id="nightModeLabel">夜读</span>
+      </button>
+      <button onclick="toggleAutoScroll();return false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12"/><path d="M8 12l4 4 4-4"/><path d="M6 20h12"/></svg>
+        <span id="autoScrollLabel">自动</span>
       </button>
       <button onclick="openSettings()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
@@ -325,15 +333,29 @@ if (opts.dryRun) {
 const out = path.join(NOVEL_DIR, file);
 fs.writeFileSync(out, tpl);
 
-// 1.2) 自检：模板必须把当前所有阅读器模块都引上。
+// 1.2) 自检：模板必须把当前所有阅读器模块都引上，关键 UI 挂点也一个不能少。
 //      模块拆分那次就是这里漏了 —— 新章只有入口脚本，页面没有交互，而且不报错。
+//      第三章又漏了一次：工具栏少一个「自动」按钮，自动滚屏整个功能直接消失，
+//      页面上毫无报错痕迹，只能靠人翻到那一章才发现。所以这里改成按清单比对。
+const REQUIRED_HOOKS = [
+  ['toggleAutoScroll', '工具栏「自动」按钮（自动滚屏唯一入口）'],
+  ['autoScrollLabel', '自动滚屏状态文字'],
+  ['chapter-seal', '章末印章'],
+  ['style.css?v=', '样式表版本号（不带的 URL 会永久吃旧 CSS 缓存）'],
+  ['favicon.png', '站点图标（favicon.svg 这个文件根本不存在）']
+];
 const written = fs.readFileSync(out, 'utf-8');
 const missing = ASSET_SCRIPTS.filter(function (name) {
   return written.indexOf('js/' + name) === -1;
-});
-if (missing.length) {
+}).map(function (name) { return 'js/' + name; });
+const missingHooks = REQUIRED_HOOKS.filter(function (h) {
+  return written.indexOf(h[0]) === -1;
+}).map(function (h) { return h[0] + ' —— ' + h[1]; });
+const problems = missing.concat(missingHooks);
+if (problems.length) {
   fs.unlinkSync(out);
-  console.error('✗ 模板缺少脚本引用：' + missing.join(', '));
+  console.error('✗ 模板缺少必要内容：');
+  problems.forEach(function (p) { console.error('   · ' + p); });
   console.error('  已删除刚生成的章节页，未改动 chapters.js。请先更新 new-chapter.js 的模板。');
   process.exit(1);
 }

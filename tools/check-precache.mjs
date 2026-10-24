@@ -102,7 +102,8 @@ if (missing || refMissing) {
 const TEMPLATE = path.join(ROOT, 'new-chapter.js');
 const NOVEL_DIR = path.join(ROOT, 'novel');
 if (fs.existsSync(TEMPLATE) && fs.existsSync(NOVEL_DIR)) {
-  const sample = fs.readdirSync(NOVEL_DIR).filter((f) => /^chapter-\d+\.html$/.test(f))[0];
+  const pages = fs.readdirSync(NOVEL_DIR).filter((f) => /^chapter-\d+\.html$/.test(f)).sort();
+  const sample = pages[0];
   if (sample) {
     const html = fs.readFileSync(path.join(NOVEL_DIR, sample), 'utf8');
     const required = [...new Set(html.match(/js\/[a-z.]+?\.js/g) || [])];
@@ -116,6 +117,40 @@ if (fs.existsSync(TEMPLATE) && fs.existsSync(NOVEL_DIR)) {
     }
     console.log('  ✓ 章节模板与 ' + sample + ' 一致（' + required.length + ' 个脚本）');
   }
+
+  /* 除了脚本，还有一批「少一个就等于功能消失」的 UI 挂点。
+     第三章就是这么中招的：工具栏漏了「自动」按钮，自动滚屏整个功能没了，
+     页面不报任何错，脚本引用检查也全绿。所以这里按清单逐页比对，
+     并且把模板也一起比对 —— 模板落后才是根因，章节页只是受害者。 */
+  const HOOKS = [
+    ['toggleAutoScroll', '工具栏「自动」按钮（自动滚屏唯一入口）'],
+    ['autoScrollLabel', '自动滚屏状态文字'],
+    ['chapter-seal', '章末印章'],
+    ['style.css?v=', '样式表版本号（不带 ?v= 的 URL 会永久吃旧 CSS 缓存）'],
+    ['favicon.png', '站点图标（favicon.svg 这个文件并不存在）']
+  ];
+  let hookBad = 0;
+  const tplSrc = fs.readFileSync(TEMPLATE, 'utf8');
+  const tplMissing = HOOKS.filter(([k]) => tplSrc.indexOf(k) === -1);
+  if (tplMissing.length) {
+    hookBad += 1;
+    console.error('✗ new-chapter.js 的章节模板缺少 UI 挂点：');
+    tplMissing.forEach(([k, why]) => console.error('   - ' + k + ' —— ' + why));
+  }
+  for (const page of pages) {
+    const src = fs.readFileSync(path.join(NOVEL_DIR, page), 'utf8');
+    const lack = HOOKS.filter(([k]) => src.indexOf(k) === -1);
+    if (lack.length) {
+      hookBad += 1;
+      console.error(`  ✗ ${page} 缺少：` + lack.map(([k]) => k).join(', '));
+      lack.forEach(([, why]) => console.error('       → ' + why));
+    }
+  }
+  if (hookBad) {
+    console.error('\n✗ 章节页 / 模板缺 UI 挂点，补齐再发（否则那个功能在页面上直接不存在）');
+    process.exit(1);
+  }
+  console.log(`  ✓ ${pages.length} 个章节页 + 模板 都带齐 ${HOOKS.length} 个关键 UI 挂点`);
 }
 
 console.log('\n✓ 预缓存条目全部存在，脚本引用齐全');
