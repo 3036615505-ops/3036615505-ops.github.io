@@ -1,4 +1,4 @@
-# 壳侧修复：系统返回键不应直接退出 App（v1.8.7 待办）
+# 壳侧修复：系统返回键不应直接退出 App（v1.8.7 已发布）
 
 ## 问题（2026-10-24 用户实测视频反馈）
 
@@ -60,3 +60,35 @@ override fun onCreate(savedInstanceState: Bundle?) {
 - [ ] 列表页按系统返回 → 回到进入同学录前的页面（不退出）
 - [ ] 首页按系统返回 → 双击确认后才退出（若保留双击退出逻辑）
 - [ ] 飞行模式下打开 App → 显示 offline.html 而非系统错误页 → 关飞行模式点重试可恢复
+
+## 结果：v1.8.7 已发布（2026-10-24，versionCode 16）
+
+实际落地与上面的方案有出入，记在这里免得下次照着旧方案改：
+
+- **只注册 `onBackPressed` 不管用**：targetSdk 36 下预测性返回默认开启，系统根本不回调它。
+  实际做法：新增 `BackInvokedRegistrar` 独立类（API 33 类型隔离，沿用 `DownloadsWriterQ` 那套
+  「独立类 + SDK_INT 判断」手法，避免 API 24–32 加载 MainActivity 时类校验失败），
+  `onCreate` + `onResume` 幂等注册，`onDestroy` 反注册；API ≤32 仍走 `onBackPressed` 覆写，
+  两条路径都汇聚到唯一 `handleBackPressed()`，只有一个 `finish()` 出口。
+  manifest 显式写 `android:enableOnBackInvokedCallback="true"`。
+- **离线兜底真凶不是「只兜部分错误码」**：`onReceivedError` 本来就无条件兜主框架。真凶是
+  在错误回调里**同步** `loadUrl(offline.html)` 会被 WebView 丢掉。改成主线程 `Handler.post`
+  推迟到导航收尾之后（刻意不用 `View.post`——view 被 `replaceWebView` destroy 后 RunQueue
+  可能永不 flush，兜底会丢）。另外补了 `onReceivedHttpError`（仅 5xx）与 `onReceivedSslError`。
+- **`onReceivedSslError` 必须自己判主框架**：这个回调不带 `WebResourceRequest`，没有
+  `isForMainFrame()`。用 `SslError.getUrl()` 的 host 是否属于本站来判断——否则页面里
+  `@import` 的 Google Fonts 一旦证书异常，正在读的章节会被整页顶成离线页。
+- 发布包 sha256 `a7290d33…4ea13c8b`，107,934 字节；签名证书与 1.8.6 一致（可覆盖升级）。
+
+### 已知未做（下版候选）
+
+1. `BackInvokedRegistrar` 构造时一次性捕获 dispatcher，若为 null 则 `onResume` 的「补注册」
+   实际无效（注释略夸大）。现实影响低：已 attach 的 Activity 在 API 33+ 不会返回 null。
+2. 极少数定制 ROM 可能同时回调 `onBackPressed` 与 dispatcher → 一次按键连退两页。
+   要防的话在 `handleBackPressed()` 加 250~400ms 防抖，本次刻意没加。
+3. `onReceivedHttpError` 只兜 5xx（4xx 留给站点自己的 404 页），429/403 限流不会兜底。
+4. 同 host 子资源单独证书失败会被误判为主文档而顶成离线页（实际等价于站点证书整体失效，
+   用户点重试即可，属可接受降级）。
+5. 真机待验：飞行模式兜底 + 重试、渲染进程回收后断网、「不保留活动」场景、
+   Android 7/8 安装启动、13+ 逐级后退手感。
+
