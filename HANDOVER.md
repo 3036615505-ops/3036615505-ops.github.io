@@ -106,7 +106,7 @@ cd <装有 android-sdk 的那台机器>/twa && ./publish-apk.sh "更新说明"
 ## 加新章节（一条命令，其余全自动）
 
 ```bash
-node new-chapter.js 原稿.md --blurb "目录页一句话" --date "十月十日" --seal "前桌"
+node new-chapter.js 原稿.md --blurb "目录页一句话" --date "九月十九" --seal "前桌"
 ```
 
 原稿写成 Markdown：首行 `# 标题`，空行分段，单独一行 `---` 是场景分隔。

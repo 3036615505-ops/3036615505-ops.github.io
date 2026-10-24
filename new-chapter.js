@@ -78,7 +78,7 @@ const positional = [];
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--dry-run') opts.dryRun = true;
   /* --nodate：日期照旧写进 chapters.js（光阴册要靠它分组），但章节页不输出日期行。
-     连续几章发生在同一天时用 —— 第二、三、四章都是十月十日，每章都顶一行日期，
+     连续几章发生在同一天时用 —— 第二、三、四章都是九月十九，每章都顶一行日期，
      等于告诉读者"这天又过了一遍"。之前是生成完手工删那行，删第三次之前先记下：
      手工删出来的漂移，比缺一行日期难查得多。 */
   else if (args[i] === '--nodate') opts.nodate = true;
