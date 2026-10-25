@@ -74,12 +74,11 @@ function cnNumber(n) {
   return CN_DIGIT[tens] + '十' + (ones ? CN_DIGIT[ones] : '');
 }
 
-/** '2007.04.20' → '二〇〇七年四月二十日' */
+/** '2007.04.20' → '2007年4月20日'（作者定稿：阿拉伯数字 + 年/月/日） */
 function birthdayText(raw) {
   const m = /^(\d{4})\.(\d{1,2})\.(\d{1,2})$/.exec(String(raw).trim());
   if (!m) return '';
-  const year = m[1].split('').map((d) => CN_DIGIT[+d]).join('');
-  return year + '年' + cnNumber(+m[2]) + '月' + cnNumber(+m[3]) + '日';
+  return m[1] + '年' + String(+m[2]) + '月' + String(+m[3]) + '日';
 }
 
 function esc(s) {
