@@ -27,8 +27,9 @@ var CHAPTERS = [
   { num: 2, title: '第二章·前桌', file: 'chapter-02.html', words: 2257, blurb: '有些位置只是前后桌，有些位置会慢慢变得不同。', year: 2022, date: '九月十九', seal: '前桌', leaf: 1 },
   { num: 3, title: '第三章·课上', file: 'chapter-03.html', words: 1999, blurb: '有些课要站起来回答，有些事要站起来走过去。', year: 2022, date: '九月十九', seal: '课上', leaf: 2 },
   { num: 4, title: '第四章·身位', file: 'chapter-04.html', words: 2451, blurb: '有些距离不用说出来，走近两三步就够了。', year: 2022, date: '九月十九', seal: '身位', leaf: 3 },
-  { num: 5, title: '第五章·板报', file: 'chapter-05.html', words: 2013, blurb: '有些界线不用争，往旁边挪两指，字照样写得直。', year: 2022, date: '九月二十七', seal: '板报', leaf: 4 },
-  { num: 6, title: '第六章·越界', file: 'chapter-06.html', words: 2184, blurb: '有些界线退得干干净净，有些习惯退不回去。', year: 2022, date: '九月二十七', seal: '越界', leaf: 5 }
+  { num: 5, title: '第五章·板报', file: 'chapter-05.html', words: 2013, blurb: '有些界线不用争，往旁边挪两指，字照样写得直。', year: 2022, date: '九月二十', seal: '板报', leaf: 4 },
+  { num: 6, title: '第六章·越界', file: 'chapter-06.html', words: 2184, blurb: '有些界线退得干干净净，有些习惯退不回去。', year: 2022, date: '九月二十', seal: '越界', leaf: 5 },
+  { num: 7, title: '第七章·余响', file: 'chapter-07.html', words: 2022, blurb: '有些声音传得比名次远，有些诺言一直没过期。', year: 2022, date: '九月二十三', seal: '余响', leaf: 6 }
 ];
 
 function getChapterStorageId(href) {

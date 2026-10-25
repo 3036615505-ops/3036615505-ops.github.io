@@ -19,7 +19,7 @@
  *      NETWORK_TIMEOUT（500ms），所以它们必须走缓存优先。
  *   3. /app/ 前缀（安装包、version.json）不拦截，直接交给网络
  */
-var CACHE = 'linyuan-v58';
+var CACHE = 'linyuan-v59';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
@@ -113,6 +113,7 @@ var PRECACHE = [
   '/novel/chapter-04.html',
   '/novel/chapter-05.html',
   '/novel/chapter-06.html',
+  '/novel/chapter-07.html',
   '/novel/characters.html',
   /* 同学录列表页立绘缩略图（128×150，17 张合计约 70KB）。
      列表页 .char-photo 只有 48×56，object-fit: cover + object-position: 50% 28%
