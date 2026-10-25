@@ -42,6 +42,9 @@ jobs:
       - name: ④ 章节正文与 manuscript/ 源稿一致
         run: node tools/manuscript-sync.mjs
 
+      - name: ⑤ 安装包与 version.json 一致
+        run: node tools/check-apk.mjs
+
   e2e:
     name: 端到端（真浏览器）
     runs-on: ubuntu-latest

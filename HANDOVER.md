@@ -16,7 +16,7 @@
 | 人物 | 17 人（新叶 7 / 乔木 10）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
 | 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 852KB**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
 | Android 壳 | v1.9.0 / versionCode 17（v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死；v1.8.7 修系统返回键直接退出；**v1.9.0 = A 档收官，壳进入封版状态**：桥接补丁下沉到站点 `js/native-bridge.js`（以后改桥不用发版）、原生分享桥、闪屏叠层淡出、onResume 补更新检查、锁竖屏。详见 `app/BACK-HANDLING.md` 与 `app/WEBVIEW-ROADMAP.md`） |
-| 校验 | 本地 pre-push 4 项 · CI 2 个 job · 端到端 43 项 |
+| 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 38 项 |
 
 ## 常用命令
 
@@ -28,6 +28,8 @@ node tools/bump-assets.mjs --write # 发版前必做：全站 ?v= 统一 +1
 node tools/bump-assets.mjs --check # 只检查是否混版
 node tools/check-precache.mjs      # SW 预缓存条目是否存在
 node tools/manuscript-sync.mjs     # 正文与 manuscript/ 源稿逐字比对
+node tools/check-apk.mjs           # 安装包与 version.json 的 size/sha256 是否一致
+node tools/check-apk.mjs --write   # 打完新包后重算校验值（APK 与清单同一次提交）
 python tools/make-kai-subset.py --check            # 楷体子集是否覆盖正文
 node new-chapter.js <原稿.md>       # 加新章节（会自动写 manuscript/）
 node tools/make-characters.mjs     # 改人物后重新生成同学录与详细页

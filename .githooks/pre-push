@@ -11,11 +11,12 @@
 # 临时跳过（不推荐）：
 #     git push --no-verify
 #
-# 检查四项：
-#   1. node tools/bump-assets.mjs --check   —— 6 个 HTML 的 ?v= 是否统一（混版 = 有人拿旧文件）
+# 检查五项：
+#   1. node tools/bump-assets.mjs --check   —— 全站 HTML 的 ?v= 是否统一（混版 = 有人拿旧文件）
 #   2. node tools/check-precache.mjs        —— sw.js 的 PRECACHE 每条是否真实存在、脚本引用是否齐全
 #   3. python tools/make-kai-subset.py --check —— 楷体字体子集是否覆盖当前正文用字
 #   4. node tools/manuscript-sync.mjs       —— 章节正文与 manuscript/ 源稿是否逐字一致
+#   5. node tools/check-apk.mjs             —— version.json 的 size / sha256 与安装包是否一致
 # 任一失败 → 退出码 1 → push 被阻止。想放行请先修好，不要养成 --no-verify 的习惯。
 
 set -u
@@ -37,19 +38,19 @@ fi
 failed=0
 
 echo ""
-echo "→ [1/4] 检查全站 ?v= 版本号是否统一 …"
+echo "→ [1/5] 检查全站 ?v= 版本号是否统一 …"
 if ! node tools/bump-assets.mjs --check; then
   failed=1
 fi
 
 echo ""
-echo "→ [2/4] 检查 sw.js 的 PRECACHE 条目与脚本引用 …"
+echo "→ [2/5] 检查 sw.js 的 PRECACHE 条目与脚本引用 …"
 if ! node tools/check-precache.mjs; then
   failed=1
 fi
 
 echo ""
-echo "→ [3/4] 检查楷体字体是否覆盖当前正文用字 …"
+echo "→ [3/5] 检查楷体字体是否覆盖当前正文用字 …"
 PY=""
 if command -v python >/dev/null 2>&1; then PY=python
 elif command -v python3 >/dev/null 2>&1; then PY=python3; fi
@@ -62,13 +63,23 @@ else
 fi
 
 echo ""
-echo "→ [4/4] 检查章节正文与 manuscript/ 源稿是否一致 …"
+echo "→ [4/5] 检查章节正文与 manuscript/ 源稿是否一致 …"
 if [ -f tools/manuscript-sync.mjs ]; then
   if ! node tools/manuscript-sync.mjs; then
     failed=1
   fi
 else
   echo "   跳过（未找到 tools/manuscript-sync.mjs）"
+fi
+
+echo ""
+echo "→ [5/5] 检查 app/version.json 与安装包是否一致 …"
+if [ -f tools/check-apk.mjs ]; then
+  if ! node tools/check-apk.mjs; then
+    failed=1
+  fi
+else
+  echo "   跳过（未找到 tools/check-apk.mjs）"
 fi
 
 if [ "$failed" -ne 0 ]; then
@@ -81,7 +92,9 @@ if [ "$failed" -ne 0 ]; then
   echo "  ② 预缓存缺失： 按上面列出的路径补文件，或从 sw.js 的 PRECACHE 删掉该条"
   echo "  ③ 楷体缺字： python tools/make-kai-subset.py（重新生成子集并提交 woff2）"
   echo "  ④ 正文与源稿不一致：若是有意改文，node tools/manuscript-sync.mjs --write --only chapter-0N"
-  echo "  ⑤ 若改了 sw.js 的 PRECACHE 内容，记得把 CACHE 版本号一起 +1"
+  echo "  ⑤ 安装包与清单不一致： node tools/check-apk.mjs --write
+     （打完新包必须跑一次，且 APK 与 version.json 要进同一次提交）
+  ⑥ 若改了 sw.js 的 PRECACHE 内容，记得把 CACHE 版本号一起 +1"
   echo "     （如 linyuan-v16 → v17，否则老用户不会重新 install）"
   echo ""
   echo "确实要绕过（不推荐）： git push --no-verify"
