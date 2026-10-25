@@ -387,6 +387,29 @@ a, button, input, label, select, textarea, summary, [role="button"] {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ===== 「App 化」交互细节（2026-10-25 实测反馈后补）=====
+   现象：App 里点按钮，第一下干净，再点却冒蓝条。三个候选逐一排除后确认是
+   **连点触发的文字选中**：Chrome/WebView 把快速两次点击同一段文字当成双击选词，
+   选中态在 <button>/<a> 上常回落成系统默认蓝，而 ::selection 的金色罩不住它。
+   下面三条一起堵，且都不影响键盘可达性与正文摘句：
+     1. user-select: none —— 只加在「界面 chrome」（按钮/页签/表单/导航），
+        章节正文 .chapter-content 不在此列，读者照样能选中句子存摘句；
+     2. -webkit-touch-callout: none —— 长按按钮不再弹系统「复制/分享」菜单
+        （正文不加，读者长按复制句子仍可用）；
+     3. :focus:not(:focus-visible) 去掉指针焦点环 —— 触屏/鼠标点出来的焦点不画圈，
+        键盘导航的焦点环（:focus-visible）原样保留，可访问性不受损。
+        老 WebView 不支持 :focus-visible 时整条规则被丢弃，退化为默认焦点环，安全。 */
+button, input, label, select, textarea, summary, [role="button"],
+.tab-item, .notice-go, .notice-close, .char-more, .back-btn {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
 html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;

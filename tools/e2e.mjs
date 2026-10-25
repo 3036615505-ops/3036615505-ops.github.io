@@ -235,7 +235,6 @@ const BASE = `http://127.0.0.1:${PORT}`;
 const CHAPTER = BASE + '/novel/chapter-02.html';
 const SHELF = BASE + '/novel/index.html';
 const HOME = BASE + '/';
-const CHAPTER_LAST = BASE + '/novel/chapter-06.html';
 const CHAPTER_KEY = '--novel-chapter-02-html';
 const POS_KEY = 'reader-pos' + CHAPTER_KEY;
 const ANCHOR_KEY = 'reader-anchor' + CHAPTER_KEY;
@@ -542,8 +541,15 @@ check('章节进度条一章一段、且不溢出版心',
    被测行为：远端章号 > 已记录章号 → 弹横幅；点「去读」/「✕」→ 记录并消失；
    已记录到最新章 → 不弹；正停在最新章页面上 → 静默记录不弹。 */
 section('站内更新横幅');
+/* 期望值一律从 announce.json 现取（不写死章号）—— 硬编码在第七章上线当天
+   就连挂 4 条「正确的功能 vs 过期的期望」。 */
 await evaluate(`sessionStorage.clear(); 1`);
-await evaluate(`localStorage.setItem('reader-notice-seen', '5'); 1`);
+await goto(HOME);
+const ann = await evaluate(`fetch('announce.json', { cache: 'no-store' }).then((r) => r.json())`);
+const LATEST = ann.chapter;
+const LATEST_URL = ann.url;
+const SEEN = String(LATEST - 1);
+await evaluate(`sessionStorage.clear(); localStorage.setItem('reader-notice-seen', '${SEEN}'); 1`);
 await goto(HOME);
 await sleep(600);
 const noticeShown = await evaluate(`(() => {
@@ -555,29 +561,29 @@ const noticeShown = await evaluate(`(() => {
     visible: bar ? getComputedStyle(bar).opacity : ''
   };
 })()`);
-check('已看到第 5 章时弹出「第 6 章更新了」横幅',
-  noticeShown.exists && noticeShown.text.indexOf('第 6 章') >= 0 && noticeShown.visible === '1',
+check('看到第 ' + SEEN + ' 章时弹出「第 ' + LATEST + ' 章更新了」横幅',
+  noticeShown.exists && noticeShown.text.indexOf('第 ' + LATEST + ' 章') >= 0 && noticeShown.visible === '1',
   JSON.stringify(noticeShown));
-check('横幅「去读」指向最新章节', noticeShown.href === '/novel/chapter-06.html', String(noticeShown.href));
+check('横幅「去读」指向最新章节', noticeShown.href === LATEST_URL, String(noticeShown.href) + ' != ' + LATEST_URL);
 await evaluate(`document.querySelector('#lyNotice .notice-close').click(); 1`);
 await sleep(120);
 const noticeClosed = await evaluate(`(() => ({
   gone: !document.getElementById('lyNotice'),
   seen: localStorage.getItem('reader-notice-seen')
 }))()`);
-check('点 ✕ 后横幅消失且已记录到第 6 章', noticeClosed.gone && noticeClosed.seen === '6', JSON.stringify(noticeClosed));
+check('点 ✕ 后横幅消失且已记录到第 ' + LATEST + ' 章', noticeClosed.gone && noticeClosed.seen === String(LATEST), JSON.stringify(noticeClosed));
 await goto(HOME);
 await sleep(600);
 const noticeQuiet = await evaluate(`!!document.getElementById('lyNotice')`);
 check('已看到最新章后不再弹', noticeQuiet === false, 'exists=' + noticeQuiet);
-await evaluate(`sessionStorage.clear(); localStorage.setItem('reader-notice-seen', '5'); 1`);
-await goto(CHAPTER_LAST);
+await evaluate(`sessionStorage.clear(); localStorage.setItem('reader-notice-seen', '${SEEN}'); 1`);
+await goto(BASE + LATEST_URL);
 await sleep(600);
 const noticeOnLatest = await evaluate(`(() => ({
   exists: !!document.getElementById('lyNotice'),
   seen: localStorage.getItem('reader-notice-seen')
 }))()`);
-check('正停留在最新章节页时不弹、只静默标记', noticeOnLatest.exists === false && noticeOnLatest.seen === '6', JSON.stringify(noticeOnLatest));
+check('正停留在最新章节页时不弹、只静默标记', noticeOnLatest.exists === false && noticeOnLatest.seen === String(LATEST), JSON.stringify(noticeOnLatest));
 
 section('全局');
 check('全程无未捕获异常', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 300));

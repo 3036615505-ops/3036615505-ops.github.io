@@ -311,7 +311,34 @@ async function auditPage(cdp, base, page, theme) {
     return result.value;
   };
 
+  /* 视口按页面实际高度自适应：VIEW_H 原是写死的 1500（注释说「够高，让整页都在
+     视口内」），但章节从 4 章涨到 7 章后书架页已经超出 1500。贴底元素的内缩采样区
+     整段落在截图外 → SAMPLE 返回 null → 上层兜底成白色 → 深色卡片上的浅金文字被
+     算成 1.91:1 的假失败（2026-10-25 实测：第七章简介 y=1497、高 23，内缩后
+     y0=3003 > y1=3000）。这里量一次真实高度再重建视口，从根上消除「元素在视口外」。
+     上限 6000 是防个别页面（如人物簿）截图过大。 */
+  const needH = await ev(`Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0) + 40`);
+  const useH = Math.max(VIEW_H, Math.min(needH || VIEW_H, 6000));
+  if (useH !== VIEW_H) {
+    await cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: VIEW_W, height: useH, deviceScaleFactor: DPR, mobile: true
+    });
+    await sleep(250);
+  }
   const collected = await ev(COLLECT);
+  if (process.env.DBG) {
+    const d = await ev(`(() => {
+      const el = document.querySelector('.chapter-blurb');
+      if (!el) return 'no blurb';
+      const r = el.getBoundingClientRect();
+      const cx = r.x + r.width / 2, cy = r.y + r.height / 2;
+      const top = document.elementFromPoint(cx, cy);
+      const chain = [];
+      for (let q = el; q && chain.length < 5; q = q.parentElement) chain.push(q.tagName + '.' + (typeof q.className === 'string' ? q.className : '') + '=' + getComputedStyle(q).backgroundColor);
+      return JSON.stringify({ rect: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)], top: top ? top.tagName + '.' + (typeof top.className === 'string' ? top.className : '') : null, chain });
+    })()`);
+    console.log('DBG', page, theme, d);
+  }
   const applied = await ev(`document.documentElement.getAttribute('data-theme') || 'light'`);
 
   // 文字全透明 → 截图 → 采样真实背景
@@ -324,18 +351,26 @@ async function auditPage(cdp, base, page, theme) {
   })()`);
   await sleep(400);
   const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' });
+  if (process.env.SHOT) fs.writeFileSync(process.env.SHOT.replace('PAGE', page.replace(/\//g, '_')).replace('THEME', theme), Buffer.from(data, 'base64'));
   await ev(`document.getElementById('__contrast_probe').remove()`);
 
   const rects = collected.list.map((e) => ({ x: e.x, y: e.y, w: e.w, h: e.h }));
   const bgs = await ev(SAMPLE({ dataUrl: 'data:image/png;base64,' + data, rects }));
 
+  /* 采样不到（null）**绝不再兜底成白色** —— 这个兜底已经制造过两次假失败：
+     ① 贴底元素盒子下半截在截图外（已修：钳制 + 视口自适应）；
+     ② 元素内缩后的采样区整段落在截图外（第七章简介，y=1497 超出写死的 1500 视口）。
+     两次都是「深色卡片上的浅金文字被算成 1.9:1」，而它的同类实测 8.9:1。
+     现在测不到就明确记为 unmeasured：不算未达标（没有证据说它不达标），
+     但会在报告里单独列出，避免「悄悄少测了几个」这种更坏的可能。 */
   const rows = collected.list.map((e, i) => {
-    const bg = bgs[i] || [255, 255, 255];
+    const bgv = bgs[i];
+    if (!bgv) return { ...e, fg: hex(parseRGB(e.color)), bg: null, cr: null, need: threshold(e.fontSize, e.bold), pass: null, unmeasured: true };
     const fg = parseRGB(e.color);
-    const cr = contrast(fg, bg);
+    const cr = contrast(fg, bgv);
     const need = threshold(e.fontSize, e.bold);
-    return { ...e, fg: hex(fg), bg: hex(bg), cr: +cr.toFixed(2), need, pass: cr >= need };
-  }).filter((r) => (MIN_ONLY === null ? true : !r.pass || r.cr < MIN_ONLY));
+    return { ...e, fg: hex(fg), bg: hex(bgv), cr: +cr.toFixed(2), need, pass: cr >= need, unmeasured: false };
+  }).filter((r) => (MIN_ONLY === null ? true : !r.pass || r.cr < MIN_ONLY || r.unmeasured));
 
   return { page, theme: applied, injected: INJECT ? INJECT.replace(/\s+/g, ' ').trim() : null, rows };
 }
@@ -362,9 +397,10 @@ try {
     for (const theme of THEMES) {
       const r = await auditPage(cdp, BASE, page, theme);
       all.push(r);
-      const fails = r.rows.filter((x) => !x.pass);
+      const fails = r.rows.filter((x) => x.pass === false);
+      const unmeas = r.rows.filter((x) => x.unmeasured);
       if (fails.length) exitCode = 1;
-      console.log(`\n### ${r.page}  [data-theme=${r.theme}]  元素 ${r.rows.length} 个，未达标 ${fails.length} 个`);
+      console.log(`\n### ${r.page}  [data-theme=${r.theme}]  元素 ${r.rows.length} 个，未达标 ${fails.length} 个${unmeas.length ? `，无法测量 ${unmeas.length} 个` : ''}`);
       if (r.rows.length) {
         console.log('| 元素 | 文本 | 字号 | 前景 | 背景(实测) | 对比度 | 需 ≥ | 结果 |');
         console.log('|---|---|---|---|---|---|---|---|');
