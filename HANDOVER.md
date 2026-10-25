@@ -8,9 +8,9 @@
 | 项 | 值 |
 |---|---|
 | 线上 | <https://zephyrw.site>（GitHub Pages，push 即发布） |
-| 站点资源版本 | `?v=63`（全站 27 个 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
+| 站点资源版本 | `?v=71`（全站 28 个 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
 | SW 缓存名 | `linyuan-v58` |
-| 阅读器模块 | dom 77 行 · flags 86 · store 226 · engine 467 · ui 1748 · 入口 30 |
+| 阅读器模块 | dom 77 行 · flags 86 · store 226 · engine 467 · ui 1837 · 入口 30 |
 | 样式 | `css/style.css` 4048 行（4 套主题令牌） |
 | 章节 | 6 章（2858 / 2347 / 2029 / 2496 / 2076 / 2269 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
 | 人物 | 17 人（新叶 7 / 乔木 10）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
@@ -67,7 +67,7 @@ reader.dom.js     DOM 工具 el()/html()/escapeHtml（谁都能用）
 
 加字段的流程：`normalizeFootprints` 补默认值 → `STORAGE_SCHEMA` +1 → `migrateStorage` 里写迁移。备份导出会自动带上所有 `reader-*` 键。
 
-## 多机协作：版本号到底在哪台机器改
+## 多机协作：版本号、同步与目录卫生
 
 **「版本」有两个，平台限制只有一个。**
 
@@ -76,18 +76,67 @@ reader.dom.js     DOM 工具 el()/html()/escapeHtml（谁都能用）
 | 站点资源版本 `?v=` + SW `CACHE` | 任何装了 Node 的机器 | **没有**。就是 `node tools/bump-assets.mjs --write`，Mac / Windows 完全一样 |
 | App 版本 `versionCode` / `versionName`（`twa/app/build.gradle`） | 装了 Android SDK + JDK 的那台 | **有**。SDK 目前在 Windows 这台（`E:/novel-site/android-sdk`）；Mac 上若也装了 SDK 同样能打 |
 
-所以「升版本号必须在 Windows 改」是句误解：站点版本号在哪台改都行，
-mac 端已经改过很多次（现在 `?v=56`）。**只有要打 APK 时才必须去那台机器**，
-因为 Android SDK 只装在那里。
+所以「升版本号必须在 Windows 改」是句误解：站点版本号在哪台改都行，Mac 端已经改过很多次。
+**只有要打 APK 时才必须去那台机器**，因为 Android SDK 只装在那里。
 
-每个 clone 配一次本地钩子（Mac 上如果没配，本地四项校验不会跑，CI 会兜住）：
+**GitHub 上的 `main` 是唯一真相，任何一台机器上的目录只是工作副本。** 没 push 的改动等于不存在——
+换机器前先 push（或推分支），不要指望「另一台机器上那份」。
+
+### 两台机器的分工
+
+| 机器 | 路径 | 能做什么 |
+|---|---|---|
+| Windows | `E:/novel-site` | 全部；**打 APK 只能在这台**（Android SDK 在这里） |
+| Mac | `~/linyuan-live` | 站点 / 样式 / 阅读器 JS / 跑 e2e；不能打 APK |
+
+- **一台机器只留一个 clone。** 同一仓库放两三份（`xxx-fix`、`xxx.stale`）必然出现「我改的是哪一份」，
+  而且旧副本会一路落后几十个提交。用完即删，下次 `git clone` 一分钟。
+- 目录别用域名命名（`3036615505-ops.github.io` 看着像发布源，其实只是一份副本）。
+
+### 开工 / 收工（两台一样）
 
 ```bash
-git config core.hooksPath .githooks
+# 开工
+cd ~/linyuan-live               # Windows: E:/novel-site
+git status -sb                  # 第一行就是 ahead / behind
+git pull --ff-only              # 分叉会直接报错，不悄悄合并出烂摊子
+
+# 改完
+node tools/bump-assets.mjs --write   # 只有动了 HTML/CSS/JS 才需要
+git commit -am "…"
+git push                        # pre-push 四项校验 + CI 兜底
 ```
 
-两台机器改同一个仓库时的规矩：**谁改谁 bump**（`?v=` 与改动一起提交），
-不要攒着一起改 —— 攒多了中间任何一次 push 都可能带着别人的旧缓存。
+`--ff-only` 的意义：本地有未推提交、远程也有新提交时，它**报错而不是自动 merge**。
+这时候先看清两边各改了什么，别硬合。
+
+### `?v=` 是全局单点，最容易撞
+
+两台机器各自 `bump --write` 会得到同一个号（都 71），后推的那次让先推的资源版本失效，读者吃旧缓存。
+所以顺序永远是 **pull → 改 → bump → commit → push**，不是「改 → bump → 想起来了才 pull」。
+
+### 改到一半要换机器
+
+不要留未提交改动在 main 上跨机器：
+
+```bash
+git switch -c wip/mac-键盘        # 名字带机器 + 主题
+git commit -am "wip: 键盘换章"
+git push -u origin wip/mac-键盘
+# 另一台接着写：git fetch && git switch wip/mac-键盘
+# 完成后合回 main
+```
+
+只在本机离开几小时才用 `git stash push -m "wip"`——stash 不过网络，换机器拿不到。
+
+### 每台机器配一次
+
+```bash
+git config core.hooksPath .githooks   # 没配则本地四项校验不跑，只剩 CI 兜底
+```
+
+**版本号现状**：`?v=71`（2026-10-26）。谁改谁 bump，`?v=` 与改动一起提交，不要攒——
+攒多了中间任何一次 push 都可能带着别人的旧缓存。
 
 ## 两类改动，两种流程
 
