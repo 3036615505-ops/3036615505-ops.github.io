@@ -7,7 +7,7 @@ name: verify
 # 检查内容与本地钩子一一对应，外加一套真浏览器端到端测试：
 #   ① 全站 ?v= 是否统一          ② SW 预缓存条目是否都存在
 #   ③ 楷体子集是否覆盖正文用字    ④ 章节正文与 manuscript/ 源稿是否一致
-#   ⑤ 阅读器 27 项端到端断言（无头 Chrome 驱动真页面）
+#   ⑤ 阅读器 34 项端到端断言（无头 Chrome 驱动真页面）
 
 on:
   push:
@@ -52,9 +52,26 @@ jobs:
         with:
           node-version: '22'
 
-      # ubuntu-latest 自带 google-chrome，tools/e2e.mjs 会自动找到它；
-      # CI=true 时会补上 --no-sandbox 与 --disable-dev-shm-usage
-      - name: 阅读器端到端 27 项
+      # 镜像自带的 Chrome 会随 runner 镜像滚动，今天能跑明天可能起不来；
+      # 这里额外装一份官方 stable，用 CHROME_BIN 显式指过去，让 e2e 不依赖镜像内容。
+      # install-dependencies：把 Chrome 缺的系统库一起 apt 装上 —— 「浏览器起不来」
+      # 最常见的原因就是新版镜像里少了 libnss3 / libatk 之类的依赖。
+      # continue-on-error：装不上就退回镜像自带的那份（e2e 自己会找），不拖垮整个 job。
+      - name: 安装 Chrome（失败则用镜像自带）
+        id: setup-chrome
+        continue-on-error: true
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: stable
+          install-dependencies: true
+
+      - name: 记录浏览器版本（排障用）
+        run: |
+          echo "CHROME_BIN=${{ steps.setup-chrome.outputs.chrome-path }}"
+          "${{ steps.setup-chrome.outputs.chrome-path || '/usr/bin/google-chrome' }}" --version || true
+
+      - name: 阅读器端到端 34 项
         run: node tools/e2e.mjs
         env:
           CI: true
+          CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
