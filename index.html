@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f8f4ed">
-  <meta name="description" content="南城的梧桐树还在长">
+  <meta name="description" content="南城的梧桐枝繁未歇">
   <link rel="icon" href="favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
   <title>临渊羡鱼</title>
   <meta property="og:title" content="临渊羡鱼">
-  <meta property="og:description" content="南城的梧桐树还在长——青春 · 校园 · 成长">
+  <meta property="og:description" content="南城的梧桐枝繁未歇——青春 · 校园 · 成长">
   <meta property="og:image" content="https://zephyrw.site/assets/og-cover.jpg">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
@@ -19,12 +19,12 @@
        抢走同一条连接上的带宽（实测冷启动：cover 199ms 起、CSS 201ms 起）。
        这里改指 144x196 的 cover-thumb.webp（5.7KB），
        不再用 528x720 的 cover.webp（69.4KB）去画一个 46x62 的方块。 -->
-  <link rel="stylesheet" href="css/style.css?v=69">
+  <link rel="stylesheet" href="css/style.css?v=70">
   <link rel="preload" as="image" href="assets/cover-thumb.webp">
-  <script src="js/theme.js?v=69"></script>
-  <script src="js/native-bridge.js?v=69"></script>
+  <script src="js/theme.js?v=70"></script>
+  <script src="js/native-bridge.js?v=70"></script>
   <!-- 站内「新章节更新了」横幅（取 announce.json 与 localStorage 比对，每会话一次）。 -->
-  <script src="js/announce.js?v=69"></script>
+  <script src="js/announce.js?v=70"></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame home-page">
@@ -32,7 +32,7 @@
     <header class="home-header">
       <div>
         <h1 class="home-title">临渊羡鱼</h1>
-        <div class="home-subtitle">南城的梧桐树还在长</div>
+        <div class="home-subtitle">南城的梧桐枝繁未歇</div>
       </div>
       <div class="leaf-pill">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C7 8 4 13 12 22c8-9 5-14 0-20z"/></svg>
@@ -86,7 +86,7 @@
       <div class="date-list" id="dateList"></div>
     </section>
 
-    <footer class="home-footer">南城的梧桐树还在长</footer>
+    <footer class="home-footer">南城的梧桐枝繁未歇</footer>
 
     <!-- 版本号与手动检查更新：刻意做得很轻（11px、--text-muted），不抢主视觉。
          版本号由 App 壳的 LinyuanApp.getAppVersion() 提供；浏览器里不显示。 -->
@@ -123,8 +123,8 @@
        弱网下 chapters.js 没回来之前整页白屏（首屏可感知卡顿）。
        放在这里首屏骨架先画出来；但必须保持在下面依赖 CHAPTERS 的内联脚本之前
        （经典脚本按文档顺序执行，内联脚本是同步 IIFE，等不到任何异步回调）。 -->
-  <script src="js/chapters.js?v=69"></script>
-  <script src="js/transition.js?v=69"></script>
+  <script src="js/chapters.js?v=70"></script>
+  <script src="js/transition.js?v=70"></script>
 
   <script>
   (function() {

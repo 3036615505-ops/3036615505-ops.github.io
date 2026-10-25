@@ -238,7 +238,7 @@ const tpl = `<!DOCTYPE html>
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
   <title>${escapeHtml(title)}</title>
   <meta property="og:title" content="${escapeHtml(title)}">
-  <meta property="og:description" content="临渊羡鱼 —— 南城的梧桐树还在长">
+  <meta property="og:description" content="临渊羡鱼 —— 南城的梧桐枝繁未歇">
   <meta property="og:image" content="https://zephyrw.site/assets/og-cover.jpg">
   <meta property="og:type" content="article">
   <link rel="manifest" href="../manifest.json">
