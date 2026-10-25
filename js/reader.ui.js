@@ -45,6 +45,8 @@
     theme: localStorage.getItem('reader-theme') || (systemDark ? 'dark' : 'wheat'),
     fontFamily: localStorage.getItem('reader-fontfamily') || 'fzyouhei',
     readWidth: localStorage.getItem('reader-readwidth') || 'normal',
+    lineHeight: localStorage.getItem('reader-lineheight') || 'normal',
+    paraGap: localStorage.getItem('reader-paragap') || 'normal',
     barsVisible: false,
     settingsVisible: false,
     autoCloseTimer: null
@@ -143,6 +145,8 @@
     applyFontFamily(state.fontFamily);
     loadUserFontIfNeeded();
     applyReadWidth(state.readWidth);
+    applyLineHeight(state.lineHeight);
+    applyParaGap(state.paraGap);
     applyTheme(state.theme);
     initPageTransition();
     initTapArea();
@@ -756,6 +760,43 @@
     var label = document.getElementById('readWidthLabel');
     if (label) label.textContent = mode === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关';
   }
+
+
+  /* ===== 行距 / 段距 =====
+     只落 data 属性，具体差量在 css/style.css 的 [data-lh] / [data-para] 里；
+     主题各自的基准行距不受影响（信笺本来就比晴窗松一点）。
+     改动会让整章重排，所以走 keepPositionWhile —— 读者应该还停在刚才那一句。 */
+
+  function syncChoiceButtons(attr, value) {
+    var btns = document.querySelectorAll('button[' + attr + ']');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle('is-on', btns[i].getAttribute(attr) === value);
+    }
+  }
+
+  function applyLineHeight(mode) {
+    state.lineHeight = mode;
+    localStorage.setItem('reader-lineheight', mode);
+    if (mode === 'normal') document.documentElement.removeAttribute('data-lh');
+    else document.documentElement.setAttribute('data-lh', mode);
+    syncChoiceButtons('data-lh', mode);
+  }
+
+  function applyParaGap(mode) {
+    state.paraGap = mode;
+    localStorage.setItem('reader-paragap', mode);
+    if (mode === 'normal') document.documentElement.removeAttribute('data-para');
+    else document.documentElement.setAttribute('data-para', mode);
+    syncChoiceButtons('data-para', mode);
+  }
+
+  window.setLineHeight = function(mode) {
+    keepPositionWhile(function () { applyLineHeight(mode); });
+  };
+
+  window.setParaGap = function(mode) {
+    keepPositionWhile(function () { applyParaGap(mode); });
+  };
 
 
   window.toggleReadWidth = function() {
@@ -1397,6 +1438,18 @@
           '<div class="setting-group"><div class="setting-label">版式</div>' +
             '<div class="mode-toggle-row">' +
               '<button id="readWidthToggle" class="mode-toggle-btn" onclick="toggleReadWidth()"><span id="readWidthLabel">' + (state.readWidth === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关') + '</span></button>' +
+            '</div>' +
+            '<div class="setting-sublabel">行距</div>' +
+            '<div class="mode-toggle-row" id="lineHeightChoices">' +
+              '<button class="mode-toggle-btn' + (state.lineHeight === 'tight' ? ' is-on' : '') + '" data-lh="tight" onclick="setLineHeight(\'tight\')">紧凑</button>' +
+              '<button class="mode-toggle-btn' + (state.lineHeight === 'normal' ? ' is-on' : '') + '" data-lh="normal" onclick="setLineHeight(\'normal\')">标准</button>' +
+              '<button class="mode-toggle-btn' + (state.lineHeight === 'loose' ? ' is-on' : '') + '" data-lh="loose" onclick="setLineHeight(\'loose\')">宽松</button>' +
+            '</div>' +
+            '<div class="setting-sublabel">段距</div>' +
+            '<div class="mode-toggle-row" id="paraGapChoices">' +
+              '<button class="mode-toggle-btn' + (state.paraGap === 'tight' ? ' is-on' : '') + '" data-para="tight" onclick="setParaGap(\'tight\')">紧凑</button>' +
+              '<button class="mode-toggle-btn' + (state.paraGap === 'normal' ? ' is-on' : '') + '" data-para="normal" onclick="setParaGap(\'normal\')">标准</button>' +
+              '<button class="mode-toggle-btn' + (state.paraGap === 'loose' ? ' is-on' : '') + '" data-para="loose" onclick="setParaGap(\'loose\')">宽松</button>' +
             '</div>' +
           '</div>' +
           '<div class="setting-group" data-group="aids"><div class="setting-label">阅读辅助</div>' +

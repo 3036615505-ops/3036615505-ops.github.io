@@ -1800,12 +1800,27 @@ body.reading-page {
 }
 
 /* 阅读内容 */
+/* 行距与段距：主题定基准（--reader-lh-base / --reader-para-base），
+   读者用 data-lh / data-para 做 ±差量。用差量而不是绝对值，是为了让四套主题
+   各自的行距口感不被统一抹平（信笺本来比晴窗松一点）。 */
+:root {
+  --reader-lh-base: 2.0;
+  --reader-para-base: 22px;
+  --lh-delta: 0;
+  --para-delta: 0px;
+}
+
+:root[data-lh="tight"] { --lh-delta: -0.22; }
+:root[data-lh="loose"] { --lh-delta: 0.3; }
+:root[data-para="tight"] { --para-delta: -8px; }
+:root[data-para="loose"] { --para-delta: 10px; }
+
 .chapter-content {
   /* 顶部留出状态栏/刘海高度：沉浸模式隐藏状态栏后 env() 归零，正文自然贴顶 */
   padding: calc(24px + env(safe-area-inset-top, 0px)) 20px calc(48px + 28px);
   font-family: -apple-system, "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   font-size: var(--font-size-base);
-  line-height: 2.0;
+  line-height: calc(var(--reader-lh-base) + var(--lh-delta));
   color: var(--reading-text);
   min-height: 80vh;
   letter-spacing: 0.4px;
@@ -1824,7 +1839,7 @@ body.reading-page {
 
 .chapter-content p {
   text-indent: 2em;
-  margin-bottom: 22px;
+  margin-bottom: calc(var(--reader-para-base) + var(--para-delta));
   word-break: break-all;
   font-weight: 400;
   /* 这里曾经用 content-visibility: auto + contain-intrinsic-size: 2em 省渲染，
@@ -1849,18 +1864,24 @@ body.reading-page {
   width: 25%;
 }
 
+:root[data-theme="wheat"] {
+  --reader-lh-base: 2.08;
+}
+
 :root[data-theme="wheat"] .chapter-content {
-  line-height: 2.08;
   letter-spacing: 0.5px;
+}
+
+:root[data-theme="dark"] {
+  --reader-lh-base: 2.04;
 }
 
 :root[data-theme="dark"] .chapter-content {
-  line-height: 2.04;
   letter-spacing: 0.5px;
 }
 
-:root[data-theme="green"] .chapter-content {
-  line-height: 2.06;
+:root[data-theme="green"] {
+  --reader-lh-base: 2.06;
 }
 
 /* 章节余韵卡 */
@@ -2430,6 +2451,19 @@ body.reading-page {
   color: var(--text-muted);
   margin-bottom: 12px;
   letter-spacing: 0.4px;
+}
+
+/* 版式组内的二级标签（行距 / 段距） */
+.setting-sublabel {
+  font-size: 12px;
+  color: var(--text-muted);
+  opacity: 0.85;
+  margin: 10px 0 6px;
+  letter-spacing: 0.4px;
+}
+
+.setting-sublabel:first-of-type {
+  margin-top: 0;
 }
 
 /* 主题圆圈（设置面板内） */
