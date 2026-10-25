@@ -152,6 +152,7 @@
     initSettingsPanel();
     initQuoteCollecting();
     initModalKeys();
+    initKeyboardNav();
     initSwipeHint();
     recordFootprints();
     applyFeatureVisibility();
@@ -945,6 +946,73 @@
       else if (quotes && quotes.classList.contains('visible')) { closeQuotes(); }
       else if (dir && dir.classList.contains('visible')) { closeDirectory(); }
       else if (state.barsVisible) { hideBars(); }
+    });
+  }
+
+
+  /* ===== 键盘：← → 换章，D 目录，T 夜读 =====
+     桌面/外接键盘才有，和「左右轻扫切章」走同一条链路（点 .prev-ch / .next-ch），
+     不另开一套导航，免得两条路径行为分叉。空格与 PageUp/PageDown 交给浏览器默认，
+     不拦；面板打开时完全不响应，避免一边看目录一边被翻页。 */
+
+  function anyPanelOpen() {
+    var ids = ['settingsOverlay', 'quotesOverlay', 'dirOverlay', 'dataOverlay'];
+    for (var i = 0; i < ids.length; i++) {
+      var el = document.getElementById(ids[i]);
+      if (el && el.classList.contains('visible')) return true;
+    }
+    return false;
+  }
+
+
+  function goChapter(dir) {
+    var sel = dir > 0 ? '.next-ch[href]:not([href="#"])' : '.prev-ch[href]:not([href="#"])';
+    var link = document.querySelector(sel);
+    if (!link) {
+      showToast(dir > 0 ? '已经是最后一章' : '这是第一章');
+      return;
+    }
+    window.location.href = link.getAttribute('href');
+  }
+
+
+  function initKeyboardNav() {
+    document.addEventListener('keydown', function(e) {
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+      var t = e.target;
+      var tag = t && t.tagName ? t.tagName.toLowerCase() : '';
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      if (t && t.isContentEditable) return;
+      if (anyPanelOpen()) return;
+
+      switch (e.key) {
+        case 'ArrowRight':
+        case 'l':
+          e.preventDefault();
+          goChapter(1);
+          break;
+        case 'ArrowLeft':
+        case 'h':
+          e.preventDefault();
+          goChapter(-1);
+          break;
+        case 'd':
+        case 'D':
+          e.preventDefault();
+          window.openDirectory();
+          break;
+        case 't':
+        case 'T':
+          e.preventDefault();
+          window.toggleNightMode();
+          break;
+        case '?':
+          e.preventDefault();
+          showToast('← → 换章 · 空格翻屏 · D 目录 · T 夜读 · Esc 收起');
+          break;
+        default:
+          break;
+      }
     });
   }
 
