@@ -297,6 +297,9 @@
                所以这里必须自带字体文件；首次选择时才下载，不选的人不付流量。 */
 
   var KAI_FAMILY = 'LinyuanKai';
+  /* 兜底片：GB2312 一级字里主片没覆盖的部分。只在缺字时由浏览器按需下载，
+     不主动 load()/check() —— 它存在的意义就是「平常永远用不到」。 */
+  var KAI_REST_FAMILY = 'LinyuanKaiRest';
 
   var kaiLoading = false;
 
@@ -435,8 +438,11 @@
 
   function fontStackFor(family) {
     if (family === 'kai') {
-      /* 自带楷体优先；万一字体没加载成功，退回系统的楷/宋，最后才是 serif */
-      return '"' + KAI_FAMILY + '","Kaiti SC","STKaiti","KaiTi","楷体","Noto Serif CJK SC",serif';
+      /* 自带楷体优先；万一字体没加载成功，退回系统的楷/宋，最后才是 serif。
+         KAI_REST 是 GB2312 一级字的兜底片：浏览器只在 KAI_FAMILY 缺该字形时
+         才会去下载它（约 630KB），主片有字就永远不碰。
+         位置必须紧跟主片 —— 放到系统楷体后面就等于永远轮不到。 */
+      return '"' + KAI_FAMILY + '","' + KAI_REST_FAMILY + '","Kaiti SC","STKaiti","KaiTi","楷体","Noto Serif CJK SC",serif';
     }
     if (family === 'system') {
       /* 不能点名叫 Roboto / Segoe UI：装了主题字体的 ROM 替换的是「默认字体族」，

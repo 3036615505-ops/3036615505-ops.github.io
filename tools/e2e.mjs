@@ -390,6 +390,28 @@ check('导入后自动重载：进度没被抹成 0，且已落回原位', after
 check('导入：第二次点击写入备份值', applied.pos === '88', 'pos=' + applied.pos);
 check('导入：白名单外的键被忽略', applied.foreign === null);
 
+/* ================= 楷体双片 ================= */
+section('阅读页 · 楷体双片（主片必下，兜底片按需）');
+await evaluate(`setFontFamily('kai'); 1`);
+await sleep(900);
+const kai = await evaluate(`(() => {
+  const fams = Array.from(document.fonts).map(f => ({ n: f.family.replace(/"/g, ''), s: f.status }));
+  return {
+    stack: getComputedStyle(document.querySelector('.chapter-content')).fontFamily,
+    main: fams.find(x => x.n === 'LinyuanKai'),
+    rest: fams.find(x => x.n === 'LinyuanKaiRest')
+  };
+})()`);
+const kaiStack = kai.stack || '';
+const iMain = kaiStack.indexOf('"LinyuanKai"');
+const iRest = kaiStack.indexOf('"LinyuanKaiRest"');
+check('楷体字体栈里兜底片紧跟主片（放后面就永远轮不到）',
+  iMain >= 0 && iRest > iMain, kaiStack);
+check('主片已加载，兜底片保持未下载',
+  !!kai.main && kai.main.s === 'loaded' && (!kai.rest || kai.rest.s === 'unloaded'),
+  JSON.stringify(kai));
+await evaluate(`setFontFamily('fzyouhei'); 1`);
+
 /* ================= 导入字体 ================= */
 section('阅读页 · 导入自己的字体');
 await evaluate(`openSettings(); 1`);
