@@ -1,9 +1,9 @@
 {
-  "versionCode": 16,
-  "versionName": "1.8.7",
+  "versionCode": 17,
+  "versionName": "1.9.0",
   "apkUrl": "https://zephyrw.site/app/linyuan-latest.apk",
   "size": 107934,
-  "sha256": "a7290d333fa4134b7ae18d33956174f13ee4dbe38dd3dcc956dca5ef4ea13c8b",
-  "notes": "修好了返回键：现在按返回是逐级后退，退到首页再按才退出；从人物详情返回同学录也会停在原来的位置。顺带：断网时稳定显示离线页并可点重试，不再露出系统报错页",
-  "publishedAt": "2026-10-24"
+  "sha256": "252412c9e42bf4c14266c380fbdde8f6985379a275b2f6d74131cd6e4184f78b",
+  "notes": "这一版是打磨：启动闪屏到正文的过渡不再闪一块空白；「分享章节」改为打开系统分享面板，可以直接发到微信/QQ；切回前台会补查一次更新（以前长时间不退出 App 可能收不到更新提示）；锁定竖屏，去掉系统滚动条",
+  "publishedAt": "2026-10-25"
 }
