@@ -374,6 +374,19 @@
 /* ===== 重置 ===== */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* ===== 点击高亮（App 化关键一行）=====
+   Android WebView 触摸可点击元素时会画一层系统默认的半透明蓝灰（tap highlight），
+   在浏览器里无伤大雅，但包装成 App 后就是用户看到的「一块蓝条」，和整站米色/金色
+   体系完全不搭。这里对所有可交互元素全局关掉。
+   注意：可访问性不依赖它 —— 本规则不碰焦点环，键盘用户仍看得到焦点
+   （少数组件有自定义 :focus-visible，其余走浏览器默认焦点环）；
+   按下反馈由各组件自己的 :active 金色淡底负责，都不是这层系统蓝。
+   历史上只有 .reader-tap-zone / .font-import-btn / .font-import-clear / .char-photo-btn
+   四个组件各自声明过，tab 栏、面板按钮、章节导航、链接等全部漏出系统蓝。 */
+a, button, input, label, select, textarea, summary, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
 html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
