@@ -6,8 +6,11 @@
  *   novel/characters.html        同学录列表页（整页生成，别手改）
  *   novel/character-<slug>.html  每个人的详细页
  *
- * 另外自动做两件以前靠人记的事（和 new-chapter.js 一致）：
- *   - 把新详细页登记进 sw.js 的 PRECACHE（漏了 = 离线打不开详细页）
+ * 另外自动做四件以前靠人记的事（和 new-chapter.js 一致）：
+ *   - 列表页立绘用 128×150 缩略图（portrait-<slug>-thumb.webp）；缺了/过期了就调
+ *     tools/make-portrait-thumbs.py 现画（Pillow），画不出来直接报错并给出手动命令
+ *   - 把新详细页 + 立绘缩略图登记进 sw.js 的 PRECACHE（漏了 = 离线打开是破图）
+ *   - 刷新 sitemap.xml（人物页是 sitemap 的一部分，漏刷新 = 新人物不被收录）
  *   - 把 sw.js 的 CACHE 名 +1（不升 = 老用户的 SW 不会重新 install）
  *
  * 用法：node tools/make-characters.mjs
@@ -16,6 +19,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -87,6 +91,73 @@ function esc(s) {
 const BACK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">\n          <polyline points="15 18 9 12 15 6"></polyline>\n        </svg>';
 const CHEVRON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
 
+/* ---------- 立绘缩略图（列表页专用，128×150 webp） ---------- */
+/** 'portrait-linshu-1024.webp' → 'portrait-linshu-thumb.webp' */
+function thumbName(portrait) {
+  return String(portrait).replace(/-1024\.webp$/, '-thumb.webp');
+}
+
+/** 有立绘缺缩略图、或缩略图比母版旧（母版换画了）时为 true */
+function thumbsStale(chars) {
+  return chars.some((c) => {
+    if (!c.portrait) return false;
+    const master = path.join(ROOT, 'assets', c.portrait);
+    const thumb = path.join(ROOT, 'assets', thumbName(c.portrait));
+    if (!fs.existsSync(master)) return false;   // 母版缺失由下面的校验报错
+    if (!fs.existsSync(thumb)) return true;
+    return fs.statSync(thumb).mtimeMs < fs.statSync(master).mtimeMs;
+  });
+}
+
+/**
+ * 调 tools/make-portrait-thumbs.py 补画缩略图。
+ *
+ * Python 探测顺序（两台机器都要能跑）：
+ *   ① python3 / python 全局能 import PIL（Mac/Linux 常见）
+ *   ② 站点仓库外的 _perf/pylibs（本机 Windows：Pillow 只装在那里，
+ *      靠 PYTHONPATH 指过去；仓库里不留 node_modules 式的第三方目录）
+ * 都找不到就抛错并给出手动命令 —— 不静默跳过：缩略图缺失时列表页全是破图，
+ * 而 tools/check-precache.mjs 只兜「PRECACHE 条目存在」，兜不住「没生成」。
+ */
+function ensureThumbs(chars) {
+  if (!thumbsStale(chars)) return;
+  const pylibs = path.resolve(ROOT, '..', '_perf', 'pylibs');
+  const attempts = [];
+  for (const py of ['python3', 'python']) {
+    attempts.push({ py, env: process.env });
+    if (fs.existsSync(pylibs)) {
+      attempts.push({
+        py,
+        env: Object.assign({}, process.env, {
+          PYTHONPATH: pylibs + (process.env.PYTHONPATH ? path.delimiter + process.env.PYTHONPATH : '')
+        })
+      });
+    }
+  }
+  const usable = attempts.find((a) => {
+    const probe = spawnSync(a.py, ['-c', 'import PIL'], { stdio: 'ignore', env: a.env });
+    return !probe.error && probe.status === 0;
+  });
+  if (!usable) {
+    throw new Error(
+      '找不到带 Pillow 的 Python（试过 python3 / python，全局与 ../_perf/pylibs 都没有）。\n' +
+      '  列表页立绘缩略图缺失会直接破图，请先装好再跑本脚本：\n' +
+      '    pip install Pillow\n' +
+      '  或（本机 Windows）: PYTHONPATH=' + pylibs + ' python tools/make-portrait-thumbs.py\n' +
+      '  装好后重跑: node tools/make-characters.mjs'
+    );
+  }
+  console.log('🖼  补画立绘缩略图（' + usable.py + (usable.env.PYTHONPATH ? '，PYTHONPATH=' + usable.env.PYTHONPATH : '') + '）…');
+  const run = spawnSync(usable.py, [path.join(ROOT, 'tools', 'make-portrait-thumbs.py')], {
+    stdio: 'inherit',
+    env: usable.env,
+    cwd: ROOT
+  });
+  if (run.status !== 0) {
+    throw new Error('缩略图工具执行失败（见上方输出）。可手动跑: ' + usable.py + ' tools/make-portrait-thumbs.py');
+  }
+}
+
 function tagChips(c, cls) {
   const items = [];
   (c.tags || []).forEach((t) => items.push('<span class="char-tag">' + esc(t) + '</span>'));
@@ -96,14 +167,24 @@ function tagChips(c, cls) {
     '            </div>';
 }
 
-/** 头像：有立绘走灯箱按钮，没有走姓氏占位（与旧页面完全一致的结构） */
-function photoHtml(c, sizeClass) {
+/**
+ * 头像：有立绘走灯箱按钮，没有走姓氏占位（与旧页面完全一致的结构）。
+ *
+ * 图片文件分两档（别混）：
+ *   - <img src>：列表页卡片位只有 48×56，用缩略图 -thumb.webp（128×150，
+ *     2× DPR 也清晰；17 张合计约 70KB，母版要 2276KB）；
+ *   - data-lightbox-src：永远指 1024 母版 —— 灯箱要全屏 + 3x 捏合，
+ *     缩略图撑不住（详细页同样继续用母版）。
+ * useThumb=false（默认，详细页）时 img 也用母版。
+ */
+function photoHtml(c, sizeClass, useThumb) {
   const cls = 'char-photo' + (sizeClass ? ' ' + sizeClass : '');
   if (c.portrait) {
     const src = '../assets/' + c.portrait;
+    const imgSrc = useThumb ? '../assets/' + thumbName(c.portrait) : src;
     return '<div class="' + cls + '">\n' +
       '            <button type="button" class="char-photo-btn" data-lightbox-src="' + src + '" data-lightbox-name="' + esc(c.name) + '" aria-label="查看' + esc(c.name) + '的立绘">\n' +
-      '              <img src="' + src + '" loading="lazy" decoding="async" alt="' + esc(c.name) + '">\n' +
+      '              <img src="' + imgSrc + '" loading="lazy" decoding="async" alt="' + esc(c.name) + '">\n' +
       '            </button>\n' +
       '          </div>';
   }
@@ -122,6 +203,7 @@ function headBlock(title, description, ogTitle, ogDescription) {
     '  <meta name="theme-color" content="#f8f4ed">\n' +
     '  <meta name="description" content="' + esc(description) + '">\n' +
     '  <link rel="icon" href="../favicon.png" type="image/png">\n' +
+    '  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">\n' +
     '  <title>' + esc(title) + '</title>\n' +
     '  <meta property="og:title" content="' + esc(ogTitle) + '">\n' +
     '  <meta property="og:description" content="' + esc(ogDescription || description) + '">\n' +
@@ -213,7 +295,7 @@ function buildListPage(chars) {
     cards.push(
       '      <section class="character-card' + (c.primary ? ' primary' : '') + '">\n' +
       '        <div class="char-top">\n' +
-      '          ' + photoHtml(c) + '\n' +
+      '          ' + photoHtml(c, '', true) + '\n' +
       '          <div class="char-id">\n' +
       '            <h2>' + esc(c.name) + '</h2>\n' +
       '            ' + tagChips(c) + '\n' +
@@ -333,10 +415,13 @@ chars.forEach((c) => {
   if (!Array.isArray(c.bio) || c.bio.length === 0) throw new Error(c.slug + ' 没有 bio');
 });
 
+// 0) 立绘缩略图就位（缺了/母版换新了就现画；画不了会带着手动命令报错）
+ensureThumbs(chars);
+
 // 写文件
 const listPath = path.join(NOVEL_DIR, 'characters.html');
 fs.writeFileSync(listPath, buildListPage(chars));
-console.log('✓ 同学录列表页：novel/characters.html（' + chars.length + ' 人）');
+console.log('✓ 同学录列表页：novel/characters.html（' + chars.length + ' 人，立绘用 -thumb.webp）');
 
 chars.forEach((c) => {
   const p = path.join(NOVEL_DIR, 'character-' + c.slug + '.html');
@@ -344,21 +429,30 @@ chars.forEach((c) => {
 });
 console.log('✓ 人物详细页：novel/character-*.html × ' + chars.length);
 
-// 登记预缓存（详细页 + 立绘）+ 升 CACHE 名
+// 登记预缓存（详细页 + 立绘缩略图 + 三位主角母版）+ 升 CACHE 名
 // 立绘也要登记：漏了就是「离线打开同学录，新人物是破图」。文件名不带 ?v=，
 // 全靠 PRECACHE 保证首次安装时就进缓存。
+//   - 缩略图（-thumb.webp）：列表页首屏就要画，17 张全登记；
+//   - 母版（-1024.webp）：只保留 primary 三位主角（林纾/叶南衡/江不秋，
+//     合计约 490KB）—— 灯箱全屏与 3x 捏合的清晰度靠它。其余 14 人的母版
+//     不预缓存：详细页/灯箱打开时才按需拉，cacheFirst 会写回缓存。
 let sw = fs.readFileSync(SW_JS, 'utf8');
 const anchor = "  '/novel/characters.html'";
 if (sw.indexOf(anchor) === -1) throw new Error('sw.js 里找不到 PRECACHE 的 characters.html 条目');
 const toAdd = chars
   .map((c) => "  '/novel/character-" + c.slug + ".html',")
   .filter((e) => sw.indexOf(e) === -1);
-const portraitsToAdd = chars
+const thumbsToAdd = chars
   .filter((c) => c.portrait)
+  .map((c) => "  '/assets/" + thumbName(c.portrait) + "',")
+  .filter((e) => sw.indexOf(e) === -1);
+const mastersToAdd = chars
+  .filter((c) => c.portrait && c.primary)
   .map((c) => "  '/assets/" + c.portrait + "',")
   .filter((e) => sw.indexOf(e) === -1);
-if (toAdd.length || portraitsToAdd.length) {
-  sw = sw.replace(anchor, anchor + ',\n' + toAdd.concat(portraitsToAdd).join('\n'));
+const precacheAdded = toAdd.length + thumbsToAdd.length + mastersToAdd.length;
+if (precacheAdded > 0) {
+  sw = sw.replace(anchor, anchor + ',\n' + toAdd.concat(thumbsToAdd, mastersToAdd).join('\n'));
   const m = sw.match(/var CACHE = '([a-z-]+)-v(\d+)'/);
   if (m) {
     const next = m[1] + '-v' + (parseInt(m[2], 10) + 1);
@@ -366,10 +460,21 @@ if (toAdd.length || portraitsToAdd.length) {
     console.log('🔁 SW 缓存名 → ' + next + '（老用户的 SW 才会重新 install）');
   }
   fs.writeFileSync(SW_JS, sw);
-  console.log('📦 已登记预缓存 ' + (toAdd.length + portraitsToAdd.length) +
-    ' 条（详细页 ' + toAdd.length + ' · 立绘 ' + portraitsToAdd.length + '）');
+  console.log('📦 已登记预缓存 ' + precacheAdded +
+    ' 条（详细页 ' + toAdd.length + ' · 缩略图 ' + thumbsToAdd.length + ' · 主角母版 ' + mastersToAdd.length + '）');
 } else {
   console.log('· 预缓存已全部登记，CACHE 名未动');
+}
+
+// 4) 刷新 sitemap.xml：人物详细页是 sitemap 的一部分，漏刷新 = 新人物不被收录。
+//    spawnSync 调同一个 node（本脚本 ESM、sitemap 工具也是 ESM，直接 import 会
+//    把「生成 sitemap」和「生成页面」耦合成本次运行的硬依赖；子进程失败只警告，
+//    页面产物已经落盘，不该被一篇 sitemap 拖死）。
+const sitemapTool = path.join(ROOT, 'tools', 'make-sitemap.mjs');
+const sitemapRun = spawnSync(process.execPath, [sitemapTool], { stdio: 'inherit', cwd: ROOT });
+if (sitemapRun.status !== 0) {
+  console.error('⚠ sitemap.xml 刷新失败（页面已生成，不影响阅读）。请手动跑:');
+  console.error('    node tools/make-sitemap.mjs');
 }
 
 console.log('\n下一步：');

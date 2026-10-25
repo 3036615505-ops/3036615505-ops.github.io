@@ -210,6 +210,15 @@ const COLLECT = `(() => {
     const cs = getComputedStyle(el);
     if (cs.visibility === 'hidden' || cs.display === 'none') return;
     if (parseFloat(cs.opacity) < 0.1) return;
+    /* 再往祖先链上查一层。本站的弹窗（设置/摘句/数据）关闭时是 overlay 上
+       opacity:0 —— opacity 不继承，按钮自身仍是 opacity:1、display:flex，
+       光看自己完全正常，于是被收进来；而截图里它背后其实是页面本身，
+       量出来的「背景色」是假的（实测：关闭的摘句弹窗里金底白字的导出按钮
+       被算成 1.02:1，打开后实测 5.09:1）。谁把它藏了就跳过谁。 */
+    for (let p = el.parentElement; p; p = p.parentElement) {
+      const ps = getComputedStyle(p);
+      if (ps.visibility === 'hidden' || ps.display === 'none' || parseFloat(ps.opacity) < 0.1) return;
+    }
     const col = cs.color.match(/[\\d.]+/g);
     if (!col || (col.length === 4 && parseFloat(col[3]) === 0)) return;
     out.push({
@@ -237,9 +246,17 @@ function SAMPLE(payload) {
     const sy = bmp.height / window.innerHeight;
     const median = (a) => a.slice().sort((p, q) => p - q)[a.length >> 1];
     return rects.map((r) => {
-      const x0 = Math.round((r.x + r.w * 0.15) * sx), x1 = Math.round((r.x + r.w * 0.85) * sx);
-      const y0 = Math.round((r.y + r.h * 0.2) * sy), y1 = Math.round((r.y + r.h * 0.8) * sy);
-      if (x1 <= x0 || y1 <= y0 || x0 < 0 || y0 < 0 || x1 > bmp.width || y1 > bmp.height) return null;
+      /* 采样区先按元素盒内缩（15%~85% / 20%~80%），再**裁进截图边界**。
+         不裁的后果实测过：贴视口底边的元素（如同学录深色模式里排最后的
+         .char-quote）盒子的下半截在截图之外，旧代码直接 return null，
+         上层又把 null 当成白色底 [255,255,255] 算对比度 —— 深色卡片上的
+         浅金文字被算成 1.94:1 的「未达标」，而它的六个同类在深色底上实测
+         8.2~8.5:1。这是量程 bug，不是真实的对比度问题。 */
+      const x0 = Math.max(0, Math.round((r.x + r.w * 0.15) * sx));
+      const x1 = Math.min(bmp.width, Math.round((r.x + r.w * 0.85) * sx));
+      const y0 = Math.max(0, Math.round((r.y + r.h * 0.2) * sy));
+      const y1 = Math.min(bmp.height, Math.round((r.y + r.h * 0.8) * sy));
+      if (x1 <= x0 || y1 <= y0) return null;
       const d = ctx.getImageData(x0, y0, x1 - x0, y1 - y0).data;
       const rs = [], gs = [], bs = [];
       for (let i = 0; i < d.length; i += 4) { rs.push(d[i]); gs.push(d[i + 1]); bs.push(d[i + 2]); }

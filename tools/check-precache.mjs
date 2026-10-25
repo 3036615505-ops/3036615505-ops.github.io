@@ -97,6 +97,10 @@ const needed = [
      BRIDGE_SHIM_JS 下沉到站点），漏掉任何一页，那一页在壳里这三个功能就静默失效，
      而且页面本身不会报错 —— 正是最容易漏检的一类漂移。 */
   ['/js/native-bridge.js', ALL_PAGES],
+  /* apple-touch-icon 同理：27 个页面一个都不能少（少了 iOS 加主屏就拿整页
+     截图当图标），而生成模板（new-chapter.js / make-characters.mjs 的 headBlock）
+     是「下次一生成就丢」的高危路径，这里用全页面清单兜住。 */
+  ['/assets/apple-touch-icon.png', ALL_PAGES],
   ['/js/transition.js', ['index.html', 'novel/index.html', 'novel/chapter-01.html', 'novel/chapter-02.html']],
   ['/js/reader.js', ['novel/chapter-01.html', 'novel/chapter-02.html']],
   ['/js/chapters.js', ['index.html', 'novel/index.html', 'novel/chapter-01.html', 'novel/chapter-02.html']],
@@ -160,7 +164,8 @@ if (fs.existsSync(TEMPLATE) && fs.existsSync(NOVEL_DIR)) {
     ['autoScrollLabel', '自动滚屏状态文字'],
     ['chapter-seal', '章末印章'],
     ['style.css?v=', '样式表版本号（不带 ?v= 的 URL 会永久吃旧 CSS 缓存）'],
-    ['favicon.png', '站点图标（favicon.svg 这个文件并不存在）']
+    ['favicon.png', '站点图标（favicon.svg 这个文件并不存在）'],
+    ['apple-touch-icon', 'iOS 加主屏图标（漏了 = 苹果用户拿整页截图当图标，且 regenerated 页面会悄悄丢）']
   ];
   let hookBad = 0;
   const tplSrc = fs.readFileSync(TEMPLATE, 'utf8');

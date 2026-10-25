@@ -237,6 +237,17 @@
   --text-muted: #756654;
   --accent: #b8864e;
   --accent-hover: #9a6d3e;
+  /* ---- 金色「文字」专用色（--accent / --accent-hover 只留给装饰）----
+     WCAG 2.1 要求 24px 以下的文字对底色 ≥4.5:1，而装饰金当文字色全线不及格：
+     --accent #b8864e 压在米白卡片上只有 2.8~3.2:1（11px 小字典型 3.13），
+     --accent-hover #9a6d3e 也只有 3.96~4.2:1。按最严的底色反推本令牌取值：
+       最差底 = 绿色阅读主题的 --reading-bg #d8e4d3（.chapter-bottom-nav 的
+       上一章/下一章链接就漂在这上面）→ 需 ≥4.5:1。
+     #855a2b：该底上 4.57:1；--bg-warm #f5efe4（.char-tag/.leaf-pill）上 5.1:1；
+     白底（.char-photo.initial 的姓氏大字）上约 5.9:1。全部达标且仍是一支金。
+     只把「文字用途」的金色换到本令牌；边框/图标/渐变/底色仍用 --accent 一家，
+     观感不变 —— 文字比原来略深，装饰分毫未动。 */
+  --accent-text: #855a2b;
   --accent-light: rgba(184,134,78,0.08);
   /* ---- 填充按钮专用底色（白字必须 ≥4.5:1）----
      --accent 是「强调色」，用来做描边、图标、强调文字都没问题，但它太亮：
@@ -281,7 +292,7 @@
 }
 
 /* 阅读主题 */
-[data-theme="light"] {
+:root[data-theme="light"] {
   --reading-bg: #fffdf8;
   --reading-text: #2a2825;
   --reader-surface: #FFFDF8;
@@ -290,7 +301,7 @@
   --reader-shadow: 0 12px 34px rgba(96,70,38,0.08);
 }
 
-[data-theme="wheat"] {
+:root[data-theme="wheat"] {
   --reading-bg: #f4ead8;
   --reading-text: #4a392b;
   --reader-surface: #FCF5E9;
@@ -299,7 +310,7 @@
   --reader-shadow: 0 14px 38px rgba(74, 49, 21, 0.13);
 }
 
-[data-theme="green"] {
+:root[data-theme="green"] {
   --reading-bg: #d8e4d3;
   --reading-text: #2f3b2a;
   --reader-surface: #E4EFDF;
@@ -308,7 +319,13 @@
   --reader-shadow: 0 12px 34px rgba(32, 62, 28, 0.10);
 }
 
-[data-theme="dark"] {
+/* ⚠ 四套主题的选择器一律写成 :root[data-theme="..."]，不要图省事写成 [data-theme="..."]：
+   设置面板里的主题预览圆圈（reader.ui.js 生成）也带 data-theme 属性（data-theme="dark"
+   那颗夜读圆圈）。不限在 :root 上时，深色主题那一整批令牌会顺着圆圈泄进它的子树 ——
+   实测夜读圆圈的 .theme-label 在浅色面板上拿到深色令牌的 --text-muted #ab9d81，
+   对比度只有 2.62:1。本文件的 data-theme 只由 theme.js / reader.ui.js 设置在
+   <html> 上，限定 :root 后行为不变、泄漏消失。 */
+:root[data-theme="dark"] {
   /* 阅读页 */
   --reading-bg: #181715;
   --reading-text: #bdb3a3;
@@ -331,6 +348,11 @@
   --text-muted: #ab9d81;
   --accent: #d4a050;
   --accent-hover: #e2b268;
+  /* 深色下的金色文字：底色换成了一众深色面，达标方向与浅色相反 —— 文字金要
+     更亮才够。取 #e2b268（即深色 --accent-hover）：实测在最亮的深色面
+     --reader-surface-soft #2D2B27 上仍有 7.27:1，人物卡/标签/引文 8.2~9.0:1。
+     装饰（边框/图标/渐变）继续用 --accent #d4a050，不受影响。 */
+  --accent-text: #e2b268;
   --accent-light: rgba(212,160,80,0.12);
   --border: #332e22;
   --border-light: #2a2519;
@@ -405,7 +427,7 @@ a { color: inherit; text-decoration: none; }
 
 .character-hero-kicker {
   font-size: 12px;
-  color: var(--accent);
+  color: var(--accent-text);
   letter-spacing: 2px;
   margin-bottom: 10px;
 }
@@ -463,7 +485,7 @@ a { color: inherit; text-decoration: none; }
   padding: 4px 8px;
   border-radius: 999px;
   background: rgba(184,134,78,0.09);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .character-role {
@@ -909,7 +931,7 @@ a { color: inherit; text-decoration: none; }
 .reading-card-pct {
   font-size: 14px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .reading-card-bar {
@@ -1237,7 +1259,7 @@ a { color: inherit; text-decoration: none; }
 
 .detail-desc .expand-btn {
   font-size: 13px;
-  color: var(--accent);
+  color: var(--accent-text);
   margin-top: 4px;
   display: inline-block;
   cursor: pointer;
@@ -1267,7 +1289,7 @@ a { color: inherit; text-decoration: none; }
 .detail-link-kicker {
   display: block;
   font-size: 12px;
-  color: var(--accent);
+  color: var(--accent-text);
   letter-spacing: 2px;
   margin-bottom: 7px;
 }
@@ -1345,7 +1367,7 @@ a { color: inherit; text-decoration: none; }
 .overview-pct {
   font-size: 14px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .overview-bar {
@@ -1562,7 +1584,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .chapter-status.reading {
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--accent-light);
 }
 
@@ -1781,17 +1803,17 @@ body.reading-page {
   width: 25%;
 }
 
-[data-theme="wheat"] .chapter-content {
+:root[data-theme="wheat"] .chapter-content {
   line-height: 2.08;
   letter-spacing: 0.5px;
 }
 
-[data-theme="dark"] .chapter-content {
+:root[data-theme="dark"] .chapter-content {
   line-height: 2.04;
   letter-spacing: 0.5px;
 }
 
-[data-theme="green"] .chapter-content {
+:root[data-theme="green"] .chapter-content {
   line-height: 2.06;
 }
 
@@ -1834,7 +1856,7 @@ body.reading-page {
   text-align: center;
   padding: 13px 0;
   font-size: 15px;
-  color: var(--accent);
+  color: var(--accent-text);
   border-radius: 8px;
   transition: background 0.2s;
 }
@@ -1990,7 +2012,7 @@ body.reading-page {
 
 .reader-menu-row a:active,
 .reader-menu-row button:active {
-  color: var(--accent);
+  color: var(--accent-text);
   transform: scale(0.96);
   background: rgba(184, 134, 78, 0.08);
 }
@@ -2229,7 +2251,7 @@ body.reading-page {
 }
 
 .dir-item.active {
-  color: var(--accent);
+  color: var(--accent-text);
   background: rgba(184, 134, 78, 0.05);
 }
 
@@ -2274,7 +2296,7 @@ body.reading-page {
 }
 
 .dir-item.active .dir-item-num {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .dir-item-title {
@@ -2294,7 +2316,7 @@ body.reading-page {
 
 .dir-item-progress {
   font-size: 12px;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
   background: rgba(184, 134, 78, 0.08);
   padding: 2px 6px;
@@ -2324,7 +2346,7 @@ body.reading-page {
 }
 
 .dir-char-link:active {
-  color: var(--accent);
+  color: var(--accent-text);
   background: rgba(184,134,78,0.14);
 }
 /* ===== 设置弹窗 ===== */
@@ -2408,7 +2430,7 @@ body.reading-page {
 }
 
 .theme-circle.active .theme-label {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* 字号调节（设置面板内） */
@@ -2496,7 +2518,7 @@ body.reading-page {
 .font-import-btn:hover,
 .font-import-btn:focus-visible {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   outline: none;
 }
 
@@ -2515,7 +2537,7 @@ body.reading-page {
 }
 
 .font-import-clear:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* ===== 阅读数据备份弹窗 ===== */
@@ -2696,14 +2718,14 @@ body.reading-page {
    同学录标题、剪贴本标题全部几乎不可见）。
    这里按同样的三段结构反过来盖一层暖深纱：上端略浅、下端更深，
    与 --site-bg(#1b1812→#16130d→#100e09) 以及 .home-hero 的深色渐变同一色系。 */
-[data-theme="dark"] .phone-frame {
+:root[data-theme="dark"] .phone-frame {
   background: linear-gradient(180deg,
     rgba(38, 33, 24, 0.62) 0%,
     rgba(28, 24, 17, 0.78) 28%,
     rgba(20, 17, 12, 0.90) 100%);
 }
 
-[data-theme="dark"] .phone-frame::before {
+:root[data-theme="dark"] .phone-frame::before {
   background:
     radial-gradient(circle at top center, rgba(212,160,80,0.05), transparent 40%),
     radial-gradient(circle at 20% 18%, rgba(196,162,78,0.07), transparent 22%),
@@ -2712,49 +2734,49 @@ body.reading-page {
 
 /* 同学录里没有照片的人物用「姓氏大字」占位，底板写死 #FFFFFF。
    深色下白底 + --accent-hover(#e2b268) 只有 1.94:1，四张占位卡都糊掉。 */
-[data-theme="dark"] .char-photo {
+:root[data-theme="dark"] .char-photo {
   background: #2a251c;
   border-color: var(--border);
 }
 
-[data-theme="dark"] .home-hero {
+:root[data-theme="dark"] .home-hero {
   background: linear-gradient(180deg, rgba(41,36,27,0.92) 0%, rgba(28,25,18,0.78) 100%);
 }
 
-[data-theme="dark"] .home-reading-card {
+:root[data-theme="dark"] .home-reading-card {
   background: linear-gradient(180deg, rgba(40,36,27,0.95), rgba(28,25,18,0.9));
 }
 
-[data-theme="dark"] .reading-footprints {
+:root[data-theme="dark"] .reading-footprints {
   background: linear-gradient(180deg, rgba(40,36,27,0.96), rgba(29,26,19,0.9));
 }
 
-[data-theme="dark"] .character-hero {
+:root[data-theme="dark"] .character-hero {
   background: linear-gradient(180deg, rgba(41,36,27,0.94), rgba(28,25,18,0.88));
 }
 
-[data-theme="dark"] .character-card.primary {
+:root[data-theme="dark"] .character-card.primary {
   background: linear-gradient(180deg, rgba(43,38,28,0.96), rgba(31,28,20,0.9));
 }
 
-[data-theme="dark"] .detail-header {
+:root[data-theme="dark"] .detail-header {
   background: rgba(26,23,17,0.86);
 }
 
-[data-theme="dark"] .detail-link-card {
+:root[data-theme="dark"] .detail-link-card {
   background: linear-gradient(135deg, rgba(40,36,27,0.94), rgba(30,27,20,0.86));
 }
 
-[data-theme="dark"] .chapter-item {
+:root[data-theme="dark"] .chapter-item {
   background: linear-gradient(180deg, rgba(38,34,26,0.55), rgba(28,25,19,0.88));
 }
 
-[data-theme="dark"] .chapter-afterglow {
+:root[data-theme="dark"] .chapter-afterglow {
   background: linear-gradient(180deg, rgba(40,36,27,0.92), rgba(29,26,19,0.84));
 }
 
 @media (min-width: 768px) {
-  [data-theme="dark"] body { background: #0c0a07; }
+  :root[data-theme="dark"] body { background: #0c0a07; }
 }
 
 /* ===== 章末分享按钮 ===== */
@@ -2773,7 +2795,7 @@ body.reading-page {
   transition: background 0.2s;
 }
 
-[data-theme="dark"] .afterglow-share { background: rgba(255, 246, 232, 0.06); }
+:root[data-theme="dark"] .afterglow-share { background: rgba(255, 246, 232, 0.06); }
 
 .afterglow-share svg { width: 13px; height: 13px; }
 .afterglow-share:active { background: var(--accent-light); }
@@ -2818,19 +2840,22 @@ body.reading-page {
 .home-link-row { margin: 0 16px 22px; }
 
 /* ===== 摘句簿导出按钮 ===== */
+/* 金底白字必须用 --accent-fill 一对值（白字 on #8f6636 = 5.09:1）。
+   原先写的是 --accent #b8864e，白字压上去只有 3.20:1 —— 摘句弹窗在章节页才能
+   打开，默认那 4 个审计页面看不到它，所以漏网了一轮。 */
 .modal-export {
   margin-left: auto;
   margin-right: 6px;
   padding: 5px 13px;
   border: none;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #fff;
   font-size: 12px;
   cursor: pointer;
 }
 
-.modal-export:active { background: var(--accent-hover); }
+.modal-export:active { background: var(--accent-fill-deep); }
 
 /* ===== 宽屏阅读（桌面端可选） ===== */
 @media (min-width: 768px) {
@@ -2911,7 +2936,7 @@ body.reading-page {
   border-radius: 999px;
   padding: 5px 11px;
   font-size: 11px;
-  color: var(--accent-hover);
+  color: var(--accent-text);
   white-space: nowrap;
   margin-top: 2px;
 }
@@ -2927,7 +2952,7 @@ body.reading-page {
   overflow: hidden;
 }
 
-[data-theme="dark"] .tree-band {
+:root[data-theme="dark"] .tree-band {
   background: #201D16;
   border-color: var(--border);
 }
@@ -2959,7 +2984,7 @@ body.reading-page {
   pointer-events: none;
 }
 
-[data-theme="dark"] .tree-sway {
+:root[data-theme="dark"] .tree-sway {
   filter: brightness(0.82) saturate(0.85);
 }
 
@@ -3077,7 +3102,7 @@ body.reading-page {
 
 .date-list-total {
   font-size: 11px;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* 学年学期分隔条：日期跨年/跨学期会重名，这里按「学年 + 学期」分段，
@@ -3210,7 +3235,7 @@ body.reading-page {
   z-index: 100;
 }
 
-[data-theme="dark"] .tab-bar {
+:root[data-theme="dark"] .tab-bar {
   background: rgba(30, 27, 21, 0.94);
   border-top-color: var(--border);
 }
@@ -3233,7 +3258,7 @@ body.reading-page {
 }
 
 .tab-item.active {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .tab-page-body {
@@ -3257,7 +3282,7 @@ body.reading-page {
 
 .char-hero-kicker {
   font-size: 11px;
-  color: var(--accent);
+  color: var(--accent-text);
   letter-spacing: 2px;
 }
 
@@ -3320,7 +3345,7 @@ body.reading-page {
 .char-photo.initial span {
   font-family: "ZCOOL XiaoWei", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 19px;
-  color: var(--accent-hover);
+  color: var(--accent-text);
 }
 
 .char-id h2 {
@@ -3342,7 +3367,7 @@ body.reading-page {
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--bg-warm);
-  color: var(--accent-hover);
+  color: var(--accent-text);
 }
 
 .char-tag.role {
@@ -3353,7 +3378,7 @@ body.reading-page {
 .char-quote {
   font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 13px;
-  color: var(--accent-hover);
+  color: var(--accent-text);
   margin: 12px 0 0;
   border-left: 3px solid var(--accent);
   padding-left: 10px;
@@ -3376,7 +3401,7 @@ body.reading-page {
   font-family: "ZCOOL XiaoWei", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 15px;
   font-weight: 400;
-  color: var(--accent-hover);
+  color: var(--accent-text);
   letter-spacing: 3px;
 }
 
@@ -3403,7 +3428,7 @@ body.reading-page {
   gap: 2px;
   margin-top: 10px;
   font-size: 11px;
-  color: var(--accent);
+  color: var(--accent-text);
   letter-spacing: 1px;
 }
 
@@ -3486,7 +3511,7 @@ body.reading-page {
   font-family: "ZCOOL XiaoWei", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   font-size: 13px;
   font-weight: 400;
-  color: var(--accent-hover);
+  color: var(--accent-text);
   letter-spacing: 3px;
   margin-bottom: 10px;
 }
@@ -3551,7 +3576,7 @@ body.reading-page {
   background-size: cover;
 }
 
-[data-theme="dark"] body.reading-page {
+:root[data-theme="dark"] body.reading-page {
   background-image: none;
 }
 
@@ -3562,7 +3587,7 @@ body.reading-page {
 
 .quotes-hero-kicker {
   font-size: 11px;
-  color: var(--accent);
+  color: var(--accent-text);
   letter-spacing: 2px;
 }
 
@@ -3641,7 +3666,7 @@ body.reading-page {
   background: none;
   padding: 0;
   font-size: 11px;
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
   text-decoration: none;
 }
@@ -3780,7 +3805,7 @@ body.app-immersive .chapter-content {
   padding-top: 64px;
 }
 
-[data-theme="dark"] #readerStatus { opacity: 0.55; }
+:root[data-theme="dark"] #readerStatus { opacity: 0.55; }
 
 /* ===== 同学录立绘灯箱（js/lightbox.js） =====
    复用弹窗通用基建（.modal-overlay / .modal-backdrop / .modal-close / .visible），
@@ -4045,7 +4070,7 @@ body.app-immersive .chapter-content {
   box-decoration-break: clone;
 }
 
-[data-theme="dark"] .chapter-content .dlg {
+:root[data-theme="dark"] .chapter-content .dlg {
   background: rgba(201, 162, 84, 0.24);
 }
 

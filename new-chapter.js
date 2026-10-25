@@ -19,6 +19,7 @@ const fs = require('fs');
 const path = require('path');
 
 const vm = require('vm');
+const { spawnSync } = require('child_process');
 
 /** 把 chapters.js 里的 CHAPTERS 数组当代码求值，拿真实对象（比正则可靠） */
 function readChapters(src) {
@@ -234,6 +235,7 @@ const tpl = `<!DOCTYPE html>
   <meta name="theme-color" content="#f5efe0">
   <meta name="description" content="${escapeHtml(title)} - 临渊羡鱼">
   <link rel="icon" href="../favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
   <title>${escapeHtml(title)}</title>
   <meta property="og:title" content="${escapeHtml(title)}">
   <meta property="og:description" content="临渊羡鱼 —— 南城的梧桐树还在长">
@@ -359,7 +361,8 @@ const REQUIRED_HOOKS = [
   ['autoScrollLabel', '自动滚屏状态文字'],
   ['chapter-seal', '章末印章'],
   ['style.css?v=', '样式表版本号（不带的 URL 会永久吃旧 CSS 缓存）'],
-  ['favicon.png', '站点图标（favicon.svg 这个文件根本不存在）']
+  ['favicon.png', '站点图标（favicon.svg 这个文件根本不存在）'],
+  ['apple-touch-icon', 'iOS 加主屏图标（漏了 = 苹果用户拿整页截图当图标）']
 ];
 const written = fs.readFileSync(out, 'utf-8');
 const missing = ASSET_SCRIPTS.filter(function (name) {
@@ -455,3 +458,14 @@ console.log('   chapters.js 已追加第 ' + num + ' 章条目');
 if (prev) console.log('   ' + prev.file + ' 的"下一章"已指向 ' + file);
 if (!opts.afterglow) console.log('⚠️  章末"这一章的风"是占位文案，记得换成属于这一章的话');
 if (!opts.blurb) console.log('⚠️  目录简介为空，可重新运行或手动在 chapters.js 补 blurb 字段');
+
+// 4) 刷新 sitemap.xml：新章节不写进 sitemap 就不会被搜索引擎收录，而这种遗漏
+//    没有任何报错。放在最后跑 —— 此时 chapters.js / 章节页都已就位。
+//    用 spawnSync 调同一个 node：本脚本是 CommonJS，sitemap 工具是 ESM，
+//    跨模块系统共享代码只能走子进程（process.execPath 保证用的是当前这个 node）。
+const sitemapTool = path.join(__dirname, 'tools', 'make-sitemap.mjs');
+const sitemapRun = spawnSync(process.execPath, [sitemapTool], { stdio: 'inherit', cwd: ROOT });
+if (sitemapRun.status !== 0) {
+  console.error('⚠ sitemap.xml 刷新失败（章节页本身已生成，不影响阅读）。请手动跑:');
+  console.error('    node tools/make-sitemap.mjs');
+}

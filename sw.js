@@ -19,7 +19,7 @@
  *      NETWORK_TIMEOUT（500ms），所以它们必须走缓存优先。
  *   3. /app/ 前缀（安装包、version.json）不拦截，直接交给网络
  */
-var CACHE = 'linyuan-v56';
+var CACHE = 'linyuan-v57';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
@@ -67,11 +67,16 @@ var PRECACHE = [
   '/assets/cover.webp',
   '/assets/cover-thumb.webp',
   '/assets/paper.webp',
-  /* 人物立绘 1024 母版（3 张共 490KB，用户 2026-10 定稿版：徽章统一为圆形
+  /* 人物立绘 1024 母版（3 张共 316.4KB，用户 2026-10 定稿版：徽章统一为圆形
      金色校徽、右下角水印以底部裁切物理消除，故高矮为 898/954/898 非方形）。
      灯箱全屏与 3x 捏合的清晰度全靠它。512 旧版（portrait-{key}.webp）已删除。
      ⚠ v18→v19 必须升 CACHE 名：文件名与 7e3dc92 那次误部署的旧图相同，
-     不换名 activate 不会删旧缓存，用户会一直吃到 v18 里的错图。 */
+     不换名 activate 不会删旧缓存，用户会一直吃到 v18 里的错图。
+     → 为什么预缓存里只有这 3 位主角的母版：列表页早就全量改用 128×150 缩略图
+     （见下方 portrait-*-thumb.webp 一段），母版只剩两个消费者 —— 详细页大图与
+     灯箱全屏/3x 捏合。三位主角是门面，首访就要经得起放大，故保留（316.4KB 是
+     刻意付的清晰度代价）；其余 14 人的母版改为运行时按需拉取（cacheFirst 会
+     写回缓存），立绘部分的预缓存从 2276KB 降到约 387KB。 */
   '/assets/portrait-linshu-1024.webp',
   '/assets/portrait-nanheng-1024.webp',
   '/assets/portrait-jiangbuqiu-1024.webp',
@@ -108,20 +113,29 @@ var PRECACHE = [
   '/novel/chapter-05.html',
   '/novel/chapter-06.html',
   '/novel/characters.html',
-  '/assets/portrait-liyan-1024.webp',
-  '/assets/portrait-ningzunjiu-1024.webp',
-  '/assets/portrait-yangmenghan-1024.webp',
-  '/assets/portrait-baiyuhuan-1024.webp',
-  '/assets/portrait-guchiyan-1024.webp',
-  '/assets/portrait-yeyuan-1024.webp',
-  '/assets/portrait-baiyu-1024.webp',
-  '/assets/portrait-linwangshu-1024.webp',
-  '/assets/portrait-taoyaoyao-1024.webp',
-  '/assets/portrait-xiaozhuo-1024.webp',
-  '/assets/portrait-sujiwen-1024.webp',
-  '/assets/portrait-jiangzhenmo-1024.webp',
-  '/assets/portrait-linxihe-1024.webp',
-  '/assets/portrait-yeyulan-1024.webp',
+  /* 同学录列表页立绘缩略图（128×150，17 张合计约 70KB）。
+     列表页 .char-photo 只有 48×56，object-fit: cover + object-position: 50% 28%
+     裁切后缩放而成（tools/make-portrait-thumbs.py，与浏览器渲染语义逐像素对齐）。
+     原先这里躺着 17 张 1024 母版（2276KB，占整个 PRECACHE 的 71%），首访为
+     48px 的格子付 2.2MB —— 现在只付 70KB。母版按需拉取，见上方三位主角的说明。
+     注意是 17 张全量：三位主角的列表卡片同样显示缩略图，别漏了他们的。 */
+  '/assets/portrait-linshu-thumb.webp',
+  '/assets/portrait-nanheng-thumb.webp',
+  '/assets/portrait-jiangbuqiu-thumb.webp',
+  '/assets/portrait-liyan-thumb.webp',
+  '/assets/portrait-ningzunjiu-thumb.webp',
+  '/assets/portrait-yangmenghan-thumb.webp',
+  '/assets/portrait-baiyuhuan-thumb.webp',
+  '/assets/portrait-guchiyan-thumb.webp',
+  '/assets/portrait-yeyuan-thumb.webp',
+  '/assets/portrait-baiyu-thumb.webp',
+  '/assets/portrait-linwangshu-thumb.webp',
+  '/assets/portrait-taoyaoyao-thumb.webp',
+  '/assets/portrait-xiaozhuo-thumb.webp',
+  '/assets/portrait-sujiwen-thumb.webp',
+  '/assets/portrait-jiangzhenmo-thumb.webp',
+  '/assets/portrait-linxihe-thumb.webp',
+  '/assets/portrait-yeyulan-thumb.webp',
   '/novel/character-linshu.html',
   '/novel/character-nanheng.html',
   '/novel/character-jiangbuqiu.html',
