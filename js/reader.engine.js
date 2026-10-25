@@ -13,7 +13,8 @@
   var LY = window.LY || (/** @type {any} */ (window.LY = {}));
 
   /* ---- 对 store 的依赖 ---- */
-  var chapterId = LY.store.chapterId;
+  /* 换章不换页会改写当前章节 id，所以每次现取，不在启动时快照 */
+  function chapterId() { return LY.store.chapterId; }
   function readAnchor() { return LY.store.readAnchor(); }
   function writeAnchor(a) { return LY.store.writeAnchor(a); }
   function mergeFootprints(fn) { return LY.store.mergeFootprints(fn); }
@@ -132,9 +133,9 @@
     /* 再兜一层：没滚动过就读到 0 —— 这不是「读者回到开头」，是页面还没恢复
        或者刚要卸载。典型场景是「导入备份 → 自动重载」，旧页面的 pagehide 会
        抢先写一个 0，把刚导入的进度抹掉。只有用户真的滚到顶部才允许写 0。 */
-    if (!userScrolled && pct === 0 && clampProgress(localStorage.getItem('reader-pos-' + chapterId)) > 0) return;
+    if (!userScrolled && pct === 0 && clampProgress(localStorage.getItem('reader-pos-' + chapterId())) > 0) return;
     lastProgressSave = now;
-    localStorage.setItem('reader-pos-' + chapterId, String(pct));
+    localStorage.setItem('reader-pos-' + chapterId(), String(pct));
     /* 同时存锚点：百分比用于显示与兜底，段落序号用于真正定位 */
     var anchor = getCurrentAnchor();
     if (anchor) {
@@ -142,9 +143,9 @@
       writeAnchor(anchor);
     }
     if (pct >= 95) {
-      localStorage.setItem('reader-done-' + chapterId, '1');
+      localStorage.setItem('reader-done-' + chapterId(), '1');
     } else {
-      localStorage.removeItem('reader-done-' + chapterId);
+      localStorage.removeItem('reader-done-' + chapterId());
     }
   }
 
@@ -155,7 +156,7 @@
      段落位置会偏低，锚点会把人送到错的地方。 */
 
   function restoreProgress() {
-    var pct = clampProgress(localStorage.getItem('reader-pos-' + chapterId));
+    var pct = clampProgress(localStorage.getItem('reader-pos-' + chapterId()));
     /* 锚点这条路出问题时的退路：只按百分比恢复（会偏，但能读） */
     var anchor = LY.flags.isOn('anchorRestore') ? readAnchor() : null;
     refreshProgressControls(pct);
@@ -204,7 +205,7 @@
 
 
   function initReadingProgress() {
-    refreshProgressControls(clampProgress(localStorage.getItem('reader-pos-' + chapterId)));
+    refreshProgressControls(clampProgress(localStorage.getItem('reader-pos-' + chapterId())));
 
     var progressBar = document.querySelector('.reader-progress-bar');
     if (progressBar) {
@@ -276,6 +277,13 @@
 
   function markUserScroll() {
     userScrolled = true;
+    restoring = false;
+  }
+
+
+  /* 换章不换页时用：新章还没被「用户自己滚过」，恢复逻辑应该重新接管 */
+  function resetUserScroll() {
+    userScrolled = false;
     restoring = false;
   }
 
@@ -460,6 +468,7 @@
     saveProgress: saveProgress,
     restoreProgress: restoreProgress,
     markUserScroll: markUserScroll,
+    resetUserScroll: resetUserScroll,
     initReadingProgress: initReadingProgress,
     initReadingTime: initReadingTime,
     autoScroll: autoScroll

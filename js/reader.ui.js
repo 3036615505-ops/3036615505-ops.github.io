@@ -157,6 +157,7 @@
     initQuoteCollecting();
     initModalKeys();
     initKeyboardNav();
+    initChapterSwap();
     initSwipeHint();
     recordFootprints();
     applyFeatureVisibility();
@@ -952,15 +953,164 @@
 
       if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 70) {
         if (state.barsVisible) hideBars();
-        if (dx < 0) {
-          var n = document.querySelector('.next-ch[href]:not([href="#"])');
-          if (n) window.location.href = n.getAttribute('href');
-        } else {
-          var p = document.querySelector('.prev-ch[href]:not([href="#"])');
-          if (p) window.location.href = p.getAttribute('href');
-        }
+        navigateToChapter(dx < 0 ? 1 : -1);
       }
     }, { passive: true });
+  }
+
+
+  /* ===== 换章不换页 =====
+     点「下一章」/ 左右轻扫 / 键盘换章时不再整页跳转，而是：取下一章的
+     `.chapter-content` 与余韵卡 → 原地替换 → replaceState 改 URL → 同步章节 id、
+     标题、上下章链接、目录高亮 → 恢复到这一章上次读到的位置。
+
+     为什么不是「无限流」（两章接进同一条滚动）：进度与锚点都按整页
+     `scrollHeight` 计算、安卓返回键是「退出阅读」，一旦接成一条流，这两件事
+     都要重做，38 项断言也得跟着改。换页保留「一章一页」的心智模型，拿到的是
+     「没有白屏、不等那 500ms 网络、不重放转场」。
+
+     任何一步失败都退回整页跳转 —— 至少这一章能读到。 */
+
+  var swapping = false;
+
+  function chapterFileOf(href) {
+    if (!href) return null;
+    var clean = String(href).split('#')[0].split('?')[0];
+    var name = clean.substring(clean.lastIndexOf('/') + 1);
+    var list = window.CHAPTERS || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].file === name) return name;
+    }
+    return null;
+  }
+
+  function chapterIndex(file) {
+    var list = window.CHAPTERS || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].file === file) return i;
+    }
+    return -1;
+  }
+
+  function syncChapterChrome(file) {
+    var list = window.CHAPTERS || [];
+    var idx = chapterIndex(file);
+    var chapter = list[idx] || {};
+    var prev = list[idx - 1];
+    var next = list[idx + 1];
+
+    var nameEl = document.querySelector('.reader-topbar .chapter-name');
+    if (nameEl && chapter.title) nameEl.textContent = chapter.title;
+
+    var prevEl = document.querySelector('.reader-bottombar .prev-ch');
+    var nextEl = document.querySelector('.reader-bottombar .next-ch');
+    if (prevEl) prevEl.setAttribute('href', prev ? prev.file : '#');
+    if (nextEl) nextEl.setAttribute('href', next ? next.file : '#');
+
+    /* 章末那对链接（正文流里的上一章/下一章） */
+    var navA = document.querySelectorAll('.chapter-bottom-nav a');
+    if (navA.length === 2) {
+      navA[0].setAttribute('href', prev ? prev.file : '#');
+      navA[1].setAttribute('href', next ? next.file : '#');
+    }
+
+    var dir = document.getElementById('dirOverlay');
+    if (dir && dir.classList.contains('visible')) populateDirectory();
+  }
+
+
+  function swapTo(file, hash) {
+    if (!file || swapping) return false;
+    if (file === getCurrentFileName()) return false;
+
+    swapping = true;
+    var url = new URL(file, window.location.href).href;
+
+    fetch(url, { credentials: 'same-origin' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.text();
+      })
+      .then(function (text) {
+        var doc = new DOMParser().parseFromString(text, 'text/html');
+        var nextContent = doc.querySelector('.chapter-content');
+        if (!nextContent) throw new Error('章节内容缺失');
+        var nextGlow = doc.querySelector('.chapter-afterglow');
+
+        /* 先把「读到哪了」写回旧章（force：跳过节流） */
+        saveProgress(undefined, true);
+
+        var curContent = document.querySelector('.chapter-content');
+        curContent.parentNode.replaceChild(document.importNode(nextContent, true), curContent);
+        var curGlow = document.querySelector('.chapter-afterglow');
+        if (curGlow && nextGlow) {
+          curGlow.parentNode.replaceChild(document.importNode(nextGlow, true), curGlow);
+        }
+
+        /* URL 与章节 id 必须一起换：id 落后一章，进度就还写在上一章名下 */
+        try { history.replaceState(null, '', url); } catch (err) { /* 非 http 环境 */ }
+        LY.store.setChapterId(file);
+
+        if (doc.title) document.title = doc.title;
+        var nextDesc = doc.querySelector('meta[name="description"]');
+        var myDesc = document.querySelector('meta[name="description"]');
+        if (nextDesc && myDesc) myDesc.setAttribute('content', nextDesc.getAttribute('content') || '');
+
+        syncChapterChrome(file);
+        decorateParagraphs();
+
+        /* 回到这一章上次读到的位置；没读过就停在章首 */
+        window.scrollTo(0, 0);
+        if (LY.engine.resetUserScroll) LY.engine.resetUserScroll();
+        restoreProgress();
+
+        if (hash) {
+          var target = document.getElementById(hash);
+          if (target) target.scrollIntoView();
+        }
+        LY.store.recordFootprints();
+      })
+      .catch(function () {
+        /* 兜底：整页跳转。慢一点，但这一章一定能读到 */
+        window.location.href = url + (hash ? '#' + hash : '');
+      })
+      .then(function () { swapping = false; });
+
+    return true;
+  }
+
+
+  function navigateToChapter(dir) {
+    var link = document.querySelector(dir > 0 ? '.next-ch[href]:not([href="#"])' : '.prev-ch[href]:not([href="#"])');
+    var href = link ? link.getAttribute('href') : '';
+    var file = chapterFileOf(href);
+    if (!file) {
+      showToast(dir > 0 ? '已经是最后一章' : '这是第一章');
+      return;
+    }
+    if (!swapTo(file)) window.location.href = href;
+  }
+
+
+  /* 正文流里的「下一章」、目录项、摘句簿的「回到这一页」都是普通链接，
+     这里用捕获阶段抢先接管，否则 transition.js 会把整页转场先跑起来。 */
+  function initChapterSwap() {
+    document.addEventListener('click', function(e) {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+      if (!a || a.target === '_blank') return;
+
+      var href = a.getAttribute('href') || '';
+      var file = chapterFileOf(href);
+      if (!file || file === getCurrentFileName()) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      var hash = href.indexOf('#') >= 0 ? href.split('#')[1] : '';
+      if (typeof closeDirectory === 'function') closeDirectory();
+      if (!swapTo(file, hash)) window.location.href = href;
+    }, true);
   }
 
 
@@ -1006,14 +1156,9 @@
   }
 
 
+  /* 键盘与轻扫走同一条链路：能换代就换代，换不了才整页跳转，边界给一句提示 */
   function goChapter(dir) {
-    var sel = dir > 0 ? '.next-ch[href]:not([href="#"])' : '.prev-ch[href]:not([href="#"])';
-    var link = document.querySelector(sel);
-    if (!link) {
-      showToast(dir > 0 ? '已经是最后一章' : '这是第一章');
-      return;
-    }
-    window.location.href = link.getAttribute('href');
+    navigateToChapter(dir);
   }
 
 

@@ -14,7 +14,22 @@
   var LY = window.LY || (/** @type {any} */ (window.LY = {}));
 
 
-  var chapterId = window.location.pathname.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-');
+  function idFromPath(path) {
+    return path.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-');
+  }
+
+  var chapterId = idFromPath(window.location.pathname);
+
+  /* 换章不换页时页面路径由 replaceState 改写，章节 id 必须跟着换 —— 否则
+     进度、锚点、读完标记全都还记在上一章名下。传文件名（chapter-0N.html），
+     目录沿用当前页面的目录。 */
+  function setChapterId(file) {
+    var path = window.location.pathname;
+    var dir = path.replace(/[^\/]*$/, '');
+    chapterId = idFromPath(dir + file);
+    LY.store.chapterId = chapterId;
+    return chapterId;
+  }
 
 
   /* ===== 存储版本 =====
@@ -205,6 +220,7 @@
 
   LY.store = {
     chapterId: chapterId,
+    setChapterId: setChapterId,
     STORAGE_SCHEMA: STORAGE_SCHEMA,
     DATA_KEY_RE: DATA_KEY_RE,
     migrate: migrateStorage,

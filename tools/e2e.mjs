@@ -597,6 +597,51 @@ const noticeOnLatest = await evaluate(`(() => ({
 }))()`);
 check('正停留在最新章节页时不弹、只静默标记', noticeOnLatest.exists === false && noticeOnLatest.seen === String(LATEST), JSON.stringify(noticeOnLatest));
 
+section('换章不换页');
+/* 这一组盯的是「换章不走整页加载」：用 window 上的标记判断有没有真刷新，
+   期望的章名从 CHAPTERS 现取，不在测试里写死标题。 */
+await goto(BASE + '/novel/chapter-03.html');
+await evaluate(`window.__noReload = 1; document.querySelector('.next-ch').click(); 1`);
+await sleep(1200);
+const swap = await evaluate(`({
+  noReload: window.__noReload === 1,
+  path: location.pathname,
+  h1: (document.querySelector('.chapter-content h1') || {}).textContent || '',
+  topbar: (document.querySelector('.chapter-name') || {}).textContent || '',
+  prev: document.querySelector('.prev-ch').getAttribute('href'),
+  next: document.querySelector('.next-ch').getAttribute('href'),
+  expected: (window.CHAPTERS.filter(c => c.file === 'chapter-04.html')[0] || {}).title,
+  posKeys: Object.keys(localStorage).filter(k => k.indexOf('reader-pos') === 0)
+})`);
+check('换章不整页刷新', swap.noReload);
+check('URL 与正文同时切到第四章', swap.path.indexOf('chapter-04') >= 0 && swap.h1 === swap.expected, swap.path + ' / ' + swap.h1);
+check('顶栏章名跟着换', swap.topbar === swap.expected, swap.topbar);
+check('上下章链接重新指过', swap.prev === 'chapter-03.html' && swap.next === 'chapter-05.html', swap.prev + ' / ' + swap.next);
+/* 换章后滚一段：进度必须落到新章名下，且不能把上一章的记录覆盖掉。
+   不能只断言「新章有 key」——没滚动过的新章本来就不该有进度。 */
+await evaluate(`window.scrollBy(0, 600); 1`);
+await sleep(700);
+const afterScroll = await evaluate(`({
+  pos: Object.keys(localStorage)
+    .filter(k => k.indexOf('reader-pos') === 0)
+    .reduce((m, k) => (m[k] = localStorage.getItem(k), m), {})
+})`);
+check('滚动后进度记到新章、旧章不被覆盖',
+  afterScroll.pos['reader-pos--novel-chapter-04-html'] !== undefined &&
+  afterScroll.pos['reader-pos--novel-chapter-03-html'] !== undefined,
+  JSON.stringify(afterScroll.pos));
+
+await goto(BASE + '/novel/chapter-01.html');
+await evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true })); 1`);
+await sleep(700);
+const edge = await evaluate(`({
+  path: location.pathname,
+  toast: (document.getElementById('readerToast') || {}).textContent || ''
+})`);
+check('第一章按 ← 只给提示、不跳转',
+  edge.path.indexOf('chapter-01') >= 0 && /第一章/.test(edge.toast),
+  edge.path + ' / ' + edge.toast);
+
 section('全局');
 check('全程无未捕获异常', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 300));
 
