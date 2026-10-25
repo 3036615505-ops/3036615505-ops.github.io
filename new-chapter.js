@@ -257,6 +257,8 @@ const tpl = `<!DOCTYPE html>
        所以紧跟样式表；它必须早于正文末尾的 reader.* 模块执行 —— 那些模块
        会直接使用 navigator.clipboard 与 navigator.share。 -->
   <script src="../js/native-bridge.js?v=${ASSET_V}"></script>
+  <!-- 站内「新章节更新了」横幅（取 announce.json 与 localStorage 比对，每会话一次）。 -->
+  <script src="../js/announce.js?v=${ASSET_V}"></script>
 </head>
 <body class="reading-page">
   <div class="reading-wrapper">
@@ -463,6 +465,14 @@ if (!opts.blurb) console.log('⚠️  目录简介为空，可重新运行或手
 //    没有任何报错。放在最后跑 —— 此时 chapters.js / 章节页都已就位。
 //    用 spawnSync 调同一个 node：本脚本是 CommonJS，sitemap 工具是 ESM，
 //    跨模块系统共享代码只能走子进程（process.execPath 保证用的是当前这个 node）。
+// 5) 刷新 announce.json：新章节的「更新了」横幅数据源。零维护 —— 每发一章自动指向最新章。
+const announceTool = path.join(__dirname, 'tools', 'make-announce.mjs');
+const announceRun = spawnSync(process.execPath, [announceTool], { stdio: 'inherit', cwd: ROOT });
+if (announceRun.status !== 0) {
+  console.error('⚠ announce.json 刷新失败（章节页本身已生成，不影响阅读）。请手动跑:');
+  console.error('    node tools/make-announce.mjs');
+}
+
 const sitemapTool = path.join(__dirname, 'tools', 'make-sitemap.mjs');
 const sitemapRun = spawnSync(process.execPath, [sitemapTool], { stdio: 'inherit', cwd: ROOT });
 if (sitemapRun.status !== 0) {

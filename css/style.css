@@ -4086,3 +4086,77 @@ body.app-immersive .chapter-content {
   opacity: 0.72;
   font-variant-numeric: tabular-nums;
 }
+
+/* ===== 新章节更新横幅（js/announce.js）=====
+   位置：贴在底部 tab 栏上方（fixed + bottom 抬到 tab 高度之上），不遮挡导航。
+   颜色：底用 --bg-card + --border，文字用 --text / --accent-text，
+   全部满足 WCAG 4.5:1（本文件由 tools/contrast-audit.mjs 一并审计）。
+   动效：translateY + opacity 两帧过渡；prefers-reduced-motion 时直接显示不动画。 */
+.notice-bar {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 10px);
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px 9px 12px;
+  background: var(--bg-card);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(60, 40, 20, 0.14);
+  color: var(--text);
+  font-size: 13px;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.24s ease, transform 0.24s ease;
+}
+
+.notice-bar.is-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.notice-leaf {
+  display: inline-flex;
+  color: var(--accent-text);
+  flex-shrink: 0;
+}
+
+.notice-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notice-go {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--accent-fill, #8f6636);
+  color: #ffffff;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.notice-close {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.notice-close:hover { background: var(--bg-warm); color: var(--text); }
+
+@media (prefers-reduced-motion: reduce) {
+  .notice-bar { transition: none; }
+}

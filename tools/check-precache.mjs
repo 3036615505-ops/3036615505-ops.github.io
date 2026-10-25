@@ -97,6 +97,9 @@ const needed = [
      BRIDGE_SHIM_JS 下沉到站点），漏掉任何一页，那一页在壳里这三个功能就静默失效，
      而且页面本身不会报错 —— 正是最容易漏检的一类漂移。 */
   ['/js/native-bridge.js', ALL_PAGES],
+  /* announce.js 同样必须在每一个页面里：它是「新章节更新了」横幅的唯一载体，
+     漏一页那类页面就永远看不到更新提示，且没有任何报错。 */
+  ['/js/announce.js', ALL_PAGES],
   /* apple-touch-icon 同理：27 个页面一个都不能少（少了 iOS 加主屏就拿整页
      截图当图标），而生成模板（new-chapter.js / make-characters.mjs 的 headBlock）
      是「下次一生成就丢」的高危路径，这里用全页面清单兜住。 */
@@ -110,9 +113,14 @@ console.log('\n脚本引用自检：');
 let refMissing = 0;
 for (const [asset, pages] of needed) {
   const name = path.basename(asset);
+  /* 必须按引用属性精确匹配，不能用 indexOf 子串 —— announce.js 是 announce.json
+     的子串（announce. + json 的前两字母），页面注释里一提「announce.json」就会让
+     检查假阳性（删了真引用也报绿）。2026-10-25 实测踩过，故用正则锁 src/href。
+     script 与 link 都要认：js 走 <script src>，图标走 <link href>。 */
+  const refRe = new RegExp('<(?:script[^>]+src|link[^>]+href)="[^"]*' + name.replace(/[.]/g, '[.]') + '(\\?[^"]*)?"');
   const absent = pages.filter((p) => {
     const html = fs.readFileSync(path.join(ROOT, p), 'utf8');
-    return html.indexOf(name) === -1;
+    return !refRe.test(html);
   });
   if (absent.length) {
     refMissing += 1;

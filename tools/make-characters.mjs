@@ -214,6 +214,8 @@ function headBlock(title, description, ogTitle, ogDescription) {
     // 原生壳能力补丁（剪贴板 / 原生分享 / blob 导出）。必须紧跟 theme.js：
     // 它在浏览器里会立刻 return，只有壳内才改写 navigator 行为。
     '  <script src="../js/native-bridge.js?v=' + ASSET_V + '"></script>\n' +
+    // 站内「新章节更新了」横幅（取 announce.json 与 localStorage 比对，每会话一次）。
+    '  <script src="../js/announce.js?v=' + ASSET_V + '"></script>\n' +
     '</head>\n';
 }
 

@@ -9,14 +9,14 @@
 |---|---|
 | 线上 | <https://zephyrw.site>（GitHub Pages，push 即发布） |
 | 站点资源版本 | `?v=63`（全站 27 个 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
-| SW 缓存名 | `linyuan-v57` |
+| SW 缓存名 | `linyuan-v58` |
 | 阅读器模块 | dom 77 行 · flags 86 · store 226 · engine 467 · ui 1748 · 入口 30 |
 | 样式 | `css/style.css` 4048 行（4 套主题令牌） |
 | 章节 | 6 章（2858 / 2347 / 2029 / 2496 / 2076 / 2269 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
 | 人物 | 17 人（新叶 7 / 乔木 10）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
 | 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 852KB**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
 | Android 壳 | v1.9.0 / versionCode 17（v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死；v1.8.7 修系统返回键直接退出；**v1.9.0 = A 档收官，壳进入封版状态**：桥接补丁下沉到站点 `js/native-bridge.js`（以后改桥不用发版）、原生分享桥、闪屏叠层淡出、onResume 补更新检查、锁竖屏。详见 `app/BACK-HANDLING.md` 与 `app/WEBVIEW-ROADMAP.md`） |
-| 校验 | 本地 pre-push 4 项 · CI 2 个 job · 端到端 38 项 |
+| 校验 | 本地 pre-push 4 项 · CI 2 个 job · 端到端 43 项 |
 
 ## 常用命令
 
@@ -33,6 +33,7 @@ node new-chapter.js <原稿.md>       # 加新章节（会自动写 manuscript/�
 node tools/make-characters.mjs     # 改人物后重新生成同学录与详细页
 python tools/make-portrait-thumbs.py  # 为 17 张立绘生成 128×150 缩略图（列表页用，母版留给详情页/灯箱）
 node tools/make-sitemap.mjs        # 重生成 sitemap.xml（章节+人物+固定页，lastmod 取源稿 mtime）
+node tools/make-announce.mjs      # 重生成 announce.json（「第 N 章更新了」横幅的数据源，取章号最大者）
 ```
 
 ## 架构：五层，依赖单向

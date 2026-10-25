@@ -19,7 +19,7 @@
  *      NETWORK_TIMEOUT（500ms），所以它们必须走缓存优先。
  *   3. /app/ 前缀（安装包、version.json）不拦截，直接交给网络
  */
-var CACHE = 'linyuan-v57';
+var CACHE = 'linyuan-v58';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
@@ -103,6 +103,7 @@ var PRECACHE = [
      必须预缓存：它是 <head> 里的渲染路径脚本，弱网时不该等网络；
      且壳内的剪贴板 / 分享 / 导出全靠它，缺了等于这三个功能消失。 */
   '/js/native-bridge.js',
+  '/js/announce.js',
   '/js/lightbox.js',
   '/quotes.html',
   '/novel/',
