@@ -402,11 +402,13 @@ const kai = await evaluate(`(() => {
     rest: fams.find(x => x.n === 'LinyuanKaiRest')
   };
 })()`);
-const kaiStack = kai.stack || '';
-const iMain = kaiStack.indexOf('"LinyuanKai"');
-const iRest = kaiStack.indexOf('"LinyuanKaiRest"');
+/* 浏览器回读字体栈时会把不含空格的族名去掉引号（LinyuanKai, LinyuanKaiRest, "Kaiti SC"），
+   所以不能按带引号的字符串匹配，得按逗号切开逐项比。 */
+const kaiTokens = (kai.stack || '').split(',').map(s => s.trim().replace(/^["']|["']$/g, ''));
+const iMain = kaiTokens.indexOf('LinyuanKai');
+const iRest = kaiTokens.indexOf('LinyuanKaiRest');
 check('楷体字体栈里兜底片紧跟主片（放后面就永远轮不到）',
-  iMain >= 0 && iRest > iMain, kaiStack);
+  iMain >= 0 && iRest === iMain + 1, kai.stack);
 check('主片已加载，兜底片保持未下载',
   !!kai.main && kai.main.s === 'loaded' && (!kai.rest || kai.rest.s === 'unloaded'),
   JSON.stringify(kai));
