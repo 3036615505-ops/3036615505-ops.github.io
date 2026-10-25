@@ -156,6 +156,29 @@ serif——观感一致，不是 bug。（17 人全部有立绘后，占位字�
 身份着装）。生成后统一裁底 64px 去水印、转 webp。保真度调高会出「换头版」——
 黎颜第一版就是这么废掉的。
 
+## 签名密钥：丢了就是灾难（2026-10-25 已做备份）
+
+壳的签名密钥 `linyuan.keystore`（别名 `linyuan`，PKCS12，RSA 2048 到 2053 年）放在
+`E:/novel-site/twa/`，**该目录不在 git 里**，所以它曾经是全项目最高危的单点：硬盘坏 =
+所有已装用户必须卸载重装，**阅读进度和摘句全丢**（localStorage 随卸载清空）。
+
+证书指纹 `FD:BE:AA:46:F7:3B:E6:B7:16:12:1C:47:AE:EE:5F:C3:4F:23:86:7A:6E:A5:D0:A5:CF:A9:41:DE:62:70:7F:CB`
+（也写在 `/.well-known/assetlinks.json` 里）。
+
+现在有三份**加密**备份（AES-256-CBC / PBKDF2 300k 迭代，内含 keystore + `.kspass` + 密钥档案）：
+
+| 落点 | 说明 |
+|---|---|
+| 本机 `E:/novel-site/_backup/*.tar.enc` | 出事时的第一顺位 |
+| OneDrive `密钥备份-临渊羡鱼/` | 跨设备取用（Mac 装 OneDrive 客户端即可） |
+| 一个**私有** GitHub 仓库 | 异地灾备，Mac 直接 clone |
+
+恢复：`openssl enc -d -aes-256-cbc -pbkdf2 -iter 300000 -in *.tar.enc | tar -xf -`，
+解出的 `linyuan.keystore` sha256 应为 `20a0c563afff4e0f4450fe0021bbd29d4e675d907e211406fd0e47306bbb3749`。
+
+铁律两条：**密文与密码绝不放在同一个账号/同一个地方**；**任何密文都别进公开仓库**
+（站点仓库是公开的，只写这条说明、不写密码和仓库名）。
+
 ## 埋过的坑（每条都是真出过事的）
 
 0. **生成出来的页面别手改**。`novel/characters.html` 与 `novel/character-*.html` 由
