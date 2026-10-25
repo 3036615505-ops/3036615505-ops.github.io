@@ -8,8 +8,8 @@
 | 项 | 值 |
 |---|---|
 | 线上 | <https://zephyrw.site>（GitHub Pages，push 即发布） |
-| 站点资源版本 | `?v=62`（全站 27 个 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
-| SW 缓存名 | `linyuan-v56` |
+| 站点资源版本 | `?v=63`（全站 27 个 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
+| SW 缓存名 | `linyuan-v57` |
 | 阅读器模块 | dom 77 行 · flags 86 · store 226 · engine 467 · ui 1748 · 入口 30 |
 | 样式 | `css/style.css` 4048 行（4 套主题令牌） |
 | 章节 | 6 章（2858 / 2347 / 2029 / 2496 / 2076 / 2269 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
@@ -31,6 +31,8 @@ node tools/manuscript-sync.mjs     # 正文与 manuscript/ 源稿逐字比对
 python tools/make-kai-subset.py --check            # 楷体子集是否覆盖正文
 node new-chapter.js <原稿.md>       # 加新章节（会自动写 manuscript/）
 node tools/make-characters.mjs     # 改人物后重新生成同学录与详细页
+python tools/make-portrait-thumbs.py  # 为 17 张立绘生成 128×150 缩略图（列表页用，母版留给详情页/灯箱）
+node tools/make-sitemap.mjs        # 重生成 sitemap.xml（章节+人物+固定页，lastmod 取源稿 mtime）
 ```
 
 ## 架构：五层，依赖单向
