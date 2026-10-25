@@ -1908,32 +1908,39 @@ body.reading-page {
   color: var(--text-secondary);
 }
 
-/* 章节底部导航 */
-.chapter-bottom-nav {
-  display: flex;
-  gap: 0;
-  padding: 16px 20px calc(16px + var(--safe-bottom));
+/* ===== 章节流：往下滚接上下一章 =====
+   正文流里不再有「上一章 / 下一章」那一对（那对按钮会在无障碍树和 Tab
+   顺序里多出四个无意义的停留点）。章末的「一章一句」就是接缝：
+   滚过它 → 一段呼吸的留白 → 下一章标题。 */
+
+.reading-flow {
+  display: block;
+}
+
+.chapter-block {
   position: relative;
-  z-index: 150;
 }
 
-.chapter-bottom-nav a,
-.chapter-bottom-nav span {
-  flex: 1;
-  text-align: center;
-  padding: 13px 0;
-  font-size: 15px;
-  color: var(--accent-text);
-  border-radius: 8px;
-  transition: background 0.2s;
+/* 章与章之间的呼吸：只用留白，不再画分隔线 —— 余韵卡已经是句点了 */
+.chapter-block + .chapter-block .chapter-content {
+  padding-top: calc(56px + env(safe-area-inset-top, 0px));
 }
 
-.chapter-bottom-nav a:active {
-  background: rgba(184, 134, 78, 0.08);
+.chapter-block + .chapter-block .chapter-content h1 {
+  position: relative;
 }
 
-.chapter-bottom-nav span {
-  color: var(--text-muted);
+/* 接缝上那条极细的、只出现一下的横线：给眼睛一个「换章了」的锚点 */
+.chapter-block + .chapter-block::before {
+  content: "";
+  display: block;
+  height: 1px;
+  margin: 0 20px 0;
+  background: linear-gradient(to right, transparent, var(--reader-border), transparent);
+}
+
+.chapter-block:last-of-type .chapter-afterglow {
+  margin-bottom: 0;
 }
 
 /* 底部工具栏 */

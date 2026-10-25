@@ -218,8 +218,9 @@ if (pageYear && midDates.length) {
 }
 
 // ===== 章节页模板 =====
-const prevNav = prev ? '<a href="' + prev.file + '">上一章</a>' : '<span>上一章</span>';
-const nextNav = '<span>下一章</span>';
+// 正文流里不再有「上一章 / 下一章」那一对：章末的「一章一句」就是接缝，
+// 往下滚会接上下一章（见 js/reader.ui.js 的 initFlow / docs/INFINITE-SCROLL.md）。
+// 底部工具栏里的 .prev-ch / .next-ch 保留，那是隐藏的显式导航。
 const prevCh = prev ? '<a href="' + prev.file + '" class="prev-ch">上一章</a>' : '<a href="#" class="prev-ch">上一章</a>';
 const afterglow = opts.afterglow || '翻过这一页，故事还在继续。（这一句写在 chapter-afterglow 里，换一句属于这一章的话吧）';
 
@@ -276,6 +277,9 @@ const tpl = `<!DOCTYPE html>
 
   <div class="reader-tap-area" id="readerTapArea"></div>
 
+  <!-- 阅读流：一章一个 section，往下滚会接上下一章（首章由页面自带，其余按需追加） -->
+  <div id="readingFlow" class="reading-flow">
+  <section class="chapter-block" data-file="${file}">
   <article class="chapter-content">
     <h1>${escapeHtml(title)}</h1>
 ${dateLineTop}${contentHtml}  </article>
@@ -283,16 +287,13 @@ ${dateLineTop}${contentHtml}  </article>
   <div class="chapter-afterglow">
     <div class="afterglow-kicker">这一章的风</div>
     <p>${escapeHtml(afterglow)}</p>
-    <button type="button" class="afterglow-share" onclick="shareChapter()">
+    <button type="button" class="afterglow-share" onclick="shareChapter(this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
       分享这一章
     </button>
 ${sealHtml}  </div>
-
-  <div class="chapter-bottom-nav">
-    ${prevNav}
-    ${nextNav}
-  </div>
+</section>
+</div>
 
   <div class="reader-bottombar" id="readerBottombar">
     <div class="reader-progress-area">
@@ -443,12 +444,11 @@ if (opts.volume) newEntry.volume = opts.volume;
 const all = entries.concat([newEntry]);
 fs.writeFileSync(CHAPTERS_JS, head + 'var CHAPTERS = [\n' + all.map(fmtEntry).join(',\n') + '\n];' + tail);
 
-// 3) 给上一章补"下一章"链接
+// 3) 给上一章补"下一章"链接（只剩底部工具栏那一个；正文流里那对已经移除）
 if (prev) {
   const prevPath = path.join(NOVEL_DIR, prev.file);
   let prevHtml = fs.readFileSync(prevPath, 'utf-8');
   prevHtml = prevHtml
-    .replace('<span>下一章</span>', '<a href="' + file + '">下一章</a>')
     .replace('<a href="#" class="next-ch">下一章</a>', '<a href="' + file + '" class="next-ch">下一章</a>');
   fs.writeFileSync(prevPath, prevHtml);
 }

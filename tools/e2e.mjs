@@ -344,7 +344,12 @@ check('点悬浮条 ✕ 能真的停下（真实点击路径）', clickedStop ==
 
 section('阅读页 · 远程开关');
 const flagFile = await evaluate(`fetch('/flags.json', { cache: 'no-store' }).then(r => r.json()).then(j => ({ keys: Object.keys(j.flags || {}).sort() }))`);
-check('flags.json 可读且登记了 4 个开关', Array.isArray(flagFile.keys) && flagFile.keys.length === 4, JSON.stringify(flagFile));
+/* 不写死数量：开关是成对登记的（DEFAULTS 与 flags.json），少一个就等于
+   线上关不掉那个功能。这条断言专门防「加了开关却忘了登记」。 */
+const flagKeys = await evaluate(`Object.keys(LY.flags.all()).sort()`);
+check('flags.json 与前端登记的开关一一对应',
+  JSON.stringify(flagFile.keys) === JSON.stringify(flagKeys),
+  JSON.stringify({ file: flagFile.keys, js: flagKeys }));
 await evaluate(`LY.flags.apply({ autoscroll: false }); 1`);
 const flagHidden = await evaluate(`(() => {
   const b = document.querySelector('button[onclick*="toggleAutoScroll"]');
@@ -597,39 +602,111 @@ const noticeOnLatest = await evaluate(`(() => ({
 }))()`);
 check('正停留在最新章节页时不弹、只静默标记', noticeOnLatest.exists === false && noticeOnLatest.seen === String(LATEST), JSON.stringify(noticeOnLatest));
 
-section('换章不换页');
-/* 这一组盯的是「换章不走整页加载」：用 window 上的标记判断有没有真刷新，
-   期望的章名从 CHAPTERS 现取，不在测试里写死标题。 */
+section('无限流：章末接续');
+/* 这一组盯的是「往下读不换页」：章末的「一章一句」是接缝，滚过去就是下一章。
+   用 window 上的标记判断有没有真刷新，期望的章名从 CHAPTERS 现取。 */
 await goto(BASE + '/novel/chapter-03.html');
-await evaluate(`window.__noReload = 1; document.querySelector('.next-ch').click(); 1`);
-await sleep(1200);
-const swap = await evaluate(`({
+const flowStart = await evaluate(`({
+  blocks: document.querySelectorAll('.chapter-block').length,
+  navs: document.querySelectorAll('.chapter-bottom-nav a').length,
+  flow: !!document.getElementById('readingFlow'),
+  cur: LY.store.getCurrentFileName()
+})`);
+check('正文流里不再有上一章/下一章按钮', flowStart.navs === 0, 'navs=' + flowStart.navs);
+check('首屏只装当前一章', flowStart.blocks === 1 && flowStart.cur === 'chapter-03.html' && flowStart.flow, JSON.stringify(flowStart));
+
+/* 滚到章末：自动接上第四章，且不整页刷新 */
+await evaluate(`window.__noReload = 1; window.scrollTo(0, document.documentElement.scrollHeight); 1`);
+await sleep(1500);
+const appended = await evaluate(`({
   noReload: window.__noReload === 1,
+  blocks: [...document.querySelectorAll('.chapter-block')].map(b => b.dataset.file),
+  pct: LY.engine.getCurrentProgressPct()
+})`);
+check('滚到章末自动接上第四章', appended.blocks.length === 2 && appended.blocks[1] === 'chapter-04.html', JSON.stringify(appended.blocks));
+check('接章不整页刷新', appended.noReload);
+check('接章后本章进度不被拉回（≥95）', appended.pct >= 95, 'pct=' + appended.pct);
+
+/* 滚进新章：URL / 章节 id / 标题 / 顶栏 一起换 */
+await evaluate(`(() => {
+  const b = document.querySelectorAll('.chapter-block')[1];
+  window.scrollTo(0, b.getBoundingClientRect().top + window.pageYOffset + 600);
+  return 1;
+})()`);
+await sleep(1000);
+const entered = await evaluate(`({
+  cur: LY.store.getCurrentFileName(),
   path: location.pathname,
-  h1: (document.querySelector('.chapter-content h1') || {}).textContent || '',
+  title: document.title,
   topbar: (document.querySelector('.chapter-name') || {}).textContent || '',
   prev: document.querySelector('.prev-ch').getAttribute('href'),
   next: document.querySelector('.next-ch').getAttribute('href'),
+  pct: LY.engine.getCurrentProgressPct(),
   expected: (window.CHAPTERS.filter(c => c.file === 'chapter-04.html')[0] || {}).title,
-  posKeys: Object.keys(localStorage).filter(k => k.indexOf('reader-pos') === 0)
-})`);
-check('换章不整页刷新', swap.noReload);
-check('URL 与正文同时切到第四章', swap.path.indexOf('chapter-04') >= 0 && swap.h1 === swap.expected, swap.path + ' / ' + swap.h1);
-check('顶栏章名跟着换', swap.topbar === swap.expected, swap.topbar);
-check('上下章链接重新指过', swap.prev === 'chapter-03.html' && swap.next === 'chapter-05.html', swap.prev + ' / ' + swap.next);
-/* 换章后滚一段：进度必须落到新章名下，且不能把上一章的记录覆盖掉。
-   不能只断言「新章有 key」——没滚动过的新章本来就不该有进度。 */
-await evaluate(`window.scrollBy(0, 600); 1`);
-await sleep(700);
-const afterScroll = await evaluate(`({
   pos: Object.keys(localStorage)
     .filter(k => k.indexOf('reader-pos') === 0)
     .reduce((m, k) => (m[k] = localStorage.getItem(k), m), {})
 })`);
-check('滚动后进度记到新章、旧章不被覆盖',
-  afterScroll.pos['reader-pos--novel-chapter-04-html'] !== undefined &&
-  afterScroll.pos['reader-pos--novel-chapter-03-html'] !== undefined,
-  JSON.stringify(afterScroll.pos));
+check('滚进第四章：URL 与章节 id 同步', entered.cur === 'chapter-04.html' && entered.path.indexOf('chapter-04') >= 0, entered.cur + ' / ' + entered.path);
+check('滚进第四章：标题与顶栏同步', entered.title === entered.expected && entered.topbar === entered.expected, entered.title + ' / ' + entered.topbar);
+check('上下章链接重新指过', entered.prev === 'chapter-03.html' && entered.next === 'chapter-05.html', entered.prev + ' / ' + entered.next);
+/* 进度按章块算：进章 600px 应该是个小比例，而不是整页 scrollHeight 的比例 */
+check('进度按当前章块算，不是整页比例', entered.pct >= 0 && entered.pct <= 30, 'pct=' + entered.pct);
+check('上一章进度保留、新章单独落盘',
+  entered.pos['reader-pos--novel-chapter-03-html'] !== undefined &&
+  entered.pos['reader-pos--novel-chapter-04-html'] !== undefined,
+  JSON.stringify(entered.pos));
+check('读完的第三章被标记为已读', await evaluate(`localStorage.getItem('reader-done--novel-chapter-03-html') === '1'`));
+
+/* 底部工具栏「下一章」= 接上并落位，不是换页 */
+await goto(BASE + '/novel/chapter-02.html');
+await evaluate(`document.querySelector('.next-ch').click(); 1`);
+await sleep(1500);
+const viaBar = await evaluate(`({
+  blocks: [...document.querySelectorAll('.chapter-block')].map(b => b.dataset.file),
+  cur: LY.store.getCurrentFileName(),
+  top: Math.round(document.querySelectorAll('.chapter-block')[1].getBoundingClientRect().top)
+})`);
+check('底部「下一章」接上并把读者送到章首',
+  viaBar.blocks[1] === 'chapter-03.html' && Math.abs(viaBar.top) < 4 && viaBar.cur === 'chapter-03.html',
+  JSON.stringify(viaBar));
+
+/* 接上来的章必须和第一章一个待遇：自定义字体、阅读辅助都要跟过去 */
+const inherited = await evaluate(`(() => {
+  setFontFamily('kai');
+  const blocks = document.querySelectorAll('.chapter-block');
+  const fonts = [...blocks].map(b => getComputedStyle(b.querySelector('.chapter-content')).fontFamily);
+  toggleReadingAid('dialogue');   /* 默认关 → 打开，两章都应有 .dlg */
+  const dlg = [...blocks].map(b => b.querySelectorAll('.dlg').length > 0);
+  toggleReadingAid('dialogue');   /* 关回去，别影响后面的断言 */
+  return { fonts, dlg, same: fonts[0] === fonts[1] };
+})()`);
+check('接上来的章继承自定义字体', inherited.same && /kai|楷/i.test(inherited.fonts[1]), JSON.stringify(inherited.fonts));
+check('阅读辅助也作用到接上来的章', inherited.dlg[0] && inherited.dlg[1], JSON.stringify(inherited.dlg));
+
+/* 跨块摘句：id 必须带章，否则「回到这一页」会跳到别的章 */
+await goto(BASE + '/novel/chapter-03.html');
+await evaluate(`window.scrollTo(0, document.documentElement.scrollHeight); 1`);
+await sleep(1400);
+const quoteIds = await evaluate(`(() => {
+  const blocks = document.querySelectorAll('.chapter-block');
+  const a = blocks[0].querySelectorAll('.collectable-paragraph')[2];
+  const b = blocks[1].querySelectorAll('.collectable-paragraph')[2];
+  return { a: a.id, b: b.id, af: a.dataset.chapterFile, bf: b.dataset.chapterFile };
+})()`);
+check('跨块摘句 id 不撞车',
+  quoteIds.a !== quoteIds.b && quoteIds.a.indexOf('chapter-03') >= 0 && quoteIds.b.indexOf('chapter-04') >= 0,
+  JSON.stringify(quoteIds));
+
+/* 末章：滚到底不追加、不报错 */
+await goto(BASE + '/novel/chapter-07.html');
+await evaluate(`window.scrollTo(0, document.documentElement.scrollHeight); 1`);
+await sleep(1300);
+const lastCh = await evaluate(`({
+  blocks: document.querySelectorAll('.chapter-block').length,
+  pct: LY.engine.getCurrentProgressPct()
+})`);
+check('末章滚到底不再追加、不报错', lastCh.blocks === 1 && lastCh.pct >= 95, JSON.stringify(lastCh));
 
 await goto(BASE + '/novel/chapter-01.html');
 await evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true })); 1`);

@@ -158,6 +158,7 @@
     initModalKeys();
     initKeyboardNav();
     initChapterSwap();
+    initFlow();
     initSwipeHint();
     recordFootprints();
     applyFeatureVisibility();
@@ -193,14 +194,19 @@
     var battEl = el.querySelector('#readerBattGlyph');
     var article = document.querySelector('.chapter-content');
 
-    /* ----- 章节内页码（当前页 / 总页数，番茄同款按屏折算） ----- */
+    /* ----- 章节内页码（当前页 / 总页数，番茄同款按屏折算） -----
+       无限流下一页装好几章，所以页码按「当前章」算，不按整页算。 */
     function updatePos() {
       if (!posEl) return;
       var sc = document.scrollingElement || document.documentElement;
       var viewH = window.innerHeight || sc.clientHeight || 1;
-      var total = Math.max(1, Math.ceil(sc.scrollHeight / viewH));
-      var y = sc.scrollTop || window.scrollY || 0;
-      var cur = Math.min(total, Math.floor(y / viewH) + 1);
+      var y0 = sc.scrollTop || window.scrollY || 0;
+      var block = LY.engine && LY.engine.currentBlock ? LY.engine.currentBlock() : null;
+      var top = block ? Math.max(0, block.getBoundingClientRect().top + y0) : 0;
+      var h = block ? block.getBoundingClientRect().height : sc.scrollHeight;
+      var total = Math.max(1, Math.ceil(h / viewH));
+      var within = Math.max(0, y0 - top);
+      var cur = Math.min(total, Math.floor(within / viewH) + 1);
       posEl.textContent = cur + '/' + total;
       updateRemainTime();
     }
@@ -441,6 +447,15 @@
       systemFontName = '';
     }
     return systemFontName;
+  }
+
+
+  /* 字体落在每篇正文上（不是 :root），所以新接上来的章要单独补一次 */
+  function applyFontTo(root) {
+    var stack = fontStackFor(state.fontFamily);
+    (root || document).querySelectorAll('.chapter-content').forEach(function (el) {
+      el.style.fontFamily = stack;
+    });
   }
 
 
@@ -721,8 +736,7 @@
     if (fontFamilies.indexOf(family) < 0) family = 'fzyouhei';
     state.fontFamily = family;
     localStorage.setItem('reader-fontfamily', family);
-    var content = document.querySelector('.chapter-content');
-    if (content) content.style.fontFamily = fontStackFor(family);
+    applyFontTo();
     if (family === 'kai') ensureKaiLoaded();
     var label = document.getElementById('fontFamilyLabel');
     if (label) label.textContent = fontFamilyLabels[family] || '黑体';
@@ -1007,17 +1021,39 @@
     if (prevEl) prevEl.setAttribute('href', prev ? prev.file : '#');
     if (nextEl) nextEl.setAttribute('href', next ? next.file : '#');
 
-    /* 章末那对链接（正文流里的上一章/下一章） */
-    var navA = document.querySelectorAll('.chapter-bottom-nav a');
-    if (navA.length === 2) {
-      navA[0].setAttribute('href', prev ? prev.file : '#');
-      navA[1].setAttribute('href', next ? next.file : '#');
-    }
-
     var dir = document.getElementById('dirOverlay');
     if (dir && dir.classList.contains('visible')) populateDirectory();
   }
 
+
+  /* ===== 取章 =====
+     同一次加载里同一章只取一次：预取和「真的要接上」共用同一个 Promise，
+     这样滚到章末时通常已经在缓存里，接续不等待网络。 */
+
+  var chapterDocs = {};
+
+  function fetchChapterDoc(file) {
+    if (chapterDocs[file]) return chapterDocs[file];
+    var url = new URL(file, window.location.href).href;
+    chapterDocs[file] = fetch(url, { credentials: 'same-origin' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.text();
+      })
+      .then(function (text) {
+        return new DOMParser().parseFromString(text, 'text/html');
+      })
+      .catch(function (err) {
+        delete chapterDocs[file];   /* 失败不缓存，下次滚动再试 */
+        throw err;
+      });
+    return chapterDocs[file];
+  }
+
+
+  /* ===== 换章不换页（单块时的兜底） =====
+     链条里没有目标章、且当前只有一个块时用它：取回整章原地替换，无白屏。
+     多块时不能用它 —— 替换会把已经接好的链整条毁掉。 */
 
   function swapTo(file, hash) {
     if (!file || swapping) return false;
@@ -1026,13 +1062,8 @@
     swapping = true;
     var url = new URL(file, window.location.href).href;
 
-    fetch(url, { credentials: 'same-origin' })
-      .then(function (res) {
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.text();
-      })
-      .then(function (text) {
-        var doc = new DOMParser().parseFromString(text, 'text/html');
+    fetchChapterDoc(file)
+      .then(function (doc) {
         var nextContent = doc.querySelector('.chapter-content');
         if (!nextContent) throw new Error('章节内容缺失');
         var nextGlow = doc.querySelector('.chapter-afterglow');
@@ -1080,15 +1111,191 @@
   }
 
 
+  /* ===== 章节流：往下滚就接上下一章 =====
+     章末的「一章一句」是接缝：滚过它，接着是下一章的标题。
+     底部工具栏那对链接、键盘 ←→、左右轻扫都走同一条链路（navigateToChapter）。 */
+
+  var flowAppending = {};
+  var APPEND_AHEAD = 900;      /* 距页底多近开始接 */
+  var PREFETCH_AHEAD = 2600;   /* 更早先把 HTML 取回来，接的时候不等待 */
+
+  /* 关掉即回到「一次只装一章」：章节页本身仍然可用，只是不再自动续 */
+  function flowEnabled() {
+    return !!(LY.flags && LY.flags.isOn) ? LY.flags.isOn('infiniteScroll') !== false : true;
+  }
+
+  function flowRoot() {
+    var flow = document.getElementById('readingFlow');
+    if (flow) return flow;
+    var first = document.querySelector('.chapter-content');
+    if (!first) return null;
+    /* 旧页面（正文没包 chapter-block）：现场收进一个块，后续逻辑才统一 */
+    flow = document.createElement('div');
+    flow.id = 'readingFlow';
+    flow.className = 'reading-flow';
+    first.parentNode.insertBefore(flow, first);
+    var section = document.createElement('section');
+    section.className = 'chapter-block';
+    section.setAttribute('data-file', getCurrentFileName());
+    flow.appendChild(section);
+    section.appendChild(first);
+    var glow = document.querySelector('.chapter-afterglow');
+    if (glow) section.appendChild(glow);
+    return flow;
+  }
+
+  function blockByFile(file) {
+    var list = document.querySelectorAll('.chapter-block');
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].getAttribute('data-file') === file) return list[i];
+    }
+    return null;
+  }
+
+  function lastBlockFile() {
+    var list = document.querySelectorAll('.chapter-block');
+    var last = list[list.length - 1];
+    return last ? last.getAttribute('data-file') : getCurrentFileName();
+  }
+
+  function nextFileOf(file) {
+    var list = window.CHAPTERS || [];
+    var next = list[chapterIndex(file) + 1];
+    return next ? next.file : '';
+  }
+
+  function scrollToBlock(block) {
+    if (!block) return;
+    /* 这是读者明确要去的地方：告诉 engine「他已经动了」，
+       否则启动时那套「恢复到上次位置」的重试会把人往回拽。 */
+    markUserScroll();
+    var jump = function() {
+      var top = window.scrollY + block.getBoundingClientRect().top;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+    };
+    jump();
+    /* 刚插入的块，第一次量到的高度可能还没算上字体/图片的最终排版，
+       下一帧再落一次位，避免停在章首往下几百像素的地方。 */
+    requestAnimationFrame(jump);
+  }
+
+  /* 把下一章接到链条末尾。
+     返回 true 表示「确实有下一章，已接上或正在接」——自动滚屏据此决定要不要停。
+     then(section) 在接上之后调用，用于「跳过去」这种需要落位的场景。 */
+  function appendNext(then) {
+    if (!flowEnabled()) return false;
+    var file = nextFileOf(lastBlockFile());
+    if (!file || blockByFile(file)) return false;
+    if (flowAppending[file]) {
+      if (then) setTimeout(function() { var b = blockByFile(file); if (b) then(b); }, 400);
+      return true;
+    }
+
+    flowAppending[file] = true;
+    fetchChapterDoc(file).then(function (doc) {
+      var content = doc.querySelector('.chapter-content');
+      if (!content) throw new Error('章节内容缺失');
+      var glow = doc.querySelector('.chapter-afterglow');
+      var flow = flowRoot();
+      if (!flow) throw new Error('没有阅读流容器');
+
+      var section = document.createElement('section');
+      section.className = 'chapter-block';
+      section.setAttribute('data-file', file);
+      section.appendChild(document.importNode(content, true));
+      if (glow) section.appendChild(document.importNode(glow, true));
+      flow.appendChild(section);
+
+      decorateParagraphs(section);
+      /* 新接上来的块也要吃到阅读辅助与自定义字体，否则翻过接缝字体就变回去了 */
+      captureContent(section);
+      renderContentDecorations(section);
+      applyFontTo(section);
+      delete flowAppending[file];
+      if (then) then(section);
+    }).catch(function () {
+      /* 接不上就安静收场，等下一次滚动重试。
+         绝不整页跳走：读者正在读的地方不能因为网络抖一下而丢掉。 */
+      delete flowAppending[file];
+      delete chapterDocs[file];
+    });
+
+    return true;
+  }
+
+
+  function initFlow() {
+    if (!document.querySelector('.chapter-content')) return;
+
+    var scheduled = false;
+    window.addEventListener('scroll', function () {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(function () {
+        scheduled = false;
+        if (!flowEnabled()) return;
+        var remain = document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
+        if (remain >= PREFETCH_AHEAD) return;
+        var next = nextFileOf(lastBlockFile());
+        if (!next) return;
+        if (remain < APPEND_AHEAD) appendNext();
+        else if (!chapterDocs[next]) fetchChapterDoc(next).catch(function () {});
+      });
+    }, { passive: true });
+
+    /* 首屏就装得下整章（短章 or 超高屏）：不用等滚动 */
+    var remain = document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
+    if (remain < APPEND_AHEAD) appendNext();
+  }
+
+
+  /* engine 的探测线跨进新块时回调：把「当前章」同步到 URL、标题、顶栏、上下章链接。
+     只动界面以外的东西，绝不碰滚动位置 —— 读者正在往下读，不能把他拽回去。 */
+  function onChapterEntered(file) {
+    try { history.replaceState(null, '', new URL(file, window.location.href).href); } catch (err) { /* 非 http 环境 */ }
+
+    var list = window.CHAPTERS || [];
+    var chapter = list[chapterIndex(file)] || {};
+    if (chapter.title) document.title = chapter.title;
+
+    syncChapterChrome(file);
+    LY.store.recordFootprints();
+  }
+
+
+  function goToChapter(file, hash) {
+    if (!file) return false;
+    var block = blockByFile(file);
+    if (block) {
+      var target = hash ? document.getElementById(hash) : null;
+      if (target) target.scrollIntoView({ block: 'center' });
+      else scrollToBlock(block);
+      return true;
+    }
+    /* 正好是链条末尾的下一章：接上并过去，而不是换页 */
+    if (flowEnabled() && file === nextFileOf(lastBlockFile())) {
+      appendNext(function (section) { scrollToBlock(section); });
+      return true;
+    }
+    /* 不在链条里：单块时用换章不换页（无白屏）；多块时整页跳转，链条重建 */
+    if (document.querySelectorAll('.chapter-block').length <= 1) return swapTo(file, hash);
+    window.location.href = new URL(file, window.location.href).href + (hash ? '#' + hash : '');
+    return true;
+  }
+
+
   function navigateToChapter(dir) {
-    var link = document.querySelector(dir > 0 ? '.next-ch[href]:not([href="#"])' : '.prev-ch[href]:not([href="#"])');
-    var href = link ? link.getAttribute('href') : '';
-    var file = chapterFileOf(href);
-    if (!file) {
+    var list = window.CHAPTERS || [];
+    var target = list[chapterIndex(getCurrentFileName()) + (dir > 0 ? 1 : -1)];
+    if (!target) {
       showToast(dir > 0 ? '已经是最后一章' : '这是第一章');
       return;
     }
-    if (!swapTo(file)) window.location.href = href;
+    var block = blockByFile(target.file);
+    if (block) { scrollToBlock(block); return; }
+    /* 往下走就是「接下一章」本身，接上之后落位到那一章的开头 */
+    if (dir > 0) { appendNext(function (section) { scrollToBlock(section); }); return; }
+    goToChapter(target.file);
   }
 
 
@@ -1101,7 +1308,15 @@
       if (!a || a.target === '_blank') return;
 
       var href = a.getAttribute('href') || '';
+      var isQuote = a.classList.contains('quote-action');
       var file = chapterFileOf(href);
+
+      /* 同一章的摘句链接：浏览器原生锚点跳转就够，只需要把面板收起来，
+         否则面板正好盖住刚落位的那一段。 */
+      if (isQuote && (!file || file === getCurrentFileName())) {
+        if (typeof closeQuotes === 'function') closeQuotes();
+        return;
+      }
       if (!file || file === getCurrentFileName()) return;
 
       e.preventDefault();
@@ -1109,7 +1324,13 @@
 
       var hash = href.indexOf('#') >= 0 ? href.split('#')[1] : '';
       if (typeof closeDirectory === 'function') closeDirectory();
-      if (!swapTo(file, hash)) window.location.href = href;
+      if (isQuote && typeof closeQuotes === 'function') closeQuotes();
+      /* 底部工具栏的上一章/下一章也走这里 —— 和键盘、轻扫同一条链路 */
+      if (a.classList.contains('next-ch') || a.classList.contains('prev-ch')) {
+        navigateToChapter(a.classList.contains('next-ch') ? 1 : -1);
+        return;
+      }
+      if (!goToChapter(file, hash)) window.location.href = href;
     }, true);
   }
 
@@ -1288,32 +1509,50 @@
   }
 
 
-  function decorateParagraphs() {
-    var content = document.querySelector('.chapter-content');
-    if (!content) return;
-    var file = getCurrentFileName();
-    var title = getCurrentChapterTitle();
-    var index = 0;
-    content.querySelectorAll('p').forEach(function(p) {
-      var text = (p.textContent || '').trim();
-      if (!text) return;
-      index += 1;
-      p.dataset.quoteIndex = String(index);
-      p.dataset.chapterFile = file;
-      p.dataset.chapterTitle = title;
-      p.classList.add('collectable-paragraph');
-      if (p.querySelector('.quote-mark')) return;
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'quote-mark';
-      btn.setAttribute('aria-label', '收藏这一句');
-      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7H5a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1H8z"/><path d="M19 7h-3a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1h-3z" transform="translate(-3 0)"/></svg>';
-      btn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        toggleQuote(p);
+  /* 摘句落点的 id 必须带章名：无限流下页面里躺着好几章，
+     只按段号会在块与块之间撞车，「回到这一页」就会跳到别的章去。 */
+  function fileStem(file) {
+    return String(file || '').replace(/\.html$/, '');
+  }
+
+  function quoteAnchorId(file, index) {
+    return 'quote-' + fileStem(file) + '-' + index;
+  }
+
+  function chapterTitleOf(file) {
+    var chapter = (window.CHAPTERS || [])[chapterIndex(file)];
+    return chapter ? chapter.title : document.title;
+  }
+
+
+  function decorateParagraphs(root) {
+    var contents = (root || document).querySelectorAll('.chapter-content');
+    contents.forEach(function(content) {
+      var section = content.closest ? content.closest('.chapter-block') : null;
+      var file = (section && section.getAttribute('data-file')) || getCurrentFileName();
+      var title = chapterTitleOf(file);
+      var index = 0;
+      content.querySelectorAll('p').forEach(function(p) {
+        var text = (p.textContent || '').trim();
+        if (!text) return;
+        index += 1;
+        p.dataset.quoteIndex = String(index);
+        p.dataset.chapterFile = file;
+        p.dataset.chapterTitle = title;
+        p.classList.add('collectable-paragraph');
+        if (p.querySelector('.quote-mark')) return;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'quote-mark';
+        btn.setAttribute('aria-label', '收藏这一句');
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7H5a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1H8z"/><path d="M19 7h-3a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1h-3z" transform="translate(-3 0)"/></svg>';
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          toggleQuote(p);
+        });
+        p.appendChild(btn);
+        refreshParagraphQuoteState(p);
       });
-      p.appendChild(btn);
-      refreshParagraphQuoteState(p);
     });
   }
 
@@ -1366,7 +1605,7 @@
         '<div class="quote-entry-text">' + escapeHtml(item.text) + '</div>' +
         '<div class="quote-entry-meta">' + escapeHtml(item.chapterTitle) + '</div>' +
         '<div class="quote-entry-actions">' +
-          '<a href="' + item.chapterFile + '#quote-' + item.index + '" class="quote-action">回到这一页</a>' +
+          '<a href="' + item.chapterFile + '#' + quoteAnchorId(item.chapterFile, item.index) + '" class="quote-action">回到这一页</a>' +
           '<button type="button" class="quote-action" onclick="copyQuote(\'' + escapeJs(item.id) + '\')">复制</button>' +
           '<button type="button" class="quote-action danger" onclick="removeQuote(\'' + escapeJs(item.id) + '\')">移出</button>' +
         '</div>' +
@@ -1428,9 +1667,14 @@
 
   /* ===== 章末分享 ===== */
 
-  window.shareChapter = function() {
-    var title = document.title;
-    var url = window.location.href;
+  window.shareChapter = function(from) {
+    /* 卡片属于哪一章就分享哪一章：无限流下「当前章」随滚动变，
+       而读者点的可能是屏幕上那一张（比如刚滚过接缝的那一刻）。 */
+    var section = from && from.closest ? from.closest('.chapter-block') : null;
+    var file = (section && section.getAttribute('data-file')) || getCurrentFileName();
+    var chapter = (window.CHAPTERS || [])[chapterIndex(file)];
+    var title = chapter ? chapter.title : document.title;
+    var url = new URL(file, window.location.href).href;
     /* 壳内优先走原生分享（js/native-bridge.js 暴露的 LinyuanApp.share）。
        浏览器里 LinyuanApp 不存在，直接落到下面的 Web Share / 复制链接分支。
        注意顺序：native-bridge 会在壳内补一个 navigator.share，所以这条判断
@@ -1498,7 +1742,7 @@
     var active = getStoredQuotes().some(function(item) { return item.id === id; });
     btn.classList.toggle('active', active);
     p.classList.toggle('quoted', active);
-    p.id = 'quote-' + (p.dataset.quoteIndex || '0');
+    p.id = quoteAnchorId(p.dataset.chapterFile || getCurrentFileName(), p.dataset.quoteIndex || '0');
   }
 
 
@@ -1864,28 +2108,45 @@
     remainTime: 'reader-remaintime'
   };
 
-  var contentSnapshot = null;
+  /* 一章一份快照：无限流下一页里可能有好几章，用单一变量只记得住第一章，
+     后面接上来的章节开关就会失效（或者被第一章的快照整段冲掉）。 */
+
+  var contentSnapshots = [];   /* [{ el, html }] */
 
   var wakeSentinel = null;
 
-
-  function captureContent() {
-    if (contentSnapshot !== null) return;
-    var article = document.querySelector('.chapter-content');
-    if (article) contentSnapshot = article.innerHTML;
+  function snapshotOf(article) {
+    for (var i = 0; i < contentSnapshots.length; i++) {
+      if (contentSnapshots[i].el === article) return contentSnapshots[i];
+    }
+    var snap = { el: article, html: article.innerHTML };
+    contentSnapshots.push(snap);
+    return snap;
   }
 
-  /* 以快照为源重建正文：先做引号替换，再按需包裹对话 */
+  function captureContent(root) {
+    (root || document).querySelectorAll('.chapter-content').forEach(snapshotOf);
+  }
 
-  function renderContentDecorations() {
-    var article = document.querySelector('.chapter-content');
-    if (!article || contentSnapshot === null) return;
+  /* 以快照为源重建正文：先做引号替换，再按需包裹对话。
+     root 给定时只处理它里面的章（新接上来的那一块）。 */
+
+  function renderContentDecorations(root) {
+    contentSnapshots.forEach(function (snap) {
+      if (!snap.el.isConnected) return;
+      if (root && !root.contains(snap.el)) return;
+      renderOneContent(snap);
+    });
+  }
+
+  function renderOneContent(snap) {
+    var article = snap.el;
     if (!readingAids.dialogue && !readingAids.cornerQuotes) {
-      article.innerHTML = contentSnapshot;
+      article.innerHTML = snap.html;
       return;
     }
     var holder = document.createElement('div');
-    holder.innerHTML = contentSnapshot;
+    holder.innerHTML = snap.html;
     var walker = document.createTreeWalker(holder, NodeFilter.SHOW_TEXT, null);
     var nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
@@ -1955,21 +2216,19 @@
     }
   }
 
-  /* 剩余阅读时间：按中文字数折算（约 400 字/分钟），随滚动更新 */
+  /* 剩余阅读时间：按中文字数折算（约 400 字/分钟），随滚动更新。
+     口径是「本章还剩多少」——无限流下一页有好几章，按整页算会一直显示全书。 */
 
   function updateRemainTime() {
     var el = document.getElementById('readerRemain');
     if (!el) return;
     if (!readingAids.remainTime) { el.textContent = ''; return; }
-    var article = document.querySelector('.chapter-content');
+    var block = LY.engine && LY.engine.currentBlock ? LY.engine.currentBlock() : null;
+    var article = (block || document).querySelector('.chapter-content');
     if (!article) { el.textContent = ''; return; }
     var total = (article.textContent || '').replace(/\s+/g, '').length;
-    var sc = document.scrollingElement || document.documentElement;
-    var max = sc.scrollHeight - window.innerHeight;
-    if (max <= 0) { el.textContent = ''; return; }
-    var y = sc.scrollTop || window.scrollY || 0;
-    var ratio = Math.min(1, Math.max(0, y / max));
-    var left = Math.round(total * (1 - ratio));
+    var pct = block && LY.engine.getCurrentProgressPct ? LY.engine.getCurrentProgressPct() : 0;
+    var left = Math.round(total * (1 - pct / 100));
     if (left <= 0) { el.textContent = ''; return; }
     var minutes = left / 400;
     el.textContent = '\u00b7 ' + (minutes < 1 ? '<1' : Math.round(minutes)) + ' \u5206';
@@ -2024,6 +2283,8 @@
   LY.ui = {
     init: init,
     syncProgress: updateProgressFill,
+    onChapterEntered: onChapterEntered,
+    ensureNext: appendNext,
     toast: showToast,
     hideBars: hideBars,
     startAutoClose: startAutoClose,

@@ -23,10 +23,10 @@
     "inLanguage": "zh-CN"
   }
   </script>
-  <link rel="stylesheet" href="../css/style.css?v=73">
-  <script src="../js/native-bridge.js?v=73"></script>
+  <link rel="stylesheet" href="../css/style.css?v=81">
+  <script src="../js/native-bridge.js?v=81"></script>
   <!-- 站内「新章节更新了」横幅（取 announce.json 与 localStorage 比对，每会话一次）。 -->
-  <script src="../js/announce.js?v=73"></script>
+  <script src="../js/announce.js?v=81"></script>
 </head>
 <body class="reading-page">
   <div class="reading-wrapper">
@@ -44,6 +44,9 @@
 
   <div class="reader-tap-area" id="readerTapArea"></div>
 
+  <!-- 阅读流：一章一个 section，往下滚会接上下一章 -->
+  <div id="readingFlow" class="reading-flow">
+  <section class="chapter-block" data-file="chapter-02.html">
   <article class="chapter-content">
     <h1>第二章·前桌</h1>
     <div class="chapter-date">二〇二二年 · 九月十九</div>
@@ -115,17 +118,15 @@
   <div class="chapter-afterglow">
     <div class="afterglow-kicker">这一章的课桌</div>
     <p>晨光落在发梢，身后的目光悄悄追着一个背影。心事慢慢发芽。</p>
-    <button type="button" class="afterglow-share" onclick="shareChapter()">
+    <button type="button" class="afterglow-share" onclick="shareChapter(this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
       分享这一章
     </button>
     <div class="chapter-seal"><span>前桌</span></div>
   </div>
-
-  <div class="chapter-bottom-nav">
-    <a href="chapter-01.html">上一章</a>
-    <a href="chapter-03.html">下一章</a>
+  </section>
   </div>
+
 
   <div class="reader-bottombar" id="readerBottombar">
     <div class="reader-progress-area">
@@ -161,13 +162,13 @@
 
   </div>
 
-  <script src="../js/chapters.js?v=73"></script>
-  <script src="../js/transition.js?v=73"></script>
-  <script src="../js/reader.flags.js?v=73"></script>
-  <script src="../js/reader.dom.js?v=73"></script>
-  <script src="../js/reader.store.js?v=73"></script>
-  <script src="../js/reader.engine.js?v=73"></script>
-  <script src="../js/reader.ui.js?v=73"></script>
-  <script src="../js/reader.js?v=73"></script>
+  <script src="../js/chapters.js?v=81"></script>
+  <script src="../js/transition.js?v=81"></script>
+  <script src="../js/reader.flags.js?v=81"></script>
+  <script src="../js/reader.dom.js?v=81"></script>
+  <script src="../js/reader.store.js?v=81"></script>
+  <script src="../js/reader.engine.js?v=81"></script>
+  <script src="../js/reader.ui.js?v=81"></script>
+  <script src="../js/reader.js?v=81"></script>
 </body>
 </html>

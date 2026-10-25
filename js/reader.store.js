@@ -154,8 +154,13 @@
   }
 
 
+  /** 当前章的标题。
+   *  无限流下页面里躺着好几章，直接取第一个 h1 会永远返回第一章 ——
+   *  所以有章节块时只认探测线所在那一块。 */
   function getCurrentChapterTitle() {
-    var el = document.querySelector('.chapter-content h1');
+    var engine = window.LY && window.LY.engine;
+    var block = engine && engine.currentBlock ? engine.currentBlock() : null;
+    var el = (block || document).querySelector('.chapter-content h1');
     return el ? el.textContent.trim() : document.title;
   }
 

@@ -26,7 +26,8 @@
     autoscroll: true,     /* 自动下滑翻屏 */
     readingAids: true,    /* 阅读辅助四项（对话高亮 / 直角引号 / 常亮 / 剩余时间） */
     anchorRestore: true,  /* 段落锚点恢复位置（关掉则退回按百分比） */
-    backup: true          /* 阅读数据备份与恢复 */
+    backup: true,         /* 阅读数据备份与恢复 */
+    infiniteScroll: true  /* 章末自动接下一章（关掉即回到「一次只装一章」） */
   };
 
   var current = {};

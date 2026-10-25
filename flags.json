@@ -5,6 +5,7 @@
     "autoscroll": true,
     "readingAids": true,
     "anchorRestore": true,
-    "backup": true
+    "backup": true,
+    "infiniteScroll": true
   }
 }

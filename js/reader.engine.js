@@ -39,18 +39,47 @@
   }
 
 
+  /* ===== 章节块 =====
+     无限流把多章接进同一条滚动，于是「当前章」不再等于「当前页面」。
+     判断依据和锚点共用一条探测线（视口上方 15%）：探测线落在哪一块，
+     那一块就是读者正在读的章。单块时它等于整页，与旧算法完全等价。 */
+
+  function blocks() {
+    return document.querySelectorAll('.chapter-block');
+  }
+
+
+  /** @returns {Element|null} */
+  function currentBlock() {
+    var list = blocks();
+    if (!list.length) return null;
+    var probeY = window.innerHeight * PROBE_RATIO;
+    for (var i = list.length - 1; i >= 0; i--) {
+      if (list[i].getBoundingClientRect().top <= probeY) return list[i];
+    }
+    return list[0];
+  }
+
+
   function getCurrentProgressPct() {
-    var dh = document.documentElement.scrollHeight - window.innerHeight;
-    if (dh <= 0) return 0;
-    return clampProgress(Math.round((window.scrollY / dh) * 100));
+    var block = currentBlock();
+    if (!block) return 0;
+    var rect = block.getBoundingClientRect();
+    var span = rect.height - window.innerHeight;
+    /* 一屏就能读完的短章：滚过它的顶端就算读完 */
+    if (span <= 0) return rect.top < 0 ? 100 : 0;
+    return clampProgress(Math.round((-rect.top / span) * 100));
   }
 
 
   function scrollToProgress(pct) {
     pct = clampProgress(pct);
-    var dh = document.documentElement.scrollHeight - window.innerHeight;
-    if (dh <= 0) return;
-    window.scrollTo({ top: (pct / 100) * dh, behavior: 'auto' });
+    var block = currentBlock();
+    if (!block) return;
+    var rect = block.getBoundingClientRect();
+    var top = window.scrollY + rect.top;
+    var span = rect.height - window.innerHeight;
+    window.scrollTo({ top: span <= 0 ? top : top + (pct / 100) * span, behavior: 'auto' });
   }
 
 
@@ -68,7 +97,10 @@
 
 
   function contentParagraphs() {
-    var article = document.querySelector('.chapter-content');
+    var block = currentBlock();
+    var article = block ? block.querySelector('.chapter-content') : null;
+    /* 没有 .chapter-block 的旧页面 / 非阅读页：退回整页，行为与以前一致 */
+    if (!article) article = document.querySelector('.chapter-content');
     if (!article) return [];
     return article.querySelectorAll('p');
   }
@@ -116,11 +148,25 @@
 
   var lastProgressSave = 0;
 
+  /* 上一帧算出的比例。跨章落盘要用它而不是现算：现算的那一刻，
+     探测线已经在新章里了，算出来的是新章的 0。 */
+  var lastPct = 0;
+
+  /* 刚跨进下一章：这一帧的 0 不是「读者回到开头」，是这一章还没开始读。
+     不挡的话，每接一章就把那一章上次读到的地方抹成 0。 */
+  var blockEntryHold = false;
+
   /** @param {number} [pct] 不传就按当前滚动位置算 @param {boolean} [force] 跳过节流与恢复期保护 @returns {void} */
   function saveProgress(pct, force) {
     if (pct === undefined) pct = getCurrentProgressPct();
     pct = clampProgress(pct);
+    lastPct = pct;
     refreshProgressControls(pct);
+    if (blockEntryHold) {
+      if (pct <= 0) return;
+      blockEntryHold = false;
+      force = true;   /* 刚跨章的第一笔要立刻落盘，别被 320ms 节流吞掉 */
+    }
     // localStorage 是同步磁盘写入：滚动时每帧都写会掉帧，节流到约 3 次/秒。
     // 页面隐藏/卸载时传 force=true 补最后一把，保证离开前进度是准的。
     var now = Date.now();
@@ -154,6 +200,22 @@
      高度一变就按锚点重新落位。只要用户自己滚过，全部让位。
      为什么不一次到位：正文高度取决于字体度量与图片，字体没就位时算出来的
      段落位置会偏低，锚点会把人送到错的地方。 */
+
+  /* ===== 跨章：探测线换块了就把「当前章」换掉 =====
+     顺序不能颠倒 —— 先把上一章按上一帧的位置落盘（此时 chapterId 还是旧的），
+     再换 id，再让界面去同步标题 / URL / 顶栏。反了就是上一章的进度被写成新章的值。 */
+  function syncBlockChapter() {
+    var block = currentBlock();
+    if (!block) return;
+    var file = block.getAttribute('data-file');
+    if (!file || file === LY.store.getCurrentFileName()) return;
+
+    saveProgress(lastPct, true);
+    LY.store.setChapterId(file);
+    blockEntryHold = true;
+    if (LY.ui && LY.ui.onChapterEntered) LY.ui.onChapterEntered(file);
+  }
+
 
   function restoreProgress() {
     var pct = clampProgress(localStorage.getItem('reader-pos-' + chapterId()));
@@ -253,6 +315,7 @@
       scrollScheduled = true;
       requestAnimationFrame(function() {
         scrollScheduled = false;
+        syncBlockChapter();
         saveProgress();
       });
     }, { passive: true });
@@ -360,7 +423,18 @@
     var doc = document.documentElement;
     var max = doc.scrollHeight - window.innerHeight;
     var y = window.scrollY || doc.scrollTop || 0;
-    if (y >= max - 1) { stopAutoScroll(true); return; } /* 到章末自动停 */
+    if (y >= max - 1) {
+      /* 无限流：章末不是尽头。先让界面续下一章，续上了就继续滚；
+         确实没有下一章才停。 */
+      if (LY.ui && LY.ui.ensureNext && LY.ui.ensureNext()) {
+        autoScroll.pos = y;
+        autoScroll.lastT = 0;
+        autoScroll.raf = requestAnimationFrame(autoScrollStep);
+        return;
+      }
+      stopAutoScroll(true);
+      return;
+    }
     /* 用户手动滚动接管：与累积值偏差超过 3px 说明不是我们滚的，以实际位置为准，
        避免自动滚动把用户的手指操作"顶回去"。 */
     if (Math.abs(y - Math.round(autoScroll.pos)) > 3) autoScroll.pos = y;
@@ -461,6 +535,8 @@
 
   LY.engine = {
     clampProgress: clampProgress,
+    currentBlock: currentBlock,
+    blocks: blocks,
     getCurrentProgressPct: getCurrentProgressPct,
     scrollToProgress: scrollToProgress,
     getCurrentAnchor: getCurrentAnchor,
