@@ -251,6 +251,10 @@ const tpl = `<!DOCTYPE html>
   }
   </script>
   <link rel="stylesheet" href="../css/style.css?v=${ASSET_V}">
+  <!-- 原生壳能力补丁（剪贴板 / 原生分享 / blob 导出）。章节页没有 theme.js，
+       所以紧跟样式表；它必须早于正文末尾的 reader.* 模块执行 —— 那些模块
+       会直接使用 navigator.clipboard 与 navigator.share。 -->
+  <script src="../js/native-bridge.js?v=${ASSET_V}"></script>
 </head>
 <body class="reading-page">
   <div class="reading-wrapper">

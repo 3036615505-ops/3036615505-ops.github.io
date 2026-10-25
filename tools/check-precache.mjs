@@ -66,7 +66,37 @@ for (const r of rows) {
 console.log(`\n合计 ${(totalBytes / 1024).toFixed(1)} KB（未压缩）`);
 
 /* 顺带检查：transition.js 这类新增脚本是否被所有需要的页面引用 */
+
+/**
+ * 递归收集仓库内所有 .html（相对仓库根的 POSIX 路径）。
+ *
+ * <p>为什么动态收集而不是写死页面清单：清单一旦写死，加了新章节 / 新人物页就
+ * 悄悄漏检。之前 bump-assets.mjs 与这里各维护一份清单就漂移过（6 个章节页、
+ * 17 个人物页、quotes、书架页，一共 27 个，写死必漏）。
+ *
+ * @param {string} dir 起始目录（绝对路径）。
+ * @param {string[]} out 累积结果。
+ * @returns {string[]} 相对路径列表。
+ */
+function walkHtml(dir, out = []) {
+  for (const name of fs.readdirSync(dir)) {
+    if (name === '.git' || name === 'node_modules') continue;
+    const p = path.join(dir, name);
+    const st = fs.statSync(p);
+    if (st.isDirectory()) walkHtml(p, out);
+    else if (/\.html?$/i.test(name)) out.push(path.relative(ROOT, p).replace(/\\/g, '/'));
+  }
+  return out;
+}
+
+const ALL_PAGES = walkHtml(ROOT).sort();
+
 const needed = [
+  /* native-bridge.js 必须出现在**每一个**页面里。
+     它是壳内剪贴板 / 原生分享 / 导出落地的唯一入口（v1.9.0 起补丁从 APK 的
+     BRIDGE_SHIM_JS 下沉到站点），漏掉任何一页，那一页在壳里这三个功能就静默失效，
+     而且页面本身不会报错 —— 正是最容易漏检的一类漂移。 */
+  ['/js/native-bridge.js', ALL_PAGES],
   ['/js/transition.js', ['index.html', 'novel/index.html', 'novel/chapter-01.html', 'novel/chapter-02.html']],
   ['/js/reader.js', ['novel/chapter-01.html', 'novel/chapter-02.html']],
   ['/js/chapters.js', ['index.html', 'novel/index.html', 'novel/chapter-01.html', 'novel/chapter-02.html']],
@@ -106,7 +136,10 @@ if (fs.existsSync(TEMPLATE) && fs.existsSync(NOVEL_DIR)) {
   const sample = pages[0];
   if (sample) {
     const html = fs.readFileSync(path.join(NOVEL_DIR, sample), 'utf8');
-    const required = [...new Set(html.match(/js\/[a-z.]+?\.js/g) || [])];
+    /* 字符类必须含 `-`：js/native-bridge.js 这类带连字符的文件名原先匹配不到，
+       等于「模板比对」对最新下沉的桥接补丁完全没有约束力（删掉模板里那行也全绿）。
+       `-` 放在字符类最后，免得被当成区间（a-z 与 `-` 相邻会解析错误或语义漂移）。 */
+    const required = [...new Set(html.match(/js\/[a-z.-]+?\.js/g) || [])];
     const tpl = fs.readFileSync(TEMPLATE, 'utf8');
     const missing = required.filter((src) => tpl.indexOf(src) === -1);
     if (missing.length) {

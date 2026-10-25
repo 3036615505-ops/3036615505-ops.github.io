@@ -19,7 +19,7 @@
  *      NETWORK_TIMEOUT（500ms），所以它们必须走缓存优先。
  *   3. /app/ 前缀（安装包、version.json）不拦截，直接交给网络
  */
-var CACHE = 'linyuan-v55';
+var CACHE = 'linyuan-v56';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
@@ -94,6 +94,10 @@ var PRECACHE = [
   '/js/reader.js',
   '/js/chapters.js',
   '/js/theme.js',
+  /* 原生壳能力补丁（v1.9.0 起从 APK 里的 BRIDGE_SHIM_JS 下沉到站点）。
+     必须预缓存：它是 <head> 里的渲染路径脚本，弱网时不该等网络；
+     且壳内的剪贴板 / 分享 / 导出全靠它，缺了等于这三个功能消失。 */
+  '/js/native-bridge.js',
   '/js/lightbox.js',
   '/quotes.html',
   '/novel/',
@@ -117,7 +121,7 @@ var PRECACHE = [
   '/assets/portrait-sujiwen-1024.webp',
   '/assets/portrait-jiangzhenmo-1024.webp',
   '/assets/portrait-linxihe-1024.webp',
-  '/assets/portrait-yeyulan-1024.webp',,
+  '/assets/portrait-yeyulan-1024.webp',
   '/novel/character-linshu.html',
   '/novel/character-nanheng.html',
   '/novel/character-jiangbuqiu.html',

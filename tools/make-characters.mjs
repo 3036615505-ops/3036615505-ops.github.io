@@ -130,6 +130,9 @@ function headBlock(title, description, ogTitle, ogDescription) {
     '  <link rel="manifest" href="../manifest.json">\n' +
     '  <link rel="stylesheet" href="../css/style.css?v=' + ASSET_V + '">\n' +
     '  <script src="../js/theme.js?v=' + ASSET_V + '"></script>\n' +
+    // 原生壳能力补丁（剪贴板 / 原生分享 / blob 导出）。必须紧跟 theme.js：
+    // 它在浏览器里会立刻 return，只有壳内才改写 navigator 行为。
+    '  <script src="../js/native-bridge.js?v=' + ASSET_V + '"></script>\n' +
     '</head>\n';
 }
 

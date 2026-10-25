@@ -1177,6 +1177,19 @@
   window.shareChapter = function() {
     var title = document.title;
     var url = window.location.href;
+    /* 壳内优先走原生分享（js/native-bridge.js 暴露的 LinyuanApp.share）。
+       浏览器里 LinyuanApp 不存在，直接落到下面的 Web Share / 复制链接分支。
+       注意顺序：native-bridge 会在壳内补一个 navigator.share，所以这条判断
+       必须放在 navigator.share 之前，否则壳内拿到的是二手代理。 */
+    var bridge = window.LinyuanApp;
+    if (bridge && typeof bridge.share === 'function') {
+      try {
+        bridge.share('临渊羡鱼 —— ' + title, url);
+        return;
+      } catch (e) {
+        /* 原生桥异常（极少见）：继续走后面的通用路径，不要静默失败 */
+      }
+    }
     if (navigator.share) {
       navigator.share({ title: title, text: '临渊羡鱼 —— ' + title, url: url }).catch(function() {});
       return;
