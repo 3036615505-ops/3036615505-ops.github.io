@@ -1353,16 +1353,21 @@ a { color: inherit; text-decoration: none; }
   transition: width 0.5s ease;
 }
 
-/* 总览中的章节进度缩略 */
+/* 总览中的章节进度缩略
+   章数会一直涨，所以缝隙与圆角由 JS 按章数写进 --seg-gap / --seg-radius 收缩：
+   12 章以内 6px、24 章以内 4px、48 章以内 2px、再往上 1px。
+   固定 6px 时约 50 章就会「缝隙总和 > 卡片宽度」，整行被撑破。 */
 .overview-chapter-row {
   display: flex;
-  gap: 6px;
+  gap: var(--seg-gap, 6px);
+  overflow: hidden;
 }
 
 .overview-chapter-row .dot {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 2px;
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--seg-radius, 3px);
   background: var(--border-light);
   transition: background 0.3s;
 }

@@ -24,8 +24,8 @@
     "author": { "@type": "Person", "name": "叶南衡" }
   }
   </script>
-  <link rel="stylesheet" href="../css/style.css?v=58">
-  <script src="../js/theme.js?v=58"></script>
+  <link rel="stylesheet" href="../css/style.css?v=59">
+  <script src="../js/theme.js?v=59"></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame">
@@ -149,8 +149,8 @@
        弱网下 chapters.js 没回来之前整页白屏（书架页首屏可感知卡顿）。
        放在这里首屏骨架先画出来；但必须保持在下面依赖 CHAPTERS 的内联脚本之前
        （经典脚本按文档顺序执行，内联脚本是同步 IIFE，等不到任何异步回调）。 -->
-  <script src="../js/chapters.js?v=58"></script>
-  <script src="../js/transition.js?v=58"></script>
+  <script src="../js/chapters.js?v=59"></script>
+  <script src="../js/transition.js?v=59"></script>
 
   <script>
   (function() {
@@ -272,7 +272,12 @@
 
         var chaptersEl = document.getElementById('overviewChapters');
         if (chaptersEl && chapterData.length > 0) {
-          var html = '<div class="overview-chapter-row">';
+          /* 章数只增不减，缝隙必须跟着收：固定 6px 时约 50 章就撑破卡片。
+             分档与 .overview-chapter-row 的注释一致。 */
+          var n = chapterData.length;
+          var segGap = n > 48 ? 1 : (n > 24 ? 2 : (n > 12 ? 4 : 6));
+          var segRadius = n > 24 ? 2 : 3;
+          var html = '<div class="overview-chapter-row" style="--seg-gap:' + segGap + 'px;--seg-radius:' + segRadius + 'px">';
           chapterData.forEach(function(ch) {
             var cls = ch.pct >= 100 ? 'dot done' : (ch.pct > 0 ? 'dot reading' : 'dot');
             var style = ch.pct > 0 && ch.pct < 100 ? ' style="background:linear-gradient(90deg,var(--accent) ' + ch.pct + '%,var(--border-light) ' + ch.pct + '%)"' : '';
