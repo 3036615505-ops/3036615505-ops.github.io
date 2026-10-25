@@ -49,9 +49,20 @@ const CANDIDATES = {
     '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
     '/Applications/Chromium.app/Contents/MacOS/Chromium'
   ],
-  linux: ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/microsoft-edge']
+  linux: [
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/opt/google/chrome/chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/microsoft-edge'
+  ]
 };
-const browserPath = (CANDIDATES[process.platform] || []).find(p => fs.existsSync(p));
+/* 显式指定优先：CI 用 setup-chrome 装下来的那份走环境变量，本机也可以用 CHROME_BIN 指自己那份。
+   排在候选列表前面 —— 镜像自带的 Chrome 版本随时会变，显式路径才是可复现的。 */
+const envBrowser = [process.env.CHROME_BIN, process.env.CHROME_PATH, process.env.PUPPETEER_EXECUTABLE_PATH]
+  .find(p => p && fs.existsSync(p));
+const browserPath = envBrowser || (CANDIDATES[process.platform] || []).find(p => fs.existsSync(p));
 
 if (typeof WebSocket === 'undefined' || !browserPath) {
   const reason = typeof WebSocket === 'undefined'
@@ -94,9 +105,9 @@ await new Promise((resolve, reject) => {
 });
 
 /* ---------- 启动浏览器 ---------- */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'linyuan-e2e-'));
-const browser = spawn(browserPath, [
-  '--headless=new',
+const BASE_ARGS = [
   '--remote-debugging-port=' + CDP_PORT,
   '--user-data-dir=' + profile,
   '--no-first-run', '--no-default-browser-check', '--no-proxy-server',
@@ -105,32 +116,70 @@ const browser = spawn(browserPath, [
   /* GitHub Actions 的容器里没有 user namespace，沙箱起不来；这两个参数是 CI 标配 */
   ...(process.env.CI ? ['--no-sandbox', '--disable-dev-shm-usage'] : []),
   'about:blank'
-], { stdio: 'ignore' });
+];
+/* Chrome 131 之后 `--headless=new` 的写法被逐步收敛，个别版本会直接拒收；
+   两条都试一遍，谁先起得来算谁 —— 比钉死一个版本稳。 */
+const LAUNCH_VARIANTS = [
+  ['--headless=new', ...BASE_ARGS],
+  ['--headless', ...BASE_ARGS]
+];
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+let browser = null;
+let browserLog = '';
 
-function cleanup(code) {
+function launch(args) {
+  browserLog = '';
+  const child = spawn(browserPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  /* 以前用 stdio:'ignore'，浏览器挂掉时一个字都不剩，只能干看「端口没起来」。
+     现在把输出留住 —— 下一次失败能直接告诉我们是哪一步不对。 */
+  const collect = buf => { browserLog = (browserLog + buf.toString()).slice(-4000); };
+  child.stdout.on('data', collect);
+  child.stderr.on('data', collect);
+  child.on('error', e => { browserLog += '\n[spawn error] ' + e.message; });
+  return child;
+}
+
+async function waitForTarget(limitMs) {
+  const deadline = Date.now() + limitMs;
+  while (Date.now() < deadline) {
+    try {
+      const list = await (await fetch(`http://127.0.0.1:${CDP_PORT}/json/list`)).json();
+      const t = Array.isArray(list) ? list.find(x => x.type === 'page') : null;
+      if (t) return t;
+    } catch (e) { /* 端口还没开 */ }
+    await sleep(250);
+  }
+  return null;
+}
+
+async function cleanup(code) {
   try { browser.kill(); } catch (e) { /* 已退出 */ }
   try { server.close(); } catch (e) { /* 已关闭 */ }
   /* 浏览器进程退出前还握着 Crashpad 文件，删不掉就留给系统临时目录，
      不能因为清理失败把测试结果判成失败 */
-  setTimeout(() => {
-    try { fs.rmSync(profile, { recursive: true, force: true }); } catch (e) { /* EBUSY，忽略 */ }
-    process.exit(code);
-  }, 300);
+  await sleep(300);
+  try { fs.rmSync(profile, { recursive: true, force: true }); } catch (e) { /* EBUSY，忽略 */ }
+  process.exit(code);
 }
 
 let target = null;
-for (let i = 0; i < 60 && !target; i++) {
-  try {
-    const list = await (await fetch(`http://127.0.0.1:${CDP_PORT}/json/list`)).json();
-    target = list.find(t => t.type === 'page');
-  } catch (e) { /* 还没起来 */ }
-  if (!target) await sleep(250);
+for (let i = 0; i < LAUNCH_VARIANTS.length && !target; i++) {
+  browser = launch(LAUNCH_VARIANTS[i]);
+  target = await waitForTarget(15000);
+  if (target) break;
+  try { browser.kill('SIGKILL'); } catch (e) { /* 已退出 */ }
+  await sleep(300);
+  if (i === 0) console.log('↻ 首次启动没等到调试端口，改用 --headless 重试');
 }
 if (!target) {
   console.error('✗ 浏览器调试端口没起来，无法继续');
-  cleanup(1);
+  console.error('  浏览器: ' + browserPath);
+  console.error('  参数: ' + LAUNCH_VARIANTS.map(v => v[0]).join(' / '));
+  if (browserLog.trim()) console.error('  浏览器输出:\n' + browserLog.trim());
+  else console.error('  浏览器没有任何输出（可能被杀，或参数被静默拒绝）');
+  /* 注意：cleanup 里是 process.exit，必须 await —— 否则会继续往下跑到
+     target.webSocketDebuggerUrl 上抛 TypeError，把真正的错误盖掉。 */
+  await cleanup(1);
 }
 
 const ws = new WebSocket(target.webSocketDebuggerUrl);
@@ -438,4 +487,4 @@ check('全程无未捕获异常', pageErrors.length === 0, pageErrors.join(' | '
 
 const passed = results.filter(r => r.ok).length;
 console.log('\n' + (passed === results.length ? '✓ 全部通过' : '✗ 有失败') + `：${passed}/${results.length}`);
-cleanup(passed === results.length ? 0 : 1);
+await cleanup(passed === results.length ? 0 : 1);
