@@ -486,9 +486,10 @@ const shelf = await evaluate(`({
   }
 })`);
 const pills = shelf.pills || [];
-check('足迹显示为 4 枚指标', pills.length === 4, JSON.stringify(pills) + ' debug=' + JSON.stringify(shelf.debug));
+check('足迹显示为 3 枚指标（已读/摘句/时长）', pills.length === 3, JSON.stringify(pills) + ' debug=' + JSON.stringify(shelf.debug));
 check('时长格式正确（1 时 30 分）', pills.some(t => t.indexOf('1 时 30 分') >= 0), JSON.stringify(pills));
-check('连续天数从昨天起算（今天未读不断签）', pills.some(t => t.indexOf('2 天') >= 0), JSON.stringify(pills));
+/* 「连续 N 天」这枚指标已按设计移除，别被后续改动悄悄加回来 */
+check('不再显示「连续」天数', !pills.some(t => t.indexOf('连续') >= 0), JSON.stringify(pills));
 
 section('全局');
 check('全程无未捕获异常', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 300));

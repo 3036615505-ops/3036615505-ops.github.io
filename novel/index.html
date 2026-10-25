@@ -292,8 +292,7 @@
         document.getElementById('novelFootprintsMetrics').innerHTML = [
           renderMetric('已读', readPct + '%'),
           renderMetric('摘句', footprints.quotesCount + ' 句'),
-          renderMetric('时长', formatDuration(footprints.seconds)),
-          renderMetric('连续', footprints.streak + ' 天')
+          renderMetric('时长', formatDuration(footprints.seconds))
         ].join('');
       }
 
@@ -315,7 +314,7 @@
     }
 
     function readFootprints() {
-      var empty = { daysCount: 0, quotesCount: 0, seconds: 0, streak: 0, lastChapterTitle: '' };
+      var empty = { daysCount: 0, quotesCount: 0, seconds: 0, lastChapterTitle: '' };
       var raw = localStorage.getItem('reader-footprints');
       if (!raw) return empty;
       try {
@@ -324,7 +323,6 @@
           daysCount: Array.isArray(data.days) ? data.days.length : 0,
           quotesCount: Array.isArray(data.quotes) ? data.quotes.length : 0,
           seconds: typeof data.time === 'number' ? data.time : 0,
-          streak: calcStreak(data.days),
           lastChapterTitle: data.lastChapterTitle || ''
         };
       } catch (err) {
@@ -341,28 +339,6 @@
       var h = Math.floor(min / 60);
       var m = min % 60;
       return m ? h + ' 时 ' + m + ' 分' : h + ' 时';
-    }
-
-    // 连续天数：从今天往回数；今天还没读就从昨天起算（当天断了才算断）
-    function calcStreak(days) {
-      if (!Array.isArray(days) || !days.length) return 0;
-      var set = {};
-      days.forEach(function(d) { set[d] = 1; });
-      var d = new Date();
-      if (!set[dayToken(d)]) {
-        d.setDate(d.getDate() - 1);
-        if (!set[dayToken(d)]) return 0;
-      }
-      var n = 0;
-      while (set[dayToken(d)]) {
-        n++;
-        d.setDate(d.getDate() - 1);
-      }
-      return n;
-    }
-
-    function dayToken(d) {
-      return [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('-');
     }
 
     function getFootprintsKicker(readPct, daysCount) {
