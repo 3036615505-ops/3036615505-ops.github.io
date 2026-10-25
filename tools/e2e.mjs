@@ -139,9 +139,12 @@ function launch(args) {
   return child;
 }
 
-async function waitForTarget(limitMs) {
+async function waitForTarget(limitMs, child) {
   const deadline = Date.now() + limitMs;
   while (Date.now() < deadline) {
+    /* 浏览器提前退出了就别再空等 —— 之前只能干耗满 15s 再报「端口没起来」，
+       既慢又把「进程崩了」和「只是慢」混成一件事。 */
+    if (child && child.exitCode !== null) return null;
     try {
       const list = await (await fetch(`http://127.0.0.1:${CDP_PORT}/json/list`)).json();
       const t = Array.isArray(list) ? list.find(x => x.type === 'page') : null;
@@ -163,10 +166,11 @@ async function cleanup(code) {
 }
 
 let target = null;
+let launchedWith = '';
 for (let i = 0; i < LAUNCH_VARIANTS.length && !target; i++) {
   browser = launch(LAUNCH_VARIANTS[i]);
-  target = await waitForTarget(15000);
-  if (target) break;
+  target = await waitForTarget(15000, browser);
+  if (target) { launchedWith = LAUNCH_VARIANTS[i][0]; break; }
   try { browser.kill('SIGKILL'); } catch (e) { /* 已退出 */ }
   await sleep(300);
   if (i === 0) console.log('↻ 首次启动没等到调试端口，改用 --headless 重试');
@@ -181,6 +185,10 @@ if (!target) {
      target.webSocketDebuggerUrl 上抛 TypeError，把真正的错误盖掉。 */
   await cleanup(1);
 }
+/* 把「实际生效的启动参数」打出来：哪天 Chrome 不再认 --headless=new，
+   日志里能直接看到它退到了第二条，而不是默默变慢。 */
+console.log('浏览器就绪：' + launchedWith);
+if (verbose) console.log('  可执行: ' + browserPath);
 
 const ws = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject; });
