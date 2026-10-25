@@ -283,10 +283,15 @@ const restored = await evaluate(`(() => {
 check('重载后回到原位置（±6%）', Math.abs(restored.pct - 50) <= 6, JSON.stringify(restored));
 
 const anchorBefore = await evaluate(`JSON.parse(localStorage.getItem('${ANCHOR_KEY}')).i`);
+const fsBefore = await evaluate(`parseFloat(getComputedStyle(document.querySelector('.chapter-content')).fontSize)`);
 await evaluate(`changeFontSize(-1); 1`);
 await sleep(900);
 const anchorAfter = await evaluate(`JSON.parse(localStorage.getItem('${ANCHOR_KEY}') || '{}').i`);
+const fsAfter = await evaluate(`parseFloat(getComputedStyle(document.querySelector('.chapter-content')).fontSize)`);
 check('改字号后仍停在同一段（视线不漂）', Math.abs(anchorAfter - anchorBefore) <= 1, `before=${anchorBefore} after=${anchorAfter}`);
+/* 字号数值只在 CSS 的 [data-fontsize] 里定义一次；JS 只落属性。
+   这条防止有人把内联 setProperty 加回来 —— 那样 CSS 又变成永不生效的死代码。 */
+check('改字号真的生效（数值由 CSS 单一数据源给出）', fsAfter < fsBefore, `${fsBefore}px → ${fsAfter}px`);
 
 section('阅读页 · 面板与主题');
 await evaluate(`openDirectory(); 1`);

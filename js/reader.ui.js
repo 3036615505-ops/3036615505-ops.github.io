@@ -55,7 +55,10 @@
 
   var fontSizeLabels = { small: '小', medium: '中', large: '大' };
 
-  var fontSizeValues = { small: 19, medium: 22, large: 25 };
+  /* 字号的具体像素值只在 css/style.css 的 [data-fontsize="…"] 里定义一处。
+     这里曾经同时写内联 --font-size-base，和 CSS 那三条各存一份 19/22/25：
+     内联优先级更高，CSS 反而成了永不生效的死代码，改一处忘另一处就悄悄分叉。
+     现在 JS 只负责落属性，数值归 CSS 一家管。 */
 
   /* 字体四选：黑体（强制中文无衬线）/ 系统（跟随手机系统字体）/ 楷体（站点自带）
      / 自定义（读者自己导入的字体文件）。旧的「衬线」已移除——安卓几乎没有中文衬线
@@ -253,7 +256,6 @@
 
   function applyFontSize(size) {
     document.documentElement.setAttribute('data-fontsize', size);
-    document.documentElement.style.setProperty('--font-size-base', (fontSizeValues[size] || 25) + 'px');
     state.fontSize = size;
     localStorage.setItem('reader-fontsize', size);
     var el = document.getElementById('fontSizeLabel');
