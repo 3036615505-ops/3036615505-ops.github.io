@@ -524,10 +524,22 @@ const shelf = await evaluate(`({
       over: row.scrollWidth - row.clientWidth
     };
   })(),
-  chapters: (window.CHAPTERS || []).length
+  chapters: (window.CHAPTERS || []).length,
+  /* 书讯两行：第一行「连载中 · N 章 · N 字」，第二行「已读 N%」且不带前导「·」 */
+  stats: (function() {
+    var el = document.querySelector('.detail-meta .stats');
+    if (!el) return null;
+    var lines = Array.from(el.querySelectorAll('.stats-line')).map((n) => n.textContent);
+    return { lines: lines, lineCount: lines.length, html: el.innerHTML.length };
+  })()
 })`);
 const pills = shelf.pills || [];
 check('足迹显示为 3 枚指标（已读/摘句/时长）', pills.length === 3, JSON.stringify(pills) + ' debug=' + JSON.stringify(shelf.debug));
+check('书讯拆成两行，「已读」在第二行且不带前导「·」',
+  !!shelf.stats && shelf.stats.lineCount === 2
+    && /^连载中 · \d+ 章 · \d+ 字$/.test(shelf.stats.lines[0] || '')
+    && /^已读 \d+%$/.test(shelf.stats.lines[1] || ''),
+  JSON.stringify(shelf.stats));
 check('时长格式正确（1 时 30 分）', pills.some(t => t.indexOf('1 时 30 分') >= 0), JSON.stringify(pills));
 /* 「连续 N 天」这枚指标已按设计移除，别被后续改动悄悄加回来 */
 check('不再显示「连续」天数', !pills.some(t => t.indexOf('连续') >= 0), JSON.stringify(pills));

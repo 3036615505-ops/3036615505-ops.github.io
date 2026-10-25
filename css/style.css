@@ -1267,6 +1267,16 @@ a { color: inherit; text-decoration: none; }
   line-height: 1.6;
 }
 
+/* 书架页书讯两行：第一行「连载中 · N 章 · N 字」，第二行「已读 N%」。
+   第二行不带前导「·」，并稍微提一档存在感（仍用达标的 muted 色系）。 */
+.detail-meta .stats .stats-line {
+  display: block;
+}
+
+.detail-meta .stats .stats-read {
+  color: var(--text-secondary);
+}
+
 .detail-desc {
   padding: 18px 22px;
   background: var(--card-warm);
