@@ -1116,7 +1116,9 @@
      底部工具栏那对链接、键盘 ←→、左右轻扫都走同一条链路（navigateToChapter）。 */
 
   var flowAppending = {};
-  var APPEND_AHEAD = 900;      /* 距页底多近开始接 */
+  var flowPrepending = {};
+  var APPEND_AHEAD = 900;      /* 距页底多近开始往下接 */
+  var PREPEND_AHEAD = 240;     /* 距页顶多近、且确实在往上滑，就开始往上接 */
   var PREFETCH_AHEAD = 2600;   /* 更早先把 HTML 取回来，接的时候不等待 */
 
   /* 关掉即回到「一次只装一章」：章节页本身仍然可用，只是不再自动续 */
@@ -1164,6 +1166,18 @@
     return next ? next.file : '';
   }
 
+  function prevFileOf(file) {
+    var list = window.CHAPTERS || [];
+    var i = chapterIndex(file);
+    return i > 0 ? list[i - 1].file : '';
+  }
+
+  function firstBlockFile() {
+    var list = document.querySelectorAll('.chapter-block');
+    var first = list[0];
+    return first ? first.getAttribute('data-file') : getCurrentFileName();
+  }
+
   function scrollToBlock(block) {
     if (!block) return;
     /* 这是读者明确要去的地方：告诉 engine「他已经动了」，
@@ -1179,6 +1193,28 @@
     requestAnimationFrame(jump);
   }
 
+  /* 取回来的整章 → 一个可插入的章节块。上下接续共用这一步，
+     免得「往下接」和「往上接」各写一份、各自跑偏。 */
+  function buildSection(doc, file) {
+    var content = doc.querySelector('.chapter-content');
+    if (!content) throw new Error('章节内容缺失');
+    var glow = doc.querySelector('.chapter-afterglow');
+
+    var section = document.createElement('section');
+    section.className = 'chapter-block';
+    section.setAttribute('data-file', file);
+    section.appendChild(document.importNode(content, true));
+    if (glow) section.appendChild(document.importNode(glow, true));
+
+    decorateParagraphs(section);
+    /* 新块也要吃到阅读辅助与自定义字体，否则翻过接缝字体就变回去了 */
+    captureContent(section);
+    renderContentDecorations(section);
+    applyFontTo(section);
+    return section;
+  }
+
+
   /* 把下一章接到链条末尾。
      返回 true 表示「确实有下一章，已接上或正在接」——自动滚屏据此决定要不要停。
      then(section) 在接上之后调用，用于「跳过去」这种需要落位的场景。 */
@@ -1193,24 +1229,10 @@
 
     flowAppending[file] = true;
     fetchChapterDoc(file).then(function (doc) {
-      var content = doc.querySelector('.chapter-content');
-      if (!content) throw new Error('章节内容缺失');
-      var glow = doc.querySelector('.chapter-afterglow');
       var flow = flowRoot();
       if (!flow) throw new Error('没有阅读流容器');
-
-      var section = document.createElement('section');
-      section.className = 'chapter-block';
-      section.setAttribute('data-file', file);
-      section.appendChild(document.importNode(content, true));
-      if (glow) section.appendChild(document.importNode(glow, true));
+      var section = buildSection(doc, file);
       flow.appendChild(section);
-
-      decorateParagraphs(section);
-      /* 新接上来的块也要吃到阅读辅助与自定义字体，否则翻过接缝字体就变回去了 */
-      captureContent(section);
-      renderContentDecorations(section);
-      applyFontTo(section);
       delete flowAppending[file];
       if (then) then(section);
     }).catch(function () {
@@ -1224,17 +1246,105 @@
   }
 
 
+  /* 把上一章插到链条开头（往上接续）。
+     往上方插内容会把整篇推下去，所以插入前记下「正在读的那一块」在视口里的位置，
+     插完把差值补回滚动位置 —— 读者眼前那一行必须留在原地，否则就是「跳一下」。
+     settle(section) 在补偿之后调用，用于「跳到上一章开头」这种需要主动落位的场景。 */
+  function prependPrev(settle) {
+    if (!flowEnabled()) return false;
+    var file = prevFileOf(firstBlockFile());
+    if (!file || blockByFile(file)) return false;
+    if (flowPrepending[file]) {
+      if (settle) setTimeout(function() { var b = blockByFile(file); if (b) settle(b); }, 400);
+      return true;
+    }
+
+    flowPrepending[file] = true;
+    fetchChapterDoc(file).then(function (doc) {
+      var flow = flowRoot();
+      if (!flow) throw new Error('没有阅读流容器');
+
+      /* 锚：现在正在读的那一块（插之前是第一个） */
+      var anchor = document.querySelector('.chapter-block');
+      var beforeTop = anchor ? anchor.getBoundingClientRect().top : 0;
+
+      var section = buildSection(doc, file);
+      flow.insertBefore(section, flow.firstChild);
+
+      if (settle) {
+        /* 明确要去那一章（键盘 ← / 目录 / 底部「上一章」）：让调用方落位，
+           这里不能再补一次滚动，否则两次滚动会打架、人被带过头。 */
+        settle(section);
+      } else if (anchor) {
+        var shift = function() {
+          var delta = anchor.getBoundingClientRect().top - beforeTop;
+          if (Math.abs(delta) > 0.5) window.scrollBy(0, delta);
+        };
+        shift();
+        /* 字体度量、图片撑开都会在下一帧才定稿，再补一次 */
+        requestAnimationFrame(shift);
+        setTimeout(shift, 160);
+      }
+
+      delete flowPrepending[file];
+    }).catch(function () {
+      delete flowPrepending[file];
+      delete chapterDocs[file];
+    });
+
+    return true;
+  }
+
+
   function initFlow() {
     if (!document.querySelector('.chapter-content')) return;
 
     var scheduled = false;
+    var lastY = window.scrollY;
+    var lastUpGesture = 0;
+    var touchY = 0;
+
+    window.addEventListener('wheel', function (e) {
+      if (e.deltaY < 0) lastUpGesture = Date.now();
+    }, { passive: true });
+
+    window.addEventListener('touchstart', function (e) {
+      if (e.touches.length === 1) touchY = e.touches[0].clientY;
+    }, { passive: true });
+
+    window.addEventListener('touchmove', function (e) {
+      if (e.touches.length !== 1) return;
+      var cy = e.touches[0].clientY;
+      if (cy > touchY + 1) lastUpGesture = Date.now();   /* 手指往下拖 = 内容往上走 */
+      touchY = cy;
+    }, { passive: true });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowUp' || e.key === 'PageUp') lastUpGesture = Date.now();
+    });
+
     window.addEventListener('scroll', function () {
       if (scheduled) return;
       scheduled = true;
       requestAnimationFrame(function () {
         scheduled = false;
         if (!flowEnabled()) return;
-        var remain = document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
+
+        var y = window.scrollY;
+        /* 只认「真的往上滑」：打开页面时恢复位置也是滚动，但那是往下跳，
+           不能因为恰好落在章首就把上一章加载进来。 */
+        var goingUp = y < lastY - 2;
+        lastY = y;
+
+        /* 光「位置变小」不算上滑：加载时的滚动恢复、地址栏收起、滚动条取整
+           都会让 y 变小一下，那会平白无故把上一章拉进来。
+           必须同时有「真的往上滑」的手势（滚轮向上 / 手指往下拖 / ↑ PageUp）。 */
+        if (goingUp && y < PREPEND_AHEAD && Date.now() - lastUpGesture < 900 &&
+            prevFileOf(firstBlockFile())) {
+          prependPrev();
+        }
+
+        var remain = document.documentElement.scrollHeight - (y + window.innerHeight);
         if (remain >= PREFETCH_AHEAD) return;
         var next = nextFileOf(lastBlockFile());
         if (!next) return;
@@ -1243,9 +1353,12 @@
       });
     }, { passive: true });
 
-    /* 首屏就装得下整章（短章 or 超高屏）：不用等滚动 */
-    var remain = document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
-    if (remain < APPEND_AHEAD) appendNext();
+    /* 首屏就装得下整章（短章 or 超高屏）：不用等滚动。
+       隔一帧再看 scrollHeight —— 刚 init 时它可能还没算出来，会误判成「很短」。 */
+    requestAnimationFrame(function () {
+      var remain = document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
+      if (remain < APPEND_AHEAD) appendNext();
+    });
   }
 
 
@@ -1277,6 +1390,11 @@
       appendNext(function (section) { scrollToBlock(section); });
       return true;
     }
+    /* 正好是链条开头的上一章：插到上方再过去 */
+    if (flowEnabled() && file === prevFileOf(firstBlockFile())) {
+      prependPrev(function (section) { scrollToBlock(section); });
+      return true;
+    }
     /* 不在链条里：单块时用换章不换页（无白屏）；多块时整页跳转，链条重建 */
     if (document.querySelectorAll('.chapter-block').length <= 1) return swapTo(file, hash);
     window.location.href = new URL(file, window.location.href).href + (hash ? '#' + hash : '');
@@ -1293,9 +1411,9 @@
     }
     var block = blockByFile(target.file);
     if (block) { scrollToBlock(block); return; }
-    /* 往下走就是「接下一章」本身，接上之后落位到那一章的开头 */
+    /* 往下是「接下一章」，往上是「把上一章插到上方」，接上之后落位到那一章开头 */
     if (dir > 0) { appendNext(function (section) { scrollToBlock(section); }); return; }
-    goToChapter(target.file);
+    prependPrev(function (section) { scrollToBlock(section); });
   }
 
 

@@ -269,7 +269,8 @@ section('阅读页 · 位置锚点');
 await evaluate(`localStorage.clear(); location.reload(); 1`);
 await sleep(2000);
 await evaluate(`window.scrollTo(0, (document.documentElement.scrollHeight - innerHeight) * 0.5); 1`);
-await sleep(700);
+/* 1200ms 而不是 700：headless 下 rAF 偶尔被节流，700ms 会读到还没落盘的旧值 */
+await sleep(1200);
 const saved = await evaluate(`({ pos: localStorage.getItem('${POS_KEY}'), anchor: localStorage.getItem('${ANCHOR_KEY}'), y: Math.round(scrollY) })`);
 const savedPos = Number(saved.pos);
 check('滚动后写入进度百分比（40–60）', savedPos > 40 && savedPos < 60, 'pos=' + saved.pos);
@@ -698,7 +699,76 @@ check('跨块摘句 id 不撞车',
   quoteIds.a !== quoteIds.b && quoteIds.a.indexOf('chapter-03') >= 0 && quoteIds.b.indexOf('chapter-04') >= 0,
   JSON.stringify(quoteIds));
 
-/* 末章：滚到底不追加、不报错 */
+/* 往上接：滚到章首继续上滑，把上一章插到上方，且视线不能跳 */
+/* 模拟一次真正的「往上滑」：先给一个上滑手势，再把位置挪回章首。
+   只 scrollTo(0,0) 不算 —— 代码要求同时有手势，否则加载时的滚动恢复会被误判。 */
+async function pullUpTo(top = 0) {
+  await evaluate(`window.dispatchEvent(new WheelEvent('wheel', { deltaY: -120 })); 1`);
+  await evaluate(`window.scrollTo(0, ${top}); 1`);
+}
+
+section('无限流：章首往回接');
+await goto(BASE + '/novel/chapter-03.html');
+await evaluate(`window.scrollTo(0, 600); 1`);
+await sleep(450);
+await pullUpTo();
+await sleep(1600);
+const afterUp = await evaluate(`({
+  blocks: [...document.querySelectorAll('.chapter-block')].map(b => b.dataset.file),
+  y: Math.round(window.scrollY),
+  h0: Math.round(document.querySelectorAll('.chapter-block')[0].getBoundingClientRect().height),
+  top: Math.round(document.querySelectorAll('.chapter-block')[1].getBoundingClientRect().top),
+  cur: LY.store.getCurrentFileName()
+})`);
+check('上滑到章首把上一章插到上方',
+  afterUp.blocks[0] === 'chapter-02.html' && afterUp.blocks[1] === 'chapter-03.html',
+  JSON.stringify(afterUp.blocks));
+/* 补偿到位的判据：滚动量正好等于新插进来的那一块高度，
+   而且正在读的那一块仍停在视口顶端（插入前它就在 0）。 */
+check('插入后滚动量 = 新块高度（视线不跳）', Math.abs(afterUp.y - afterUp.h0) <= 8, JSON.stringify({ y: afterUp.y, h0: afterUp.h0 }));
+check('正在读的那一块仍停在原位', Math.abs(afterUp.top) <= 6, 'top=' + afterUp.top);
+check('插入后当前章不变', afterUp.cur === 'chapter-03.html', afterUp.cur);
+
+/* 再往上一次：第一章接上；第二次就该到底不动了 */
+await evaluate(`window.scrollTo(0, 600); 1`);
+await sleep(450);
+await pullUpTo();
+await sleep(1500);
+const upTwice = await evaluate(`[...document.querySelectorAll('.chapter-block')].map(b => b.dataset.file)`);
+check('继续上滑把第一章也接上', upTwice[0] === 'chapter-01.html' && upTwice.length === 3, JSON.stringify(upTwice));
+await evaluate(`window.scrollTo(0, 600); 1`);
+await sleep(450);
+await pullUpTo();
+await sleep(1200);
+const upStop = await evaluate(`document.querySelectorAll('.chapter-block').length`);
+check('到第一章就停，不再往上插', upStop === 3, 'blocks=' + upStop);
+
+/* 滚回上一章的正文里，URL 与章节 id 要跟着走 */
+await evaluate(`(() => {
+  const b = document.querySelectorAll('.chapter-block')[1];
+  window.scrollTo(0, b.getBoundingClientRect().top + window.pageYOffset + 500);
+  return 1;
+})()`);
+await sleep(900);
+const upEntered = await evaluate(`({ cur: LY.store.getCurrentFileName(), path: location.pathname })`);
+check('往上滚进上一章：URL 与章节 id 同步',
+  upEntered.cur === 'chapter-02.html' && upEntered.path.indexOf('chapter-02') >= 0,
+  JSON.stringify(upEntered));
+
+/* 键盘 ←：链条里没有上一章时，插到上方并落位到它的开头 */
+await goto(BASE + '/novel/chapter-02.html');
+await evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true })); 1`);
+await sleep(1500);
+const kbdUp = await evaluate(`({
+  blocks: [...document.querySelectorAll('.chapter-block')].map(b => b.dataset.file),
+  top: Math.round(document.querySelector('.chapter-block').getBoundingClientRect().top),
+  cur: LY.store.getCurrentFileName()
+})`);
+check('键盘 ← 把上一章插到上方并落位到章首',
+  kbdUp.blocks[0] === 'chapter-01.html' && Math.abs(kbdUp.top) < 4 && kbdUp.cur === 'chapter-01.html',
+  JSON.stringify(kbdUp));
+
+/* 末章滚到底不追加、不报错 */
 await goto(BASE + '/novel/chapter-07.html');
 await evaluate(`window.scrollTo(0, document.documentElement.scrollHeight); 1`);
 await sleep(1300);
