@@ -89,18 +89,13 @@
     return a.pathname;
   }
 
-  /** 生成遮罩内部结构：全屏纸色遮罩 + 一本会翻走的封面书 + 底部小字。
-      刻意**没有**「翻过来的空白纸面」—— 那会让读者卡在一个奇怪的空页面上。 */
+  /** 生成遮罩内部结构：hero 封面（从点击处放大铺满）+ 兜底 veil + 底部小字 */
   function buildHTML(o) {
     if (typeof o.html === 'string') return o.html;
-    /* 封面用整书封面而不是缩略图：thumb（144×196）放大就糊 */
+    /* 封面用整书封面而不是缩略图：放大铺满时 thumb（144×196）会糊 */
     var cover = o.cover || '/assets/cover.webp';
-    return '<div class="page-transition-veil"></div>' +
-           '<div class="book-scene">' +
-             '<div class="book">' +
-               '<div class="book-face book-front"><img src="' + cover + '" alt="" /></div>' +
-             '</div>' +
-           '</div>' +
+    return '<div class="hero-cover"><img src="' + cover + '" alt="" /></div>' +
+           '<div class="page-transition-veil"></div>' +
            '<div class="transition-text">' + (o.initialText || '梧桐叶正落下') + '</div>';
   }
 
@@ -127,9 +122,9 @@
   function init(options) {
     var o = options || {};
     var lines = o.lines && o.lines.length ? o.lines : DEFAULT_LINES;
-    var enterHold = typeof o.enterHold === 'number' ? o.enterHold : 130;
+    var enterHold = typeof o.enterHold === 'number' ? o.enterHold : 190;
     var enterTtl = typeof o.enterTtl === 'number' ? o.enterTtl : 8000;
-    var exitDelay = typeof o.exitDelay === 'number' ? o.exitDelay : 245;
+    var exitDelay = typeof o.exitDelay === 'number' ? o.exitDelay : 345;
     var skipSelector = o.skipSelector || null;
     var hashScroll = !!o.hashScroll;
     var mount = o.mount || document.body;
@@ -172,8 +167,13 @@
       }
     }
 
-    /** 离开当前页：书翻到背面（纸）时整页跳转，跳转那一帧满屏是纸色，不闪旧页面 */
-    function start(href) {
+    /**
+     * 离开当前页：hero 封面从点击处放大铺满全屏，铺满时跳转。
+     * 做法参照开源项目 exzenter/web-transitions-api-logo 的「Expand」阶段：
+     * 把全屏的 hero 用 transform 反演到点击元素的位置和大小（FLIP），
+     * 再放开 transform 让它动画回全屏 —— 这就是「从小到大、铺满全屏」。
+     */
+    function start(href, sourceEl) {
       if (!ov || prefersReducedMotion()) {
         global.location.href = href;
         return;
@@ -181,6 +181,32 @@
       /* 先摘干净再上类：同一元素连点两次时，不重启动画会停在上一次的末态 */
       ov.classList.remove('active', 'flip-out', 'flip-in');
       void ov.offsetWidth;
+
+      var hero = ov.querySelector('.hero-cover');
+      if (hero) {
+        var vw = global.innerWidth, vh = global.innerHeight;
+        var rect = (sourceEl && sourceEl.getBoundingClientRect) ? sourceEl.getBoundingClientRect() : null;
+        var s, tx, ty;
+        if (rect && rect.width > 0) {
+          /* cover 语义：取宽高比例里较大的那个，保证放大过程中不露边 */
+          s = Math.max(rect.width / vw, rect.height / vh);
+          /* 反演：hero 是全屏大小（transform-origin: 0 0），
+             缩放后要让它的中心对准点击元素的中心 */
+          tx = rect.left - (vw * s - rect.width) / 2;
+          ty = rect.top - (vh * s - rect.height) / 2;
+        } else {
+          /* 没有来源元素（比如键盘触发）就从中央偏上放大 */
+          s = 0.44;
+          tx = vw * 0.28;
+          ty = vh * 0.26;
+        }
+        hero.style.transform = 'translate3d(' + tx + 'px,' + ty + 'px,0) scale(' + s + ')';
+        hero.style.opacity = '0';
+        void hero.offsetWidth;   /* 让起点真正生效，否则会从全屏直接跳过去 */
+        hero.style.opacity = '1';
+        hero.style.transform = 'translate3d(0,0,0) scale(1)';
+      }
+
       ov.classList.add('active', 'flip-out');
       var t = textEl();
       if (t) t.textContent = pickLine();
@@ -252,7 +278,7 @@
       if (skipSelector && link.closest && link.closest(skipSelector)) return false;
 
       e.preventDefault();
-      start(href);
+      start(href, link);   /* 把点击的链接传进去，hero 从它身上放大 */
       return true;
     }
 
