@@ -253,9 +253,9 @@
   width: min(58vw, 292px);
   aspect-ratio: 3 / 4.1;
   /* 不用 preserve-3d + backface-visibility 双面：那套在无 GPU / headless 下
-     会翻过去仍露出封面（backface 没被剔除）。改成封面翻走 + veil 遮挡。 */
+     会翻过去仍露出封面（backface 没被剔除）。改成封面翻走 + veil 遮挡。
+     也不加 will-change —— .book 自己不动，动的是 .book-front。 */
   transform-origin: 12% 50%;
-  will-change: transform;
   /* 阴影和圆角都在 .book-front 上，不在这里 —— 放在这里的话封面翻走后
      还会剩下一个带阴影的空壳卡片，看起来像「一个奇怪的空白页面」。 */
 }
@@ -272,6 +272,11 @@
 .book-front {
   background: #2f2a24;
   transform-origin: 0% 50%;   /* 绕左缘（书脊）翻走 */
+  /* 默认不可见 —— 只在 flip-out 的动画里露一下脸。
+     曾经靠 .flip-in .book-front { opacity: 0 } 来藏，但入场结束摘掉 .flip-in 的
+     瞬间这条规则失效，封面恢复可见，而容器还在 180ms 淡出中 —— 于是正文上
+     闪出一本半透明的封面书（用户截图里那本）。默认 0 就不会漏。 */
+  opacity: 0;
   /* 书页厚度：向右后方伸出的几层纸边 + 落地阴影。跟着封面一起翻走 */
   box-shadow:
     3px 2px 0 #e7dcc4,
@@ -289,17 +294,10 @@
 
 /* ---- 出场：封面绕书脊翻走，露出 veil 纯色 ---- */
 
-/* 书整体：立起 → 放大到正常阅读书大小。
-   刻意不放大到铺满屏幕 —— 铺满会把翻过去的纸面变成一个静止的空白纸页，
-   读者看到的是「卡在一个奇怪的页面上」。遮挡交给 veil（纯色块 + opacity）。 */
-@keyframes bookScaleOut {
-  0%   { transform: scale(0.5) translateY(8%); }
-  40%  { transform: scale(1.02) translateY(0); }
-  100% { transform: scale(1.06); }
-}
-
 /* 封面：绕左缘翻走。只有封面在动，没有「翻过来的空白纸面」——
-   翻走后露出的是 veil 纯色，再由 veil 褪掉露出正文。 */
+   翻走后露出的是 veil 纯色，再由 veil 褪掉露出正文。
+   刻意不给 .book 叠 scale（立起/放大的那层）：每帧的缩放和 rotateY 抢同一
+   合成层，在低端 WebView 上是顿挫来源之一，而视觉收益很小。 */
 @keyframes coverFlipOut {
   0%   { transform: rotateY(0deg); opacity: 0; }
   14%  { opacity: 1; }
@@ -343,19 +341,14 @@
   animation: veilOut 130ms ease-in forwards;
 }
 
-.page-transition.flip-out .book {
-  animation: bookScaleOut 240ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
-}
-
+/* 只有封面在动，.book 本身不缩放（少一层变换 = 少一拍顿挫） */
 .page-transition.flip-out .book-front {
   animation: coverFlipOut 240ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 }
 
-/* 入场只有 veil 褪掉：书已在出场时翻走，别再让它出现一次 */
-.page-transition.flip-in .book,
-.page-transition.flip-in .book-front {
-  opacity: 0;
-}
+/* 入场只有 veil 褪掉：书已在出场时翻走。
+   .book-front 默认 opacity:0，所以这里不需要再藏一次 ——
+   曾经靠 .flip-in .book-front{opacity:0} 来藏，摘掉 .flip-in 的瞬间会漏出封面。 */
 
 /* 翻书时底部小字跟随淡出，别在正文露出后还挂着 */
 .page-transition.flip-out .transition-text,
