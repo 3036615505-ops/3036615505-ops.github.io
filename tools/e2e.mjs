@@ -231,6 +231,18 @@ async function evaluate(expression) {
   return r.result.value;
 }
 
+/** 按视口坐标真点一下。elementFromPoint / el.click() 都会绕过覆盖层，
+ *  只有派发真实鼠标事件才能复现「按钮被翻页层挡住」。 */
+async function clickAt(x, y) {
+  /* 这个浏览器是按 mobile:true 起的，鼠标事件不会合成 click，必须发触摸。
+     touchEnd 之后再等一小会儿，click 是浏览器在 touch 序列结束后补发的。 */
+  await send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x, y, radiusX: 1, radiusY: 1, force: 1 }]
+  });
+  await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+}
+
 const BASE = `http://127.0.0.1:${PORT}`;
 const CHAPTER = BASE + '/novel/chapter-02.html';
 const SHELF = BASE + '/novel/index.html';
@@ -822,6 +834,62 @@ check('收束卡显示最近更新日期',
 check('回目录按钮指向目录页', coda.back === 'index.html', coda.back);
 check('「写给作者」指向 issue 新建页', coda.sayHref.indexOf('github.com') >= 0 && coda.sayHref.indexOf('issues/new') >= 0, coda.sayHref.slice(0, 60));
 
+/* 可点性必须按真实坐标点：el.click() 和 elementFromPoint 都绕不过覆盖层，
+   章末三颗按钮曾被全屏的 .reader-tap-area 整个盖住，直接调用照样绿，手机上一按没反应。 */
+await evaluate(`window.scrollTo(0, document.documentElement.scrollHeight); 1`);
+await sleep(700);
+
+const nudgeAt = await evaluate(`(() => {
+  const el = document.querySelector('.chapter-coda .coda-nudge');
+  const r = el.getBoundingClientRect();
+  return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2),
+           before: (JSON.parse(localStorage.getItem('reader-nudge') || '{"count":0}').count || 0) };
+})()`);
+await evaluate(`window.__ev = []; ['pointerdown','pointerup','touchstart','touchend','mousedown','mouseup','click'].forEach(function(t){ document.addEventListener(t, function(e){ window.__ev.push(t + '@' + (e.target.className || e.target.tagName)); }, true); }); 1`);
+await clickAt(nudgeAt.x, nudgeAt.y);
+await sleep(500);
+console.log('EVENTS:', JSON.stringify(await evaluate(`window.__ev`)), 'AT', nudgeAt.x, nudgeAt.y);
+const nudgeAfterReal = await evaluate(`(JSON.parse(localStorage.getItem('reader-nudge') || '{"count":0}').count || 0)`);
+check('真实坐标点「催更」：按钮真的响应',
+  nudgeAfterReal === nudgeAt.before + 1,
+  nudgeAt.before + ' → ' + nudgeAfterReal);
+
+/* 「写给作者」会开新标签，先就地拦一次，只验证它确实被点中 */
+const sayAt = await evaluate(`(() => {
+  const a = document.querySelector('.chapter-coda .coda-say');
+  window.__sayFired = 0;
+  a.addEventListener('click', function (e) { e.preventDefault(); window.__sayFired = 1; }, { once: true });
+  const r = a.getBoundingClientRect();
+  return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+})()`);
+await clickAt(sayAt.x, sayAt.y);
+await sleep(350);
+const sayFired = await evaluate(`window.__sayFired === 1`);
+check('真实坐标点「写给作者」：链接被点中', sayFired);
+
+/* 但空白处仍然要能翻页：修遮挡不能顺手把「点下半屏翻页」弄丢 */
+const zoneHit = await evaluate(`(() => {
+  const el = document.elementFromPoint(Math.round(innerWidth / 2), Math.round(innerHeight * 0.92));
+  return { cls: el ? (el.className || el.tagName) : 'null' };
+})()`);
+check('空白处仍在翻页感应区内', /reader-tap-zone/.test(zoneHit.cls), zoneHit.cls);
+
+/* 底部断层：coda 的留白如果用 margin，会塌出 .reading-wrapper，
+   滚到底就露一条 body 的站点渐变（阅读区是纯色，两色一撞就是一道横带） */
+const seam = await evaluate(`({
+  wrapBottom: Math.round(document.querySelector('.reading-wrapper').getBoundingClientRect().bottom),
+  vh: innerHeight,
+  bodyImage: getComputedStyle(document.body).backgroundImage,
+  bodyColor: getComputedStyle(document.body).backgroundColor,
+  wrapColor: getComputedStyle(document.querySelector('.reading-wrapper')).backgroundColor
+})`);
+check('滚到底阅读容器铺到视口底部，不露缝',
+  seam.wrapBottom >= seam.vh - 1,
+  seam.wrapBottom + ' / ' + seam.vh);
+check('阅读页 body 是纯色阅读底，不是站点渐变',
+  seam.bodyImage === 'none' && seam.bodyColor === seam.wrapColor,
+  seam.bodyImage + ' | ' + seam.bodyColor + ' vs ' + seam.wrapColor);
+
 const nudge = await evaluate(`(() => {
   const btn = document.querySelector('.chapter-coda .coda-nudge');
   const before = JSON.parse(localStorage.getItem('reader-nudge') || '{"count":0}').count || 0;
@@ -854,8 +922,14 @@ check('接到末章后收束卡出现在末章块里、只一张',
 /* 「读完了」是普通跳转：点完真的到目录，并留下读完的标记 */
 await goto(BASE + '/novel/chapter-07.html');
 await sleep(900);
-await evaluate(`document.querySelector('.chapter-coda .coda-back').click(); 1`);
-await sleep(1200);
+await evaluate(`window.scrollTo(0, document.documentElement.scrollHeight); 1`);
+await sleep(600);
+const backAt = await evaluate(`(() => {
+  const r = document.querySelector('.chapter-coda .coda-back').getBoundingClientRect();
+  return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+})()`);
+await clickAt(backAt.x, backAt.y);   /* 真实坐标：这颗按钮同样压在翻页层下面 */
+await sleep(1400);
 const backNav = await evaluate(`({
   path: location.pathname,
   finished: !!localStorage.getItem('reader-finished')

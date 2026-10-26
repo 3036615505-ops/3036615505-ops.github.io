@@ -140,6 +140,9 @@
   /* ===== INIT ===== */
 
   function init() {
+    /* 阅读页把 body 底色也铺成 --reading-bg：站点那层是渐变、阅读区是纯色，
+       一旦有内容露出 body 就是一条色带（章节页底部曾经就有一道） */
+    document.body.classList.add('is-reading');
     migrateStorage();
     applyFontSize(state.fontSize);
     applyFontFamily(state.fontFamily);
@@ -929,6 +932,64 @@
     var tap = document.getElementById('readerTapArea');
     if (!tap) return;
     tap.innerHTML = '<button type="button" class="reader-tap-zone top" aria-label="向上翻页"></button><button type="button" class="reader-tap-zone middle" aria-label="显示工具栏"></button><button type="button" class="reader-tap-zone bottom" aria-label="向下翻页"></button>';
+
+    /* ---- 让正文里的按钮能被点到 ----
+
+       这一层是 fixed 全屏、z-index 100，永远压在正文之上；三个分区又都
+       pointer-events:auto，等于把整个视口切成了三块「翻页感应区」。
+       于是摘句按钮、余韵卡的「分享这一章」、章末收束卡的催更/回目录，
+       点下去先落到这一层，正文那边永远收不到 click —— 用 element.click()
+       测不出来，只有按真实坐标点才会露。
+
+       解法：真正分派之前先问一句「我下面是谁」。临时把分区让开一层取
+       elementFromPoint（分区自己是 pointer-events:auto，只把父层设成 none
+       没用，子元素会重新启用命中），是可交互元素就把这次点击交还给它。 */
+
+    var HIT = 'a[href], button, input, label, select, textarea, [role="button"], summary, .quote-mark';
+
+    function elementUnder(x, y) {
+      var zones = Array.prototype.slice.call(tap.querySelectorAll('.reader-tap-zone'));
+      zones.forEach(function (z) { z.style.pointerEvents = 'none'; });
+      var el = document.elementFromPoint(x, y);
+      zones.forEach(function (z) { z.style.pointerEvents = ''; });
+      return el;
+    }
+
+    /* 下面那个真的可点的元素；找不到或落回这一层自己就返回 null */
+    function interactiveUnder(x, y) {
+      var el = elementUnder(x, y);
+      if (!el || !el.closest) return null;
+      var target = el.closest(HIT);
+      if (!target || target === tap || tap.contains(target)) return null;
+      return target;
+    }
+
+    /* 转发出来的 click 不触发 :active，按下时补一个属性让它缩一下 */
+    var pressed = null;
+    function press(el) {
+      if (pressed === el) return;
+      if (pressed) pressed.removeAttribute('data-press');
+      pressed = el;
+      if (el) el.setAttribute('data-press', '');
+    }
+
+    tap.addEventListener('pointerdown', function (e) {
+      press(interactiveUnder(e.clientX, e.clientY));
+    }, true);
+
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (type) {
+      tap.addEventListener(type, function () { press(null); }, true);
+    });
+
+    /* capture 阶段拦住：zone 自己的翻页 handler 在冒泡阶段，不会被执行到 */
+    tap.addEventListener('click', function (e) {
+      var target = interactiveUnder(e.clientX, e.clientY);
+      if (!target) return;
+      e.preventDefault();
+      e.stopPropagation();
+      press(null);
+      target.click();
+    }, true);
 
     tap.querySelector('.reader-tap-zone.top').addEventListener('click', function() {
       if (state.barsVisible) hideBars();

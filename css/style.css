@@ -4255,8 +4255,12 @@ body.app-immersive .chapter-content {
    气质要和「这一章的风」区分：余韵卡是一张暖纸卡片，收束卡是书末的版权页 ——
    不要底、不要阴影，只靠一道细线和留白收尾。 */
 .chapter-coda {
-  margin: 0 20px calc(48px + var(--safe-bottom));
-  padding: 30px 0 0;
+  /* 底部留白必须用 padding，不能用 margin：
+     margin 会穿过 .chapter-block / #readingFlow / .reading-wrapper 一路塌陷到外面，
+     容器高度不含它，滚到底就露一条 body 底色的缝（body 是渐变、阅读区是纯色，
+     色差正好成了一道「断层」）。 */
+  margin: 0 20px;
+  padding: 30px 0 calc(48px + var(--safe-bottom));
   text-align: center;
   position: relative;
 }
@@ -4384,4 +4388,23 @@ body.app-immersive .chapter-content {
 :root[data-theme="dark"] .coda-back:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
+}
+
+/* ===== 阅读页底色补缝 =====
+   body 用 --site-bg（线性渐变，首页/目录要那层光），阅读容器用 --reading-bg（纯色）。
+   两者不是同一个值，任何露出 body 的缝隙都会变成一条色带 —— 阅读页直接把 body
+   也铺成阅读色，哪怕以后再有 1px 的漏底也看不出来。
+   类名由 reader.ui.js 在初始化时打到 body 上（章节页是生成物，不手改）。 */
+body.is-reading {
+  background: var(--reading-bg);
+}
+
+/* ===== 「点击翻页」层的按下反馈 =====
+   这一层 fixed 全屏盖在正文上，正文按钮的点击要靠转发（见 reader.ui.js 的
+   elementUnder）。转发出来的 click 不会触发 :active，所以按下时临时打这个属性
+   让被点到的元素自己缩一下，手感和直点一致。 */
+[data-press] {
+  transform: scale(0.97);
+  opacity: 0.86;
+  transition: transform 0.12s ease, opacity 0.12s ease;
 }

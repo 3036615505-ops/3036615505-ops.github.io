@@ -8,20 +8,20 @@
 | 项 | 值 |
 |---|---|
 | 线上 | <https://zephyrw.site>（GitHub Pages，push 即发布） |
-| 站点资源版本 | `?v=90`（全站 28 个 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
+| 站点资源版本 | `?v=95`（全站 28 个 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
 | SW 缓存名 | `linyuan-v58` |
-| 阅读器模块 | dom 77 行 · flags 87 · store 247 · engine 552 · ui 2552 · 入口 30 |
-| 样式 | `css/style.css` 4387 行（4 套主题令牌） |
+| 阅读器模块 | dom 77 行 · flags 87 · store 247 · engine 552 · ui 2613 · 入口 30 |
+| 样式 | `css/style.css` 4410 行（4 套主题令牌） |
 | 章节 | 7 章（2858 / 2347 / 2029 / 2496 / 2076 / 2269 / 2081 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
 | 人物 | 17 人（新叶 7 / 乔木 10）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
 | 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 852KB**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
 | Android 壳 | v1.9.0 / versionCode 17（v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死；v1.8.7 修系统返回键直接退出；**v1.9.0 = A 档收官，壳进入封版状态**：桥接补丁下沉到站点 `js/native-bridge.js`（以后改桥不用发版）、原生分享桥、闪屏叠层淡出、onResume 补更新检查、锁竖屏。详见 `app/BACK-HANDLING.md` 与 `app/WEBVIEW-ROADMAP.md`） |
-| 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 81 项 |
+| 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 86 项 |
 
 ## 常用命令
 
 ```bash
-node tools/e2e.mjs                 # 81 项端到端（真浏览器，约 85 秒）
+node tools/e2e.mjs                 # 86 项端到端（真浏览器，约 90 秒）
 node tools/e2e.mjs --verbose       # 附带每项实测值
 npx -p typescript tsc -p jsconfig.json --noEmit   # 类型检查（零产出）
 node tools/bump-assets.mjs --write # 发版前必做：全站 ?v= 统一 +1
@@ -252,6 +252,21 @@ serif——观感一致，不是 bug。（17 人全部有立绘后，占位字�
 7. **`.mailmap` 不能让 GitHub 的 Contributors 面板消失**，它只影响本地 `git shortlog`。
 8. 外层 `src|novels|dist` 是已退役的旧生成器（Windows 这台在 `E:/novel-site/`，Mac 上按本机 checkout 位置找）（`dist/.git` 已隔离），**别跑 `build.js`**，它有熔断会拒绝执行。
 
+9. **全屏「点击翻页」层会吃掉正文里所有按钮**。`.reader-tap-area` 是 `fixed; inset:0; z-index:100`，
+   三个分区 `pointer-events:auto` 把视口切成三块感应区 —— 摘句按钮、余韵卡的「分享这一章」、
+   章末收束卡的三颗按钮全在它下面，手机上按下去只会翻页。现在 `initTapArea()` 里加了转发：
+   点击时临时把分区让开一层取 `elementFromPoint`，命中可交互元素就 `target.click()` 并把这次
+   点击拦下。**判据要按真实坐标点**：`el.click()` 和 `elementFromPoint` 都绕不过覆盖层，
+   写着绿、手机上没反应（`tools/e2e.mjs` 的 `clickAt()` 用 `Input.dispatchTouchEvent` 真点）。
+   另：分区自己是 `pointer-events:auto`，只把父层设 none 没用，子元素会重新启用命中。
+
+10. **底部那道「断层」是 margin 塌陷 + 两种底色**。`body` 用 `--site-bg`（**线性渐变**），
+    `.reading-wrapper` 用 `--reading-bg`（**纯色**）。`margin-bottom` 会一路穿过
+   `.chapter-block` / `#readingFlow` / `.reading-wrapper` 塌到外面，容器高度不含它 ——
+   滚到底就露一条 body 的渐变，和上面的纯色撞成一条横带。修法两条一起上：
+   底部留白改用 `padding`（章节页、收束卡都适用），另给阅读页 `body.is-reading`
+   铺 `--reading-bg`，以后再有 1px 漏底也看不出来。
+
 ## 远程开关（出问题时先关功能，别回滚整站）
 
 `flags.json`，不缓存，改完 push 一分钟生效，**不用发版也不用升 `?v=`**：
@@ -282,6 +297,9 @@ serif——观感一致，不是 bug。（17 人全部有立绘后，占位字�
   首章/末章只给一句 toast，不做假跳转。
 - 任何面板打开时键盘完全不响应（`Esc` 除外），避免边看目录边被翻页。
 - 空格、PageUp/PageDown、Home/End 不拦，交给浏览器默认滚动。
+- 点上半屏上翻、中间显示工具栏、下半屏下翻（`.reader-tap-area`）。这一层盖在正文之上，
+  所以点击会先转交：命中 `a[href] / button / .quote-mark` 就交给它，不翻页。
+  转发出来的 click 不触发 `:active`，按下时临时打 `[data-press]` 补手感。
 - 换章 = 「接上下一章」（`appendNext()`）：往下滚到离页底 900px 自动把下一章接到
   `#readingFlow` 末尾，2200px 处只预取 HTML 不插入；底部工具栏的上一章/下一章、
   键盘 `←→`、左右轻扫、目录、摘句「回到这一页」全部走 `navigateToChapter()` /
@@ -322,7 +340,7 @@ serif——观感一致，不是 bug。（17 人全部有立绘后，占位字�
 
 | 事项 | 建议时机 | 理由 |
 |---|---|---|
-| 老面板（目录/设置/摘句/备份）从 innerHTML 迁到 `el()` | 下次真要加界面时 | 纯内部质量，无用户可见收益；且 81 项断言测行为不测像素，风险兜不住 |
+| 老面板（目录/设置/摘句/备份）从 innerHTML 迁到 `el()` | 下次真要加界面时 | 纯内部质量，无用户可见收益；且 86 项断言测行为不测像素，风险兜不住 |
 | `ui.js` 再拆出 `panels.js`（纯移动） | 想拆随时可做 | 风险低，但也没收益；`ui.js` 2552 行目前还能忍 |
 | 选中文字气泡工具条（摘句/复制/搜索） | 想加功能时的首选 | 唯一“既有用户价值、又顺手带出 `el()` 迁移”的一步 |
 | 全书搜索 | 章节多了以后 | 现在只有 7 章，索引成本大于收益 |
@@ -332,7 +350,7 @@ serif——观感一致，不是 bug。（17 人全部有立绘后，占位字�
 
 ## 当前验证状态
 
-- 本地：`node tools/e2e.mjs` 81/81；pre-push 5 项通过（?v= 统一 / 预缓存 / 楷体覆盖 / 源稿一致 / 安装包校验）
+- 本地：`node tools/e2e.mjs` 86/86；pre-push 5 项通过（?v= 统一 / 预缓存 / 楷体覆盖 / 源稿一致 / 安装包校验）
 - 同学录专项（2026-10-24，无头 Edge 实测）：17 张卡片 + 2 个分组；点立绘弹灯箱且不跳页，
   点卡片其它位置跳详细页；详细页内容齐全；页脚不被 tab 栏遮挡；浅/深主题截图正常
 - CI：`verify` 每次 push 都跑（五项静态校验 + 端到端）
