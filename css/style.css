@@ -221,6 +221,221 @@
   animation: leafDraw 0.4s ease-out 0.4s forwards;
 }
 
+/* ===== 书本 3D 翻开过渡（替代早先的「叶子遮罩」）=====
+   视觉参照番茄小说点开一本书：封面带着书页厚度立起来，绕书脊（Y 轴）翻开，
+   翻过去露出纸张，再露出正文。跨整页跳转只能拆成「出场翻到 90°」+「入场继续翻走」
+   两段（页面跳转会销毁 DOM，做不了真共享元素），用 sessionStorage 标记衔接，
+   视觉上连成一次翻页。
+   动画只用 transform / opacity（合成层），不用 layout 属性 —— 进阅读页时
+   阅读器五层 JS 正在初始化，重排会把翻书拖成幻灯片。 */
+
+.page-transition {
+  /* 舞台化：书本要立在暖色场地上，背景不再是那层「脏雾」渐变 */
+  background: var(--site-bg);
+}
+
+.book-scene {
+  /* 800px 而不是 1150px：透视越近，书页转动时的近大远小越明显，
+     番茄那个效果的立体感主要就来自这里 */
+  perspective: 800px;
+  perspective-origin: 50% 42%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.book {
+  position: relative;
+  width: min(58vw, 292px);
+  aspect-ratio: 3 / 4.1;
+  /* 不用 preserve-3d + backface-visibility 双面：那套在无 GPU / headless 下
+     会翻过去仍露出封面（backface 没被剔除）。改成「封面翻走 + 纸面翻进来」
+     两个单面交叉，谁该出现用 opacity 直说，任何渲染路径下都一致。 */
+  transform-origin: 12% 50%;
+  will-change: transform;
+  /* 书页厚度：向右后方伸出的几层纸边 + 落地阴影。
+     阴影还负责把「纸色的书」从「纸色的背景」里托出来，否则翻过去就整只消失。 */
+  box-shadow:
+    3px 2px 0 #e7dcc4,
+    6px 4px 0 #ddd0b2,
+    9px 6px 0 #d2c3a0,
+    18px 22px 44px rgba(76, 52, 28, 0.34);
+  border-radius: 3px 8px 8px 3px;
+}
+
+.book-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 3px 8px 8px 3px;
+  backface-visibility: visible;
+  will-change: transform, opacity;
+}
+
+.book-front {
+  background: #2f2a24;
+  transform-origin: 0% 50%;   /* 绕左缘（书脊）翻走 */
+}
+
+.book-front img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 翻进来的那一面：纸张。番茄翻开露出的是米色正文纸，这里同样处理 */
+.book-back {
+  background:
+    linear-gradient(180deg, rgba(120, 92, 58, 0.07), rgba(120, 92, 58, 0) 22%),
+    linear-gradient(90deg, rgba(120, 92, 58, 0.10), transparent 12%),
+    #f2ead8;
+  transform-origin: 0% 50%;   /* 同一根书脊，从对面翻进来 */
+  opacity: 0;
+}
+
+/* 纸上的淡淡行文，翻过来的一瞬间不像纯色板。放大到 2 倍后仍要看得出是「一页纸」 */
+.book-back::after {
+  content: '';
+  position: absolute;
+  inset: 13% 11% 16% 13%;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(88, 66, 42, 0.22) 0 2.5px,
+    transparent 2.5px 13px
+  );
+  opacity: 0.85;
+}
+
+/* ---- 出场：封面绕书脊翻走，纸面从同一根书脊翻进来 ----
+   两条曲线错开一拍：封面翻到约 70% 时才开始淡出、纸面 78% 后才淡入，
+   中间那截正好是「书页立起来」的瞬间，像真在翻一页纸。
+   收尾必须放大到铺满视野 + 背景染纸色 —— 整页跳转会销毁 DOM，
+   要靠「放大的纸面 + 纸色背景」接力，否则跳转那一帧会闪出旧页面。 */
+
+/* 书整体：立起 → 放大 → 铺满 */
+@keyframes bookScaleOut {
+  0%   { transform: scale(0.42) translateY(10%); }
+  38%  { transform: scale(0.98) translateY(0); }
+  70%  { transform: scale(1.5); }
+  100% { transform: scale(2.3); }
+}
+
+/* 封面：绕左缘翻走。中间角度提前到 30%，让「转过去」的动作更先被看见 */
+@keyframes coverFlipOut {
+  0%   { transform: rotateY(0deg); opacity: 0; }
+  12%  { opacity: 1; }
+  30%  { transform: rotateY(-40deg); opacity: 1; }
+  58%  { transform: rotateY(-74deg); opacity: 1; }
+  76%  { opacity: 0; }
+  100% { transform: rotateY(-92deg); opacity: 0; }
+}
+
+/* 纸面：从同一根书脊翻进来。比封面晚一拍，留出「书页立起来」的空隙 */
+@keyframes paperFlipIn {
+  0%   { transform: rotateY(92deg); opacity: 0; }
+  62%  { transform: rotateY(30deg); opacity: 0; }
+  84%  { transform: rotateY(5deg); opacity: 1; }
+  100% { transform: rotateY(0deg); opacity: 1; }
+}
+
+/* 舞台底色：翻书过程中从站点底色染成纸色。故意比书的纸面深一档，
+   让书在「纸色背景」上仍看得出轮廓（同色会整只融掉，看起来像动画没播）。 */
+@keyframes stageToPaper {
+  0%, 26% { background-color: var(--site-bg); }
+  86%, 100% { background-color: #e6dcc6; }
+}
+
+/* ---- 入场：纸面继续翻走，背景褪回透明，露出正文 ---- */
+@keyframes bookScaleIn {
+  0%   { transform: scale(2.3); }
+  100% { transform: scale(1.85); }
+}
+
+@keyframes paperFlipAway {
+  0%   { transform: rotateY(0deg); opacity: 1; }
+  62%  { transform: rotateY(-66deg); opacity: 1; }
+  82%  { opacity: 0; }
+  100% { transform: rotateY(-92deg); opacity: 0; }
+}
+
+@keyframes stageFromPaper {
+  0%, 30% { background-color: #e6dcc6; }
+  100%    { background-color: transparent; }
+}
+
+.page-transition.flip-out {
+  animation: stageToPaper 320ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+.page-transition.flip-in {
+  animation: stageFromPaper 250ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.page-transition.flip-out .book {
+  animation: bookScaleOut 320ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+.page-transition.flip-out .book-front {
+  animation: coverFlipOut 320ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+.page-transition.flip-out .book-back {
+  animation: paperFlipIn 320ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+.page-transition.flip-in .book {
+  animation: bookScaleIn 250ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.page-transition.flip-in .book-back {
+  animation: paperFlipAway 250ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* 入场时封面不该出现（它已经在出场时翻走了） */
+.page-transition.flip-in .book-front {
+  opacity: 0;
+}
+
+/* 翻书时底部小字跟随淡出，别在正文露出后还挂着 */
+.page-transition.flip-out .transition-text,
+.page-transition.flip-in .transition-text {
+  animation: bookTextFade 280ms ease forwards;
+}
+
+@keyframes bookTextFade {
+  0%, 55% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* 翻书期间容器不再做 opacity 淡入淡出，否则「先出雾、再出书」多一拍延迟感 */
+.page-transition.flip-out,
+.page-transition.flip-in {
+  transition: none;
+  opacity: 1;
+}
+
+/* 「减弱动态效果」：不做翻书，保留原来的直来直去 */
+@media (prefers-reduced-motion: reduce) {
+  .page-transition.flip-out,
+  .page-transition.flip-in,
+  .page-transition.flip-out .book,
+  .page-transition.flip-out .book-front,
+  .page-transition.flip-out .book-back,
+  .page-transition.flip-in .book,
+  .page-transition.flip-in .book-back,
+  .page-transition.flip-out .transition-text,
+  .page-transition.flip-in .transition-text {
+    animation: none;
+  }
+  .page-transition.flip-out .book-back,
+  .page-transition.flip-in .book-back {
+    opacity: 1;
+  }
+}
+
 /* ===== CSS 变量 ===== */
 :root {
   --bg: #f8f4ed;

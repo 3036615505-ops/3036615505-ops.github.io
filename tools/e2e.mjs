@@ -1047,6 +1047,42 @@ check('新读者显示第一章、不显示进度',
   rcNew.name.indexOf('第一章') >= 0 && rcNew.meta.indexOf('%') < 0,
   rcNew.name + ' / ' + rcNew.meta);
 
+section('页面切换 · 3D 翻书');
+/* 翻书的两页必须都在：封面翻走 + 纸面翻进来。DOM 类名是动画的钩子，
+   改名会静默失效（CSS 找不到目标，退回普通跳转，看不出坏了）。 */
+const flipDom = await evaluate(`(() => {
+  const ov = document.getElementById('pageTransition');
+  return {
+    hasOv: !!ov,
+    front: !!(ov && ov.querySelector('.book-front')),
+    back: !!(ov && ov.querySelector('.book-back')),
+    scene: !!(ov && ov.querySelector('.book-scene'))
+  };
+})()`);
+check('翻书遮罩具备封面与纸面两页',
+  flipDom.hasOv && flipDom.front && flipDom.back && flipDom.scene,
+  JSON.stringify(flipDom));
+
+/* 点章节链接必须真的播翻书出场（class 是 JS 加的，不是 CSS 自动）。
+   点完 245ms 才跳页，所以要在跳转前读到 class。 */
+await goto(HOME);
+const flipClick = await evaluate(`(() => {
+  const a = document.querySelector('.date-item');
+  if (!a) return 'no link';
+  a.click();
+  return 'clicked';
+})()`);
+await sleep(110);
+const flipCls = await evaluate(`(() => {
+  const ov = document.getElementById('pageTransition');
+  return ov ? ov.className : '';
+})()`);
+check('点章节链接触发翻书出场（flip-out）',
+  flipClick === 'clicked' && flipCls.indexOf('flip-out') >= 0,
+  flipClick + ' / ' + flipCls);
+/* 上面那次点击会真的跳页，重新开一页把状态洗掉，别污染后续断言 */
+await goto(HOME, 1500);
+
 section('全站底部无缝隙');
 /* 底部「断层」两种成因都出现过，都是「留白落在没有背景的层上」：
    ① body 的 padding-bottom 给 tab 栏预留空间 —— 那段只有 --site-bg 深色渐变，

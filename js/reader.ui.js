@@ -885,8 +885,6 @@
       mount: document.querySelector('.reading-wrapper') || document.body,
       delegate: true,
       hashScroll: true,
-      leaves: 5,
-      icon: true,
       entryText: 'random'
     });
   }

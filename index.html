@@ -19,12 +19,12 @@
        抢走同一条连接上的带宽（实测冷启动：cover 199ms 起、CSS 201ms 起）。
        这里改指 144x196 的 cover-thumb.webp（5.7KB），
        不再用 528x720 的 cover.webp（69.4KB）去画一个 46x62 的方块。 -->
-  <link rel="stylesheet" href="css/style.css?v=103">
+  <link rel="stylesheet" href="css/style.css?v=105">
   <link rel="preload" as="image" href="assets/cover-thumb.webp">
-  <script src="js/theme.js?v=103"></script>
-  <script src="js/native-bridge.js?v=103"></script>
+  <script src="js/theme.js?v=105"></script>
+  <script src="js/native-bridge.js?v=105"></script>
   <!-- 站内「新章节更新了」横幅（取 announce.json 与 localStorage 比对，每会话一次）。 -->
-  <script src="js/announce.js?v=103"></script>
+  <script src="js/announce.js?v=105"></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame home-page">
@@ -123,8 +123,8 @@
        弱网下 chapters.js 没回来之前整页白屏（首屏可感知卡顿）。
        放在这里首屏骨架先画出来；但必须保持在下面依赖 CHAPTERS 的内联脚本之前
        （经典脚本按文档顺序执行，内联脚本是同步 IIFE，等不到任何异步回调）。 -->
-  <script src="js/chapters.js?v=103"></script>
-  <script src="js/transition.js?v=103"></script>
+  <script src="js/chapters.js?v=105"></script>
+  <script src="js/transition.js?v=105"></script>
 
   <script>
   (function() {
@@ -440,11 +440,10 @@
     // ===== 页面切换动画 =====
     // 实现在 js/transition.js（全站唯一一份）。这里只传本页的差异参数：
     //   skipSelector —— tab 栏内链接不参与过渡（同层级切换，遮罩会被感知成「卡住」）
-    //   leaves: 0    —— 首页的遮罩是素色纱 + 一行文案，不带环绕叶与图标（保持原视觉）
+    //   翻书用的封面是全站同一本（/assets/cover.webp），三页视觉统一
     //   delegate:false —— 与抽取前一致：只给 init 执行时已存在的链接挂监听
     PageTransition.init({
       skipSelector: '.tab-bar',
-      leaves: 0,
       initialText: '梧桐叶正落下'
     });
 
