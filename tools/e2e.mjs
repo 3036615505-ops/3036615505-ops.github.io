@@ -843,7 +843,10 @@ check('收束卡显示最近更新日期',
   coda.updatedText.indexOf('最近更新') >= 0 && /今天|昨天|月/.test(coda.updatedText),
   coda.updatedText);
 check('回目录按钮指向目录页', coda.back === 'index.html', coda.back);
-check('「写给作者」指向 issue 新建页', coda.sayHref.indexOf('github.com') >= 0 && coda.sayHref.indexOf('issues/new') >= 0, coda.sayHref.slice(0, 60));
+/* 只落到 QQ 主界面：读者点完不会跳去任何网页，也不会暴露作者账号 */
+check('「写给作者」唤起 QQ 主界面',
+  coda.sayHref === 'mqq://',
+  coda.sayHref || '(空 href：JS 没跑到，唤端会失效)');
 
 /* 可点性必须按真实坐标点：el.click() 和 elementFromPoint 都绕不过覆盖层，
    章末三颗按钮曾被全屏的 .reader-tap-area 整个盖住，直接调用照样绿，手机上一按没反应。 */
@@ -865,7 +868,8 @@ check('真实坐标点「催更」：按钮真的响应',
   nudgeAfterReal === nudgeAt.before + 1,
   nudgeAt.before + ' → ' + nudgeAfterReal);
 
-/* 「写给作者」会开新标签，先就地拦一次，只验证它确实被点中 */
+/* 「写给作者」现在走唤端，不开新标签、不离开页面，所以只验证两件事：
+   真实坐标能点中（覆盖层没吞掉它），以及点完确实发出了 QQ 唤端。 */
 const sayAt = await evaluate(`(() => {
   const a = document.querySelector('.chapter-coda .coda-say');
   window.__sayFired = 0;
@@ -877,6 +881,15 @@ await clickAt(sayAt.x, sayAt.y);
 await sleep(350);
 const sayFired = await evaluate(`window.__sayFired === 1`);
 check('真实坐标点「写给作者」：链接被点中', sayFired);
+
+/* 唤端靠一个隐藏 iframe 发出去，1.5 秒后自毁，所以趁它还在的时候取 src */
+const sayRelay = await evaluate(`(() => {
+  const f = Array.prototype.filter.call(document.querySelectorAll('iframe'), function (n) {
+    return (n.getAttribute('src') || '').indexOf('mqq') === 0;
+  })[0];
+  return f ? f.getAttribute('src') : '';
+})()`);
+check('点「写给作者」发出 QQ 唤端且不离开页面', sayRelay === 'mqq://', sayRelay || '没找到 mqq:// 中转 iframe');
 
 /* 但空白处仍然要能翻页：修遮挡不能顺手把「点下半屏翻页」弄丢 */
 const zoneHit = await evaluate(`(() => {

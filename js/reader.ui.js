@@ -1293,11 +1293,17 @@
 
   var NUDGE_KEY = 'reader-nudge';        /* { count, at } 本机记账，全书一个，不按章记 */
   var FINISHED_KEY = 'reader-finished';  /* { at, chapters } 读完的标记 */
-  var ISSUE_REPO = '3036615505-ops/3036615505-ops.github.io';
-
-  /* 作者的 QQ 号。留空 → 「写给作者」走 GitHub issue；
-     填上 → 复制催更文案后唤起 QQ 聊天窗口（QQ 没有预填消息的公开参数，只能先复制）。 */
+  /* 作者的 QQ 号 —— 只决定「写给作者」唤端落到哪一屏：
+       留空  → QQ 主界面（mqq://）。读者落地后自己去搜作者，站点不暴露任何账号。
+       填号  → 直达跟作者的聊天窗口（mqqwpa://im/chat?uin=...）。
+     QQ 没有「预填消息」的公开参数，所以两种都得先把催更文案塞进剪贴板，读者再粘一次。 */
   var AUTHOR_QQ = '';
+
+  function qqTarget() {
+    if (!AUTHOR_QQ) return 'mqq://';
+    return 'mqqwpa://im/chat?chat_type=wpa&uin=' + encodeURIComponent(AUTHOR_QQ)
+      + '&version=1&src_type=web&web_src=oicqzone';
+  }
 
   /* ---- 催更计数：跨设备可见 ----
 
@@ -1410,7 +1416,7 @@
         '</button>' +
         '<a class="coda-back" href="index.html">读完了 · 回目录</a>' +
       '</div>' +
-      '<p class="coda-foot">等得着急，也可以<a class="coda-say" target="_blank" rel="noopener">写给作者 →</a></p>';
+      '<p class="coda-foot">等得着急，也可以<a class="coda-say" href="' + qqTarget() + '">写给作者 →</a></p>';
 
     var btn = box.querySelector('.coda-nudge');
     var localN = nudge.count || 0;
@@ -1460,34 +1466,35 @@
     });
 
     var say = box.querySelector('.coda-say');
-    if (AUTHOR_QQ) {
-      /* 复制文案 → 唤起 QQ 聊天。QQ 不提供预填消息参数，所以「先复制」是唯一做法。
-         跳没跳成只能靠页面有没有失焦/切后台来猜：1.6 秒还稳稳在前台，
-         就八成是被拦了（微信内置浏览器、没装 QQ、或壳里没处理外部协议）。 */
-      say.removeAttribute('target');
-      say.addEventListener('click', function (e) {
-        e.preventDefault();
-        var leftPage = false;
-        var mark = function () { leftPage = true; };
-        window.addEventListener('blur', mark, { once: true });
-        document.addEventListener('visibilitychange', function () {
-          if (document.hidden) leftPage = true;
-        }, { once: true });
+    /* 复制文案 → 唤起 QQ。href 本身就是 scheme，所以 JS 万一没跑起来，直接点也还能唤端
+       （只是不复制文案）。跳没跳成只能靠页面有没有失焦/切后台来猜：1.6 秒还稳稳在前台，
+       就八成是被拦了（微信内置浏览器、没装 QQ、或壳里没接外部协议）。
 
-        copyText('你的读者求加更！').catch(function () {});
-        window.location.href = 'mqqwpa://im/chat?chat_type=wpa&uin=' + encodeURIComponent(AUTHOR_QQ)
-          + '&version=1&src_type=web&web_src=oicqzone';
+       唤端用隐藏 iframe 而不是 location.href：桌面浏览器遇到没注册的协议时，
+       location 赋值可能把整篇小说顶成「无法打开页面」，而 iframe 失败只是静默无事发生。 */
+    say.addEventListener('click', function (e) {
+      e.preventDefault();
+      var leftPage = false;
+      var mark = function () { leftPage = true; };
+      window.addEventListener('blur', mark, { once: true });
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) leftPage = true;
+      }, { once: true });
 
-        setTimeout(function () {
-          if (!leftPage) showToast('文案已复制 · 去 QQ 粘贴给作者');
-        }, 1600);
-      });
-    } else {
-      /* 没填 QQ：走 GitHub issue，预填标题正文，点开就能直接提交 */
-      say.href = 'https://github.com/' + ISSUE_REPO + '/issues/new'
-        + '?title=' + encodeURIComponent('催更 · 临渊羡鱼')
-        + '&body=' + encodeURIComponent('已经读到' + last.title + '，等下一章。\n\n（来自阅读页章末的催更按钮）');
-    }
+      copyText('你的读者求加更！').catch(function () {});
+
+      var relay = document.createElement('iframe');
+      relay.style.cssText = 'position:absolute;width:0;height:0;border:0;opacity:0;pointer-events:none';
+      relay.src = qqTarget();
+      document.body.appendChild(relay);
+      setTimeout(function () {
+        if (relay.parentNode) relay.parentNode.removeChild(relay);
+      }, 1500);
+
+      setTimeout(function () {
+        if (!leftPage) showToast('文案已复制 · 到 QQ 里粘贴');
+      }, 1600);
+    });
 
     return box;
   }
