@@ -1886,6 +1886,9 @@ body.reading-page {
 
 /* 章节余韵卡 */
 .chapter-afterglow {
+  /* 印章 .chapter-seal 是 absolute + right/bottom，必须挂在卡片上。
+     删掉章末导航后卡片不再贴着块底，缺了这行印章会掉到块底、也就是卡外 */
+  position: relative;
   margin: 0 20px 8px;
   padding: 18px 18px 16px;
   border-radius: 18px;
@@ -4246,4 +4249,139 @@ body.app-immersive .chapter-content {
 
 @media (prefers-reduced-motion: reduce) {
   .notice-bar { transition: none; }
+}
+
+/* ===== 章末收束卡（只出现在最后一章） =====
+   气质要和「这一章的风」区分：余韵卡是一张暖纸卡片，收束卡是书末的版权页 ——
+   不要底、不要阴影，只靠一道细线和留白收尾。 */
+.chapter-coda {
+  margin: 0 20px calc(48px + var(--safe-bottom));
+  padding: 30px 0 0;
+  text-align: center;
+  position: relative;
+}
+
+.coda-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.coda-mark .coda-rule {
+  flex: 1;
+  max-width: 120px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--border), transparent);
+}
+
+.coda-leaf {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  color: var(--accent);
+  opacity: 0.62;
+  transform: rotate(-10deg);
+}
+
+.coda-count {
+  font-size: 13px;
+  line-height: 1.8;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.coda-updated {
+  margin-top: 5px;
+  font-size: 12.5px;
+  line-height: 1.8;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.coda-updated em {
+  font-style: normal;
+  color: var(--accent-text);
+}
+
+.coda-actions {
+  display: flex;
+  gap: 10px;
+  margin: 22px 0 16px;
+}
+
+.coda-nudge,
+.coda-back {
+  flex: 1;
+  min-height: 44px;            /* 手指点得准，不用瞄准 */
+  padding: 12px 8px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  letter-spacing: 0.4px;
+  box-sizing: border-box;
+  transition: transform 0.16s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.coda-nudge {
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent-text);
+  cursor: pointer;
+}
+
+.coda-nudge:active {
+  transform: scale(0.97);
+  background: var(--accent-light);
+}
+
+/* 催过一次之后不再抢眼：它是记录，不是待办 */
+.coda-nudge.is-done {
+  border-color: var(--border);
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.coda-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--accent-fill);
+  background: var(--accent-fill);
+  color: #fff;
+  text-decoration: none;
+}
+
+.coda-back:active {
+  transform: scale(0.97);
+  background: var(--accent-fill-deep);
+}
+
+.coda-foot {
+  font-size: 12px;
+  line-height: 2;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+}
+
+.coda-foot .coda-say {
+  color: var(--accent-text);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(184, 134, 78, 0.35);
+  padding-bottom: 1px;
+}
+
+/* 深色主题下金底白字按钮要再压深一点，白字才够 */
+:root[data-theme="dark"] .coda-back {
+  color: #1b1913;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+:root[data-theme="dark"] .coda-back:active {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }

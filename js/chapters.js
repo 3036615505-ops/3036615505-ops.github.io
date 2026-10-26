@@ -4,6 +4,9 @@
  *   num    章号
  *   title  章标题（目录/顶栏/摘句来源均用它）
  *   file   章节文件名
+ *   updated 这一章正文真正更新的日期（YYYY-MM-DD，本地日期，不是故事内日期）。
+ *          末章收束卡用它显示「最近更新」；漏填只是不显示那一行，不会报错。
+ *          口径是「读者能看出来的正文变化」——重排、改样式不算，别跟着结构迁移改
  *   words  字数（目录与进度计算用）
  *   blurb  目录页的一句话简介
  *   year   故事内年份，写成四位数字（如 2022）。首页光阴册据此推出年级与学期，
@@ -23,13 +26,13 @@
 var COHORT_YEAR = 2022;
 
 var CHAPTERS = [
-  { num: 1, title: '第一章·临渊羡鱼', file: 'chapter-01.html', words: 2722, blurb: '所有的事都还没开始，一切都还来得及。', year: 2022, dates: ['九月一日', '九月十七'], seal: '临渊', leaf: 0 },
-  { num: 2, title: '第二章·前桌', file: 'chapter-02.html', words: 2257, blurb: '有些位置只是前后桌，有些位置会慢慢变得不同。', year: 2022, date: '九月十九', seal: '前桌', leaf: 1 },
-  { num: 3, title: '第三章·课上', file: 'chapter-03.html', words: 1999, blurb: '有些课要站起来回答，有些事要站起来走过去。', year: 2022, date: '九月十九', seal: '课上', leaf: 2 },
-  { num: 4, title: '第四章·身位', file: 'chapter-04.html', words: 2451, blurb: '有些距离不用说出来，走近两三步就够了。', year: 2022, date: '九月十九', seal: '身位', leaf: 3 },
-  { num: 5, title: '第五章·板报', file: 'chapter-05.html', words: 2013, blurb: '有些界线不用争，往旁边挪两指，字照样写得直。', year: 2022, date: '九月二十', seal: '板报', leaf: 4 },
-  { num: 6, title: '第六章·越界', file: 'chapter-06.html', words: 2184, blurb: '有些界线退得干干净净，有些习惯退不回去。', year: 2022, date: '九月二十', seal: '越界', leaf: 5 },
-  { num: 7, title: '第七章·余响', file: 'chapter-07.html', words: 2022, blurb: '有些声音传得比名次远，有些诺言一直没过期。', year: 2022, date: '九月二十六', seal: '余响', leaf: 6 }
+  { num: 1, title: '第一章·临渊羡鱼', file: 'chapter-01.html', words: 2722, blurb: '所有的事都还没开始，一切都还来得及。', year: 2022, dates: ['九月一日', '九月十七'], updated: '2026-05-21', seal: '临渊', leaf: 0 },
+  { num: 2, title: '第二章·前桌', file: 'chapter-02.html', words: 2257, blurb: '有些位置只是前后桌，有些位置会慢慢变得不同。', year: 2022, date: '九月十九', updated: '2026-05-21', seal: '前桌', leaf: 1 },
+  { num: 3, title: '第三章·课上', file: 'chapter-03.html', words: 1999, blurb: '有些课要站起来回答，有些事要站起来走过去。', year: 2022, date: '九月十九', updated: '2026-10-24', seal: '课上', leaf: 2 },
+  { num: 4, title: '第四章·身位', file: 'chapter-04.html', words: 2451, blurb: '有些距离不用说出来，走近两三步就够了。', year: 2022, date: '九月十九', updated: '2026-10-24', seal: '身位', leaf: 3 },
+  { num: 5, title: '第五章·板报', file: 'chapter-05.html', words: 2013, blurb: '有些界线不用争，往旁边挪两指，字照样写得直。', year: 2022, date: '九月二十', updated: '2026-10-25', seal: '板报', leaf: 4 },
+  { num: 6, title: '第六章·越界', file: 'chapter-06.html', words: 2184, blurb: '有些界线退得干干净净，有些习惯退不回去。', year: 2022, date: '九月二十', updated: '2026-10-25', seal: '越界', leaf: 5 },
+  { num: 7, title: '第七章·余响', file: 'chapter-07.html', words: 2022, blurb: '有些声音传得比名次远，有些诺言一直没过期。', year: 2022, date: '九月二十六', updated: '2026-10-25', seal: '余响', leaf: 6 }
 ];
 
 function getChapterStorageId(href) {

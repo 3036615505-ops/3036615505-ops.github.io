@@ -167,6 +167,7 @@
     restoreProgress();
     initImmersive();
     initReadingAids();
+    syncCoda();
     ready = true;
   }
 
@@ -1090,6 +1091,10 @@
         syncChapterChrome(file);
         decorateParagraphs();
 
+        /* 先把收束卡定下来，再恢复位置：它也是块高的一部分，
+           后加会让「块内比例」对应的位置往下挪一截 */
+        syncCoda();
+
         /* 回到这一章上次读到的位置；没读过就停在章首 */
         window.scrollTo(0, 0);
         if (LY.engine.resetUserScroll) LY.engine.resetUserScroll();
@@ -1215,6 +1220,138 @@
   }
 
 
+  /* ===== 章末收束卡：只长在最后一章 =====
+
+     三件事：这本书现在多长、最后一章什么时候更的、以及两个出口（催更 / 回目录）。
+
+     为什么用 JS 现搭而不是写进 chapter-0N.html：
+       无限流下「最后一章」是动态的 —— 可能首屏就是它，也可能滚到才接上来；
+       往回接块、换章、改 chapters.js 都会让链尾换人。写死在 HTML 里就得到处同步，
+       而章节页本身还是生成物（不许手改）。所以统一走 syncCoda()：
+       先摘掉所有旧的，再看链尾还是不是最后一章，是就补一张。 */
+
+  var NUDGE_KEY = 'reader-nudge';        /* { count, at } 全书一个，不按章记 */
+  var FINISHED_KEY = 'reader-finished';  /* { at, chapters } 读完的标记 */
+  var ISSUE_REPO = '3036615505-ops/3036615505-ops.github.io';
+
+  function lastChapter() {
+    var list = window.CHAPTERS || [];
+    return list.length ? list[list.length - 1] : null;
+  }
+
+  function formatWords(n) {
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  /* 2026-10-25 → 今天 / 昨天 / 10月25日；跨年才带年份。
+     只认完整 YYYY-MM-DD，别的格式（或没填）就当成「没有更新日期」，不显示那一行。 */
+  function formatUpdated(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    if (!m) return '';
+    var y = +m[1], mo = +m[2], d = +m[3];
+    var now = new Date();
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var diff = Math.round((today - new Date(y, mo - 1, d)) / 86400000);
+    if (diff === 0) return '今天';
+    if (diff === 1) return '昨天';
+    if (y === now.getFullYear()) return mo + '月' + d + '日';
+    return y + '年' + mo + '月' + d + '日';
+  }
+
+  function readJSON(key, fallback) {
+    try {
+      var raw = localStorage.getItem(key);
+      if (!raw) return fallback;
+      var v = JSON.parse(raw);
+      return v && typeof v === 'object' ? v : fallback;
+    } catch (err) { return fallback; }
+  }
+
+  function writeJSON(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (err) { /* 无痕模式 */ }
+  }
+
+  function buildCoda(last) {
+    var list = window.CHAPTERS || [];
+    var total = list.reduce(function (n, c) { return n + (c.words || 0); }, 0);
+    var updated = formatUpdated(last.updated);
+    var nudge = readJSON(NUDGE_KEY, { count: 0, at: 0 });
+    var nudged = nudge.count > 0;
+
+    var box = document.createElement('div');
+    box.className = 'chapter-coda';
+    box.innerHTML =
+      '<div class="coda-mark" aria-hidden="true">' +
+        '<span class="coda-rule"></span>' +
+        '<svg class="coda-leaf" viewBox="0 0 24 24" aria-hidden="true">' +
+          '<path d="M12 2.6c3.7 3.4 5.7 6.8 5.7 10.2 0 3.9-2.5 6.7-5.7 8.4-3.2-1.7-5.7-4.5-5.7-8.4 0-3.4 2-6.8 5.7-10.2z" fill="currentColor" opacity="0.55"/>' +
+          '<path d="M12 5.4v15.2" stroke="currentColor" stroke-width="0.9" opacity="0.75" fill="none"/>' +
+        '</svg>' +
+        '<span class="coda-rule"></span>' +
+      '</div>' +
+      '<p class="coda-count">全书 ' + list.length + ' 章 · ' + formatWords(total) + ' 字</p>' +
+      (updated ? '<p class="coda-updated">最近更新 · <em>' + updated + '</em></p>' : '') +
+      '<div class="coda-actions">' +
+        '<button type="button" class="coda-nudge' + (nudged ? ' is-done' : '') + '">' +
+          (nudged ? '催更 · 第 ' + nudge.count + ' 次' : '催更') +
+        '</button>' +
+        '<a class="coda-back" href="index.html">读完了 · 回目录</a>' +
+      '</div>' +
+      '<p class="coda-foot">等得着急，也可以<a class="coda-say" target="_blank" rel="noopener">写给作者 →</a></p>';
+
+    var btn = box.querySelector('.coda-nudge');
+    btn.addEventListener('click', function () {
+      var rec = readJSON(NUDGE_KEY, { count: 0, at: 0 });
+      rec.count = (rec.count || 0) + 1;
+      rec.at = Date.now();
+      writeJSON(NUDGE_KEY, rec);
+      btn.textContent = '催更 · 第 ' + rec.count + ' 次';
+      btn.classList.add('is-done');
+      showToast('催更 +1 · 已记下第 ' + rec.count + ' 次');
+    });
+
+    /* 回目录是普通链接，只顺手记一笔「读完了」——别拦跳转 */
+    box.querySelector('.coda-back').addEventListener('click', function () {
+      writeJSON(FINISHED_KEY, { at: Date.now(), chapters: list.length });
+    });
+
+    /* 站内没有后端，所以主按钮只记在本机；真想送到作者眼前就走 issue。
+       预填标题正文，点开就是一条能直接提交的催更。 */
+    var say = box.querySelector('.coda-say');
+    say.href = 'https://github.com/' + ISSUE_REPO + '/issues/new'
+      + '?title=' + encodeURIComponent('催更 · 临渊羡鱼')
+      + '&body=' + encodeURIComponent('已经读到' + last.title + '，等下一章。\n\n（来自阅读页章末的催更按钮）');
+
+    return box;
+  }
+
+  function syncCoda() {
+    /* 先摘掉所有旧的：换章、往回接块、改链尾都会让「最后一章」换人 */
+    Array.prototype.slice.call(document.querySelectorAll('.chapter-coda')).forEach(function (n) {
+      if (n.parentNode) n.parentNode.removeChild(n);
+    });
+
+    var last = lastChapter();
+    if (!last) return;
+
+    var blocks = Array.prototype.slice.call(document.querySelectorAll('.chapter-block'));
+    var anchor = null;
+
+    if (blocks.length) {
+      var tail = blocks[blocks.length - 1];
+      /* 链尾还不是最后一章：读者没读到底，不该出现「读完了」 */
+      if (tail.getAttribute('data-file') !== last.file) return;
+      anchor = tail.lastElementChild || tail;
+    } else {
+      if (getCurrentFileName() !== last.file) return;
+      anchor = document.querySelector('.chapter-afterglow') || document.querySelector('.chapter-content');
+    }
+    if (!anchor || !anchor.parentNode) return;
+
+    anchor.parentNode.insertBefore(buildCoda(last), anchor.nextSibling);
+  }
+
+
   /* 把下一章接到链条末尾。
      返回 true 表示「确实有下一章，已接上或正在接」——自动滚屏据此决定要不要停。
      then(section) 在接上之后调用，用于「跳过去」这种需要落位的场景。 */
@@ -1234,6 +1371,7 @@
       var section = buildSection(doc, file);
       flow.appendChild(section);
       delete flowAppending[file];
+      syncCoda();   /* 接上的就是最后一章时，收束卡得跟着出现 */
       if (then) then(section);
     }).catch(function () {
       /* 接不上就安静收场，等下一次滚动重试。

@@ -778,6 +778,92 @@ const lastCh = await evaluate(`({
 })`);
 check('末章滚到底不再追加、不报错', lastCh.blocks === 1 && lastCh.pct >= 95, JSON.stringify(lastCh));
 
+section('末章收束卡');
+
+/* 中间章不该出现「读完了」——那个按钮只在真有下一章可等时才成立 */
+await goto(BASE + '/novel/chapter-03.html');
+await sleep(700);
+const midCoda = await evaluate(`document.querySelectorAll('.chapter-coda').length`);
+check('中间章没有收束卡', midCoda === 0, 'count=' + midCoda);
+
+await goto(BASE + '/novel/chapter-07.html');
+await sleep(900);
+/* 期望值全部按 CHAPTERS 现算，不在测试里写死「7 章 / 15,648 字」——
+   加一章之后这条断言不该需要跟着改 */
+const coda = await evaluate(`(() => {
+  const box = document.querySelector('.chapter-coda');
+  if (!box) return { ok: false };
+  const list = window.CHAPTERS;
+  const words = list.reduce((n, c) => n + (c.words || 0), 0);
+  const last = list[list.length - 1];
+  const say = box.querySelector('.coda-say');
+  return {
+    ok: true,
+    inLast: box.parentNode.dataset.file === last.file,
+    countText: box.querySelector('.coda-count').textContent,
+    updatedText: (box.querySelector('.coda-updated') || {}).textContent || '',
+    expectCount: list.length + ' 章',
+    /* 不在模板字符串里写正则转义：\d 会被吞成 d，改用 toLocaleString */
+    expectWords: Number(words).toLocaleString('en-US'),
+    hasUpdated: !!last.updated,
+    back: box.querySelector('.coda-back').getAttribute('href'),
+    sayHref: say ? (say.getAttribute('href') || '') : ''
+  };
+})()`);
+check('末章出现收束卡，且只挂在最后一块上', coda.ok && coda.inLast, JSON.stringify(coda).slice(0, 200));
+check('收束卡显示全书章数与字数',
+  coda.countText.indexOf(coda.expectCount) >= 0 && coda.countText.indexOf(coda.expectWords) >= 0,
+  coda.countText);
+/* 漏填 updated 时给一条说得清失败的断言，而不是让下面那条含糊地挂掉 */
+check('末章登记了 updated 字段', coda.hasUpdated, '在 js/chapters.js 给末章补 updated: YYYY-MM-DD');
+check('收束卡显示最近更新日期',
+  coda.updatedText.indexOf('最近更新') >= 0 && /今天|昨天|月/.test(coda.updatedText),
+  coda.updatedText);
+check('回目录按钮指向目录页', coda.back === 'index.html', coda.back);
+check('「写给作者」指向 issue 新建页', coda.sayHref.indexOf('github.com') >= 0 && coda.sayHref.indexOf('issues/new') >= 0, coda.sayHref.slice(0, 60));
+
+const nudge = await evaluate(`(() => {
+  const btn = document.querySelector('.chapter-coda .coda-nudge');
+  const before = JSON.parse(localStorage.getItem('reader-nudge') || '{"count":0}').count || 0;
+  btn.click();
+  const after = JSON.parse(localStorage.getItem('reader-nudge') || '{"count":0}').count || 0;
+  return { before, after, text: btn.textContent, toast: (document.getElementById('readerToast') || {}).textContent || '' };
+})()`);
+check('催更点一次计数 +1 并落盘', nudge.after === nudge.before + 1, JSON.stringify(nudge));
+check('催更后按钮显示累计次数', /第 \d+ 次/.test(nudge.text), nudge.text);
+check('催更后有反馈提示', /催更/.test(nudge.toast), nudge.toast);
+
+/* 无限流：从第六章往下接到第七章，收束卡得跟着出现，且只能有一张 */
+await goto(BASE + '/novel/chapter-06.html');
+await sleep(800);
+await evaluate(`window.scrollTo(0, document.documentElement.scrollHeight); 1`);
+await sleep(1800);
+const flowCoda = await evaluate(`(() => {
+  const blocks = [...document.querySelectorAll('.chapter-block')];
+  const box = document.querySelector('.chapter-coda');
+  return {
+    blocks: blocks.map(b => b.dataset.file),
+    codaIn: box ? (box.parentNode.dataset.file || '') : '',
+    codas: document.querySelectorAll('.chapter-coda').length
+  };
+})()`);
+check('接到末章后收束卡出现在末章块里、只一张',
+  flowCoda.blocks.length === 2 && flowCoda.codaIn === 'chapter-07.html' && flowCoda.codas === 1,
+  JSON.stringify(flowCoda));
+
+/* 「读完了」是普通跳转：点完真的到目录，并留下读完的标记 */
+await goto(BASE + '/novel/chapter-07.html');
+await sleep(900);
+await evaluate(`document.querySelector('.chapter-coda .coda-back').click(); 1`);
+await sleep(1200);
+const backNav = await evaluate(`({
+  path: location.pathname,
+  finished: !!localStorage.getItem('reader-finished')
+})`);
+check('点「读完了」回到目录并记下读完',
+  backNav.path.indexOf('/novel/index.html') >= 0 && backNav.finished,
+  JSON.stringify(backNav));
+
 await goto(BASE + '/novel/chapter-01.html');
 await evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true })); 1`);
 await sleep(700);
