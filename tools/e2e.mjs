@@ -973,6 +973,58 @@ check('第一章按 ← 只给提示、不跳转',
   edge.path.indexOf('chapter-01') >= 0 && /第一章/.test(edge.toast),
   edge.path + ' / ' + edge.toast);
 
+section('首页 · 继续阅读卡');
+/* 场景照抄线上实测：第七章读完（done），第六章停在 22%，第四章停在 25%。
+   卡片上的章名和百分比必须来自同一章 —— 曾经「已读完」的分支只换章、
+   不换百分比，于是显示成「第七章·余响 / 已读 22%」，看着像第七章只读了 22%。 */
+async function homeCardWith(seed) {
+  await goto(HOME, 1500);
+  await evaluate(`(() => {
+    localStorage.clear();
+    ${seed}
+    location.reload();
+    return 1;
+  })()`);
+  await sleep(1600);
+  return evaluate(`(() => {
+    const el = id => document.getElementById(id);
+    const btn = el('rcBtn');
+    return {
+      name: (el('rcChapter') || {}).textContent || '',
+      meta: (el('rcMeta') || {}).textContent || '',
+      fill: el('rcFill') ? el('rcFill').style.width : '',
+      href: btn ? (btn.getAttribute('href') || '') : ''
+    };
+  })()`);
+}
+
+const rcDone = await homeCardWith(`
+  localStorage.setItem('reader-done--novel-chapter-07-html', '1');
+  localStorage.setItem('reader-pos--novel-chapter-07-html', '97');
+  localStorage.setItem('reader-pos--novel-chapter-06-html', '22');
+  localStorage.setItem('reader-pos--novel-chapter-04-html', '25');
+`);
+check('读完的末章显示 100%，不继承前几章残留的百分比',
+  rcDone.name.indexOf('第七章') >= 0 && rcDone.meta.indexOf('100%') >= 0 && rcDone.fill === '100%',
+  rcDone.name + ' / ' + rcDone.meta + ' / fill=' + rcDone.fill);
+check('继续阅读按钮指向读完的那一章',
+  rcDone.href === 'novel/chapter-07.html', rcDone.href);
+
+/* 反向：末章没读时不能凭空 100%，要老老实实停在前一章的 22% */
+const rcMid = await homeCardWith(`
+  localStorage.setItem('reader-pos--novel-chapter-06-html', '22');
+  localStorage.setItem('reader-pos--novel-chapter-04-html', '25');
+`);
+check('末章未读时显示真正读到的那一章与其百分比',
+  rcMid.name.indexOf('第六章') >= 0 && rcMid.meta.indexOf('22%') >= 0 && rcMid.fill === '22%',
+  rcMid.name + ' / ' + rcMid.meta + ' / fill=' + rcMid.fill);
+
+/* 全新读者：一个字都没读，卡片要退回默认的第一章，且不显示任何百分比 */
+const rcNew = await homeCardWith(``);
+check('新读者显示第一章、不显示进度',
+  rcNew.name.indexOf('第一章') >= 0 && rcNew.meta.indexOf('%') < 0,
+  rcNew.name + ' / ' + rcNew.meta);
+
 section('全站底部无缝隙');
 /* 底部「断层」两种成因都出现过，都是「留白落在没有背景的层上」：
    ① body 的 padding-bottom 给 tab 栏预留空间 —— 那段只有 --site-bg 深色渐变，
