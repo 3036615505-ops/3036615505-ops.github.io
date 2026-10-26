@@ -1048,19 +1048,20 @@ check('新读者显示第一章、不显示进度',
   rcNew.name + ' / ' + rcNew.meta);
 
 section('页面切换 · 3D 翻书');
-/* 翻书的两页必须都在：封面翻走 + 纸面翻进来。DOM 类名是动画的钩子，
-   改名会静默失效（CSS 找不到目标，退回普通跳转，看不出坏了）。 */
+/* 翻书靠 .book-front（封面）+ .page-transition-veil（遮挡）两个钩子，
+   类名是 CSS 动画的目标，改名会静默失效（退回普通跳转，看不出坏了）。
+   刻意没有「翻过来的空白纸面」—— 那会让读者卡在一个奇怪的空页面上。 */
 const flipDom = await evaluate(`(() => {
   const ov = document.getElementById('pageTransition');
   return {
     hasOv: !!ov,
     front: !!(ov && ov.querySelector('.book-front')),
-    back: !!(ov && ov.querySelector('.book-back')),
+    veil: !!(ov && ov.querySelector('.page-transition-veil')),
     scene: !!(ov && ov.querySelector('.book-scene'))
   };
 })()`);
-check('翻书遮罩具备封面与纸面两页',
-  flipDom.hasOv && flipDom.front && flipDom.back && flipDom.scene,
+check('翻书遮罩具备封面与纯色遮罩两层',
+  flipDom.hasOv && flipDom.front && flipDom.veil && flipDom.scene,
   JSON.stringify(flipDom));
 
 /* 点章节链接必须真的播翻书出场（class 是 JS 加的，不是 CSS 自动）。

@@ -27,14 +27,17 @@
  *     mount: el,           // 遮罩挂载点（默认 document.body）
  *     delegate: false,     // 事件委托 vs. 初始化时直接绑定，详见下方说明
  *     hashScroll: false,   // 同页锚点链接改为平滑滚动、不触发过渡（章节页用）
- *     exitDelay: 245,      // 等书翻到背面（满屏纸）再跳转
- *     enterHold: 250,
+ *     exitDelay: 200,      // 等 veil 全遮、书翻完再跳转
+ *     enterHold: 150,
  *     enterTtl: 8000
  *   });
  *
- *   视觉：点链接 → 一本封面书立起、放大、绕书脊翻走，纸面从同一根书脊翻进来
- *   （这是「番茄小说点开一本书」的效果）→ 翻完满屏是纸色 → 跳转 → 新页面
- *   的纸面继续翻走、背景褪回透明，露出正文。叶子/图标那套已废弃。
+ *   视觉：点链接 → 一本封面书立起、放大、绕书脊翻走；翻到后半段时一层纸色
+ *   veil 才淡入盖住跳转那一帧，新页面的 veil 再快速褪掉，直接露出正文。
+ *   刻意**没有**「翻过来的空白纸面」—— 早期版本把翻过去的纸面放大到铺满，
+ *   读者看到的是卡在一个奇怪的空白纸页上；又曾把阴影放在书本容器上，
+ *   封面翻走后还剩一个带阴影的空壳卡片。现在遮挡交给 veil（opacity，合成层），
+ *   书保持正常大小，阴影跟着封面一起走；veil 延后 150ms 才进，先让翻书被看见。
  *
  * ── 关于 delegate（重要，别当成 bug 去"修"）──────────────────────────
  *   delegate: true  = 挂在 document 上做事件委托，之后**动态插入**的链接也能抓到
@@ -86,15 +89,16 @@
     return a.pathname;
   }
 
-  /** 生成遮罩内部结构：一本会 3D 翻开的书（封面 + 翻过去的纸面）+ 底部小字 */
+  /** 生成遮罩内部结构：全屏纸色遮罩 + 一本会翻走的封面书 + 底部小字。
+      刻意**没有**「翻过来的空白纸面」—— 那会让读者卡在一个奇怪的空页面上。 */
   function buildHTML(o) {
     if (typeof o.html === 'string') return o.html;
-    /* 封面用整书封面而不是缩略图：翻书会放大到近全屏，thumb（144×196）一放就糊 */
+    /* 封面用整书封面而不是缩略图：thumb（144×196）放大就糊 */
     var cover = o.cover || '/assets/cover.webp';
-    return '<div class="book-scene">' +
+    return '<div class="page-transition-veil"></div>' +
+           '<div class="book-scene">' +
              '<div class="book">' +
                '<div class="book-face book-front"><img src="' + cover + '" alt="" /></div>' +
-               '<div class="book-face book-back"></div>' +
              '</div>' +
            '</div>' +
            '<div class="transition-text">' + (o.initialText || '梧桐叶正落下') + '</div>';
@@ -123,7 +127,7 @@
   function init(options) {
     var o = options || {};
     var lines = o.lines && o.lines.length ? o.lines : DEFAULT_LINES;
-    var enterHold = typeof o.enterHold === 'number' ? o.enterHold : 250;
+    var enterHold = typeof o.enterHold === 'number' ? o.enterHold : 130;
     var enterTtl = typeof o.enterTtl === 'number' ? o.enterTtl : 8000;
     var exitDelay = typeof o.exitDelay === 'number' ? o.exitDelay : 245;
     var skipSelector = o.skipSelector || null;
