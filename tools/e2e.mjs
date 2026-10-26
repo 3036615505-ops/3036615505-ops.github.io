@@ -800,6 +800,17 @@ check('中间章没有收束卡', midCoda === 0, 'count=' + midCoda);
 
 await goto(BASE + '/novel/chapter-07.html');
 await sleep(900);
+/* 催更计数打的是真实第三方接口，测试不能真去 hit —— 否则每次跑测试、
+   每次 CI 都把线上数字刷大一次。/get 只读无害，这里连它一起拦掉，
+   顺便验证「接口不可用时按钮仍然能点」。 */
+await evaluate(`(() => {
+  const orig = window.fetch;
+  window.fetch = function (url) {
+    if (String(url).indexOf('abacus') >= 0) return Promise.reject(new Error('blocked in e2e'));
+    return orig.apply(this, arguments);
+  };
+  return 1;
+})()`);
 /* 期望值全部按 CHAPTERS 现算，不在测试里写死「7 章 / 15,648 字」——
    加一章之后这条断言不该需要跟着改 */
 const coda = await evaluate(`(() => {
@@ -898,7 +909,7 @@ const nudge = await evaluate(`(() => {
   return { before, after, text: btn.textContent, toast: (document.getElementById('readerToast') || {}).textContent || '' };
 })()`);
 check('催更点一次计数 +1 并落盘', nudge.after === nudge.before + 1, JSON.stringify(nudge));
-check('催更后按钮显示累计次数', /第 \d+ 次/.test(nudge.text), nudge.text);
+check('催更后按钮显示累计次数', /共 \d+ 次|第 \d+ 次/.test(nudge.text), nudge.text);
 check('催更后有反馈提示', /催更/.test(nudge.toast), nudge.toast);
 
 /* 无限流：从第六章往下接到第七章，收束卡得跟着出现，且只能有一张 */

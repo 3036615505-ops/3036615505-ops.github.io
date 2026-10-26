@@ -1291,9 +1291,61 @@
        而章节页本身还是生成物（不许手改）。所以统一走 syncCoda()：
        先摘掉所有旧的，再看链尾还是不是最后一章，是就补一张。 */
 
-  var NUDGE_KEY = 'reader-nudge';        /* { count, at } 全书一个，不按章记 */
+  var NUDGE_KEY = 'reader-nudge';        /* { count, at } 本机记账，全书一个，不按章记 */
   var FINISHED_KEY = 'reader-finished';  /* { at, chapters } 读完的标记 */
   var ISSUE_REPO = '3036615505-ops/3036615505-ops.github.io';
+
+  /* 作者的 QQ 号。留空 → 「写给作者」走 GitHub issue；
+     填上 → 复制催更文案后唤起 QQ 聊天窗口（QQ 没有预填消息的公开参数，只能先复制）。 */
+  var AUTHOR_QQ = '';
+
+  /* ---- 催更计数：跨设备可见 ----
+
+     站点零后端，这个数字寄存在 Abacus（免注册、CORS 全开、30 次/10 秒限流）。
+     它的定位就是「装饰性计数」：任何人知道 namespace/key 都能读写，别当统计用。
+     所有请求失败都安静降级回本机计数 —— 催更按钮不能因为第三方挂了就失效。 */
+
+  var NUDGE_API = 'https://abacus.jasoncameron.dev';
+  var NUDGE_NS = 'zephyrw.site';
+  var NUDGE_REMOTE_KEY = 'linyuan-nudge';
+  var nudgeCache = { value: null, at: 0, pending: null };
+
+  function nudgeApi(action) {
+    return NUDGE_API + '/' + action + '/' + NUDGE_NS + '/' + NUDGE_REMOTE_KEY;
+  }
+
+  function fetchJSON(url, ms) {
+    var opt = { cache: 'no-store' };
+    if (typeof AbortController === 'function') {
+      var ctrl = new AbortController();
+      opt.signal = ctrl.signal;
+      setTimeout(function () { ctrl.abort(); }, ms || 4000);
+    }
+    return fetch(url, opt).then(function (res) {
+      /* 计数器还没被创建过时 /get 返回 404，那是 0，不是错误 */
+      if (res.status === 404) return { value: 0 };
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    });
+  }
+
+  /* 一分钟内不重复拉：切章会重建收束卡，但不该每次都打一次接口 */
+  function loadNudgeTotal() {
+    if (nudgeCache.pending) return nudgeCache.pending;
+    if (nudgeCache.value !== null && Date.now() - nudgeCache.at < 60000) {
+      return Promise.resolve(nudgeCache.value);
+    }
+    nudgeCache.pending = fetchJSON(nudgeApi('get'), 3500).then(function (data) {
+      nudgeCache.value = data && typeof data.value === 'number' ? data.value : 0;
+      nudgeCache.at = Date.now();
+      nudgeCache.pending = null;
+      return nudgeCache.value;
+    }).catch(function () {
+      nudgeCache.pending = null;
+      return null;   /* 拿不到就没有远程数字，按钮照常可用 */
+    });
+    return nudgeCache.pending;
+  }
 
   function lastChapter() {
     var list = window.CHAPTERS || [];
@@ -1361,14 +1413,45 @@
       '<p class="coda-foot">等得着急，也可以<a class="coda-say" target="_blank" rel="noopener">写给作者 →</a></p>';
 
     var btn = box.querySelector('.coda-nudge');
+    var localN = nudge.count || 0;
+
+    /* 文案只有一个来源：有远程总数就显示总数，没有才退回本机次数。
+       「共 N 次」是全站累加，「第 N 次」是你自己在本机点的第几次 —— 两个说法别混。 */
+    function paint(remote, done) {
+      if (typeof remote === 'number' && remote > 0) {
+        btn.textContent = (done ? '已催 · 共 ' : '催更 · 共 ') + remote + ' 次';
+      } else if (done && localN > 0) {
+        btn.textContent = '已催 · 第 ' + localN + ' 次';
+      } else {
+        btn.textContent = '催更';
+      }
+    }
+    paint(nudgeCache.value, nudged);
+
+    loadNudgeTotal().then(function (total) {
+      if (total === null) return;
+      paint(total, readJSON(NUDGE_KEY, { count: 0 }).count > 0);
+    });
+
     btn.addEventListener('click', function () {
+      /* 先记本机：网络再怎么差，这一下都得有回应 */
       var rec = readJSON(NUDGE_KEY, { count: 0, at: 0 });
       rec.count = (rec.count || 0) + 1;
       rec.at = Date.now();
       writeJSON(NUDGE_KEY, rec);
-      btn.textContent = '催更 · 第 ' + rec.count + ' 次';
+      localN = rec.count;
       btn.classList.add('is-done');
-      showToast('催更 +1 · 已记下第 ' + rec.count + ' 次');
+      paint(nudgeCache.value, true);
+      showToast('催更 +1');
+
+      /* 再往站上累加。失败就不说话，读者已经看到「+1」了 */
+      fetchJSON(nudgeApi('hit'), 4000).then(function (data) {
+        if (data && typeof data.value === 'number') {
+          nudgeCache.value = data.value;
+          nudgeCache.at = Date.now();
+          paint(data.value, true);
+        }
+      }).catch(function () { /* 只记本机 */ });
     });
 
     /* 回目录是普通链接，只顺手记一笔「读完了」——别拦跳转 */
@@ -1376,12 +1459,35 @@
       writeJSON(FINISHED_KEY, { at: Date.now(), chapters: list.length });
     });
 
-    /* 站内没有后端，所以主按钮只记在本机；真想送到作者眼前就走 issue。
-       预填标题正文，点开就是一条能直接提交的催更。 */
     var say = box.querySelector('.coda-say');
-    say.href = 'https://github.com/' + ISSUE_REPO + '/issues/new'
-      + '?title=' + encodeURIComponent('催更 · 临渊羡鱼')
-      + '&body=' + encodeURIComponent('已经读到' + last.title + '，等下一章。\n\n（来自阅读页章末的催更按钮）');
+    if (AUTHOR_QQ) {
+      /* 复制文案 → 唤起 QQ 聊天。QQ 不提供预填消息参数，所以「先复制」是唯一做法。
+         跳没跳成只能靠页面有没有失焦/切后台来猜：1.6 秒还稳稳在前台，
+         就八成是被拦了（微信内置浏览器、没装 QQ、或壳里没处理外部协议）。 */
+      say.removeAttribute('target');
+      say.addEventListener('click', function (e) {
+        e.preventDefault();
+        var leftPage = false;
+        var mark = function () { leftPage = true; };
+        window.addEventListener('blur', mark, { once: true });
+        document.addEventListener('visibilitychange', function () {
+          if (document.hidden) leftPage = true;
+        }, { once: true });
+
+        copyText('你的读者求加更！').catch(function () {});
+        window.location.href = 'mqqwpa://im/chat?chat_type=wpa&uin=' + encodeURIComponent(AUTHOR_QQ)
+          + '&version=1&src_type=web&web_src=oicqzone';
+
+        setTimeout(function () {
+          if (!leftPage) showToast('文案已复制 · 去 QQ 粘贴给作者');
+        }, 1600);
+      });
+    } else {
+      /* 没填 QQ：走 GitHub issue，预填标题正文，点开就能直接提交 */
+      say.href = 'https://github.com/' + ISSUE_REPO + '/issues/new'
+        + '?title=' + encodeURIComponent('催更 · 临渊羡鱼')
+        + '&body=' + encodeURIComponent('已经读到' + last.title + '，等下一章。\n\n（来自阅读页章末的催更按钮）');
+    }
 
     return box;
   }

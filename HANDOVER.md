@@ -8,9 +8,9 @@
 | 项 | 值 |
 |---|---|
 | 线上 | <https://zephyrw.site>（GitHub Pages，push 即发布） |
-| 站点资源版本 | `?v=99`（全站 28 个 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
+| 站点资源版本 | `?v=100`（全站 28 个 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
 | SW 缓存名 | `linyuan-v58` |
-| 阅读器模块 | dom 77 行 · flags 87 · store 247 · engine 552 · ui 2613 · 入口 30 |
+| 阅读器模块 | dom 77 行 · flags 87 · store 247 · engine 552 · ui 2719 · 入口 30 |
 | 样式 | `css/style.css` 4450 行（4 套主题令牌） |
 | 章节 | 7 章（2858 / 2347 / 2029 / 2496 / 2076 / 2269 / 2081 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
 | 人物 | 17 人（新叶 7 / 乔木 10）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
@@ -335,8 +335,19 @@ serif——观感一致，不是 bug。（17 人全部有立绘后，占位字�
   显示成 今天 / 昨天 / 10月25日，跨年才带年份；漏填只是不显示那一行。
   注意 `updated` 是「读者看得出正文变了」的日期——重排、改样式**不要**跟着改，
   否则一次结构迁移就会把七章全刷成当天。
-- 催更没有后端：点一次只在本机 `reader-nudge` 记 `{count, at}`，按钮就地变成
-  「催更 · 第 N 次」。真想送到作者眼前走旁边那行「写给作者 →」，预填一条 GitHub issue。
+- 催更计数**双轨**：本机 `reader-nudge` 记 `{count, at}`（离线也不丢反馈），
+  同时打到 Abacus 的计数器做全站总数 —— `abacus.jasoncameron.dev/{get,hit}/zephyrw.site/linyuan-nudge`。
+  免注册、CORS 全开、30 次/10 秒限流、单次约 2 秒。按钮的两种说法别混：
+  **「共 N 次」是服务端总数**（所有人共享），**「第 N 次」是你本机点了几次**。
+  接口挂了一律安静降级回本机，绝不因为第三方不可用就让按钮失效。
+  - 这是**装饰性计数**：知道 namespace/key 的人都能读写，别当统计用。要清零就换 key 名。
+  - `tools/e2e.mjs` 里注入了 fetch 拦截，测试和 CI 不会真去 hit，否则每次跑测试都刷数字。
+- 「写给作者 →」两种去向，由 `reader.ui.js` 顶部的 `AUTHOR_QQ` 决定：
+  留空 → 预填一条 GitHub issue；填了 → 复制「你的读者求加更！」再唤起
+  `mqqwpa://im/chat?chat_type=wpa&uin=<QQ>&version=1&src_type=web&web_src=oicqzone`。
+  QQ 不提供预填消息的参数，所以「先复制、进去粘贴」是唯一可行路径。
+  跳没跳成只能靠 1.6 秒内页面有没有失焦/切后台来猜 —— 微信内置浏览器会拦跳 QQ、
+  没装 QQ 也不会响应，这时提示「文案已复制 · 去 QQ 粘贴给作者」。
   别把主按钮做成 `target=_blank` 跳 issue —— 手机端会掉进登录页。
 - 「读完了 · 回目录」是普通 `<a href="index.html">`，只顺手写一笔 `reader-finished`。
   不拦跳转，也不做「确定吗」的二次确认。
