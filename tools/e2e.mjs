@@ -86,6 +86,12 @@ const MIME = {
   '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.md': 'text/plain; charset=utf-8'
 };
 
+/* 「发版代数」：测试进程直接改这个变量来模拟发新版本（文件一个字节都不动）。
+   为什么不用改文件模拟：测试中途被 kill 会留下脏工作区，还会污染 git status；
+   内存变量随时可改、跑完自动消失。HTML 响应会把它注进 <meta name="e2e-gen">，
+   测试据此判断「这次导航拿到的是哪一代 HTML」。 */
+let htmlGen = 1;
+
 const server = http.createServer((req, res) => {
   let rel = decodeURIComponent(req.url.split('?')[0]);
   if (rel.endsWith('/')) rel += 'index.html';
@@ -96,7 +102,18 @@ const server = http.createServer((req, res) => {
     res.end('not found');
     return;
   }
-  res.writeHead(200, { 'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream' });
+  const type = MIME[path.extname(file).toLowerCase()] || 'application/octet-stream';
+  if (path.extname(file).toLowerCase() === '.html') {
+    /* 模拟 GitHub Pages：HTML 带 max-age=600 —— Bug「返回后页面变旧」的复现前提
+       （线上 Pages 就是这么发的，本地无 Cache-Control 时 HTTP 缓存行为完全不同，
+       那个 Bug 在本地永远复现不出来）。 */
+    let html = fs.readFileSync(file, 'utf8');
+    html = html.replace('</head>', '<meta name="e2e-gen" content="' + htmlGen + '"></head>');
+    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'max-age=600' });
+    res.end(html);
+    return;
+  }
+  res.writeHead(200, { 'Content-Type': type });
   fs.createReadStream(file).pipe(res);
 });
 await new Promise((resolve, reject) => {
@@ -113,6 +130,11 @@ const BASE_ARGS = [
   '--no-first-run', '--no-default-browser-check', '--no-proxy-server',
   '--disable-gpu', '--disable-features=Translate', '--hide-scrollbars',
   '--window-size=390,844',
+  /* 关掉 bfcache：Bug「返回后页面变旧」的真实复现路径是「HTTP 缓存重取旧 HTML」
+     （Android WebView 的 bfcache 会被逐出或未启用）。开着 bfcache 的话 history.back()
+     会直接恢复内存里的旧 DOM、根本不发请求，缓存新鲜度的断言会假绿/假红。
+     bfcache 恢复路径（pageshow.persisted）另用合成事件单独测。 */
+  '--disable-back-forward-cache',
   /* GitHub Actions 的容器里没有 user namespace，沙箱起不来；这两个参数是 CI 标配 */
   ...(process.env.CI ? ['--no-sandbox', '--disable-dev-shm-usage'] : []),
   'about:blank'
@@ -1053,6 +1075,176 @@ const tabSpace = await evaluate(`({
 check('给 tab 栏预留的空间在有背景的容器里',
   parseFloat(tabSpace.bodyPad) === 0 && parseFloat(tabSpace.framePad) >= 60,
   JSON.stringify(tabSpace));
+
+/* ================= 缓存 / 发版新鲜度（Bug A / Bug B） =================
+   两个 Bug 都是「读者看到的永远是旧版」：
+   A) 强制刷新后按系统返回键，回到「强制刷新前」的旧首页 —— 根因是导航请求
+      读了 HTTP 缓存（Pages 对 HTML 的 max-age=600），加上 ?r= 抹掉后历史条目
+      又指回裸 `/` 那条旧缓存。
+   B) 长期不关 App，页面实例一直活着，从来没有人问过「服务器是不是发新版了」。
+   测法：给所有 HTML 响应注入 <meta name="e2e-gen">（见服务器部分），测试进程
+   直接改 htmlGen 模拟发版，看导航/返回/提示能不能察觉。版本提示本身以 ?v= 为
+   发版代数（生产机制），测试里用 fetch 桩回一份 ?v=999 的「新版 HTML」。 */
+section('缓存新鲜度 · 导航请求绕过 HTTP 缓存');
+
+/** 等 SW 真正接管当前页（claim 之后 controller 才非空） */
+async function ensureControlled() {
+  return evaluate(`(() => {
+    if (!('serviceWorker' in navigator)) return Promise.resolve('no-sw');
+    return navigator.serviceWorker.register('/sw.js')
+      .then(() => navigator.serviceWorker.ready)
+      .then(() => {
+        if (navigator.serviceWorker.controller) return 'controlled';
+        return new Promise((resolve) => {
+          var done = false;
+          navigator.serviceWorker.addEventListener('controllerchange', function () {
+            if (!done) { done = true; resolve('controlled'); }
+          }, { once: true });
+          setTimeout(function () {
+            if (!done) { done = true; resolve(navigator.serviceWorker.controller ? 'controlled' : 'timeout'); }
+          }, 4000);
+        });
+      })
+      .catch((e) => 'err:' + (e && e.message));
+  })()`);
+}
+
+const readGen = () => evaluate(`(document.querySelector('meta[name="e2e-gen"]') || {}).content || ''`);
+
+await goto(HOME);
+const ctrlState = await ensureControlled();
+check('Service Worker 已接管页面（新鲜度测试的前提）', ctrlState === 'controlled', ctrlState);
+
+const genSeeded = await readGen();
+htmlGen += 1;
+await goto(CHAPTER);
+await evaluate(`history.back(); 1`);
+await sleep(2200);
+const genAfterBack = await readGen();
+/* 老代码下 fetch(request) 会命中 max-age=600 的旧 HTML 并把它当「网络响应」，
+   这条断言会拿到旧代数而失败 —— 正是 Bug A 的现场。 */
+check('返回首页拿到的是新发版的 HTML（不被 HTTP 缓存顶回来）',
+  genAfterBack === String(htmlGen),
+  'back=' + genAfterBack + ' expect=' + htmlGen + ' seeded=' + genSeeded);
+
+/* 版本检查（Bug B）用的就是这种「带 cache:no-store 的页面 fetch」。
+   SW 若用 cacheFirst 拦它，会拿 SW 缓存里的旧 HTML 糊弄过去，检查就永远
+   发现不了新版 —— 这条断言盯住「声明了 no-store 的 fetch 必须直通网络」。 */
+htmlGen += 1;
+const bypassGen = htmlGen;
+const bypass = await evaluate(`fetch('/', { cache: 'no-store' })
+  .then(r => r.text())
+  .then(t => t.indexOf('e2e-gen" content="${bypassGen}"') >= 0)`);
+check('带 cache:no-store 的 fetch 不被 SW 缓存糊弄（版本检查的前提）',
+  bypass === true, 'bypass=' + bypass + ' expectGen=' + bypassGen);
+
+section('缓存新鲜度 · 强制刷新后按返回（Bug A 主场景）');
+await goto(HOME, 2000);
+htmlGen += 1;
+const targetGen = htmlGen;
+await evaluate(`document.getElementById('forceRefreshBtn').click(); 1`);
+let forced = { path: '', search: '?', gen: '' };
+for (let i = 0; i < 40; i++) {
+  await sleep(250);
+  forced = await evaluate(`({ path: location.pathname, search: location.search, gen: (document.querySelector('meta[name="e2e-gen"]') || {}).content || '' })`);
+  if (forced.path === '/' && forced.search === '' && forced.gen === String(targetGen)) break;
+}
+check('强制刷新后页面是新版、地址栏已抹掉 ?r=',
+  forced.path === '/' && forced.search === '' && forced.gen === String(targetGen),
+  JSON.stringify(forced));
+
+/* 先把 SW 清掉再验 HTTP 缓存：强制刷新本来就 unregister 了 SW，随后 theme.js
+   会重新注册，安装期里按返回的导航是「未受控」的 —— 那段窗口期只能靠
+   「裸路径的 HTTP 缓存条目已被治新」兜住，这里单独把它验出来。 */
+await evaluate(`navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.unregister()))).then(() => 1)`);
+await sleep(300);
+const healed = await evaluate(`fetch(location.pathname, { cache: 'force-cache' })
+  .then(r => r.text())
+  .then(t => t.indexOf('e2e-gen" content="${targetGen}"') >= 0)`);
+check('强制刷新把裸路径的 HTTP 缓存条目也刷成了新版',
+  healed === true, 'healed=' + healed + ' expectGen=' + targetGen);
+
+await goto(CHAPTER, 1500);
+await evaluate(`history.back(); 1`);
+await sleep(2200);
+const backGen = await readGen();
+check('强制刷新后按系统返回键：首页仍是新版',
+  backGen === String(targetGen), 'back=' + backGen + ' expect=' + targetGen);
+
+/* 版本检查的 fetch 桩：把「拉当前页 HTML」换成一份 ?v=999 的假新版，
+   这样测的是生产里的 ?v= 比对逻辑本身，不靠改仓库文件。 */
+const STUB_FETCH = `(() => {
+  var orig = window.fetch;
+  window.fetch = function (url, opts) {
+    var u = String(url);
+    if (opts && opts.cache === 'no-store' && u.indexOf('.json') < 0 && u.indexOf('announce') < 0) {
+      return Promise.resolve(new Response(
+        '<!DOCTYPE html><html><head><script src="js/x.js?v=999"></' + 'script></head><body></body></html>',
+        { status: 200, headers: { 'Content-Type': 'text/html' } }));
+    }
+    return orig.apply(this, arguments);
+  };
+  return 1;
+})()`;
+
+section('版本新鲜度 · 回到前台提示新版本（Bug B）');
+await goto(HOME, 1500);
+htmlGen += 1;
+const hintGen = htmlGen;
+await evaluate(STUB_FETCH);
+await evaluate(`window.__lyNoReload = 1; document.dispatchEvent(new Event('visibilitychange')); 1`);
+await sleep(800);
+const hint = await evaluate(`({
+  bar: !!document.getElementById('lyUpdateNotice'),
+  text: (document.querySelector('#lyUpdateNotice .notice-text') || {}).textContent || '',
+  noReload: window.__lyNoReload === 1
+})`);
+check('回到前台发现新版：出轻提示、不自动重载（不打断阅读）',
+  hint.bar && hint.text.indexOf('新版本') >= 0 && hint.noReload, JSON.stringify(hint));
+
+await evaluate(`document.querySelector('#lyUpdateNotice').click(); 1`);
+await sleep(2200);
+const afterClick = await evaluate(`({
+  marker: window.__lyNoReload === 1,
+  gen: (document.querySelector('meta[name="e2e-gen"]') || {}).content || ''
+})`);
+check('点提示后整页刷新拿到新版',
+  !afterClick.marker && afterClick.gen === String(hintGen), JSON.stringify(afterClick));
+
+await goto(HOME, 1500);
+await evaluate(`document.dispatchEvent(new Event('visibilitychange')); 1`);
+await sleep(900);
+const quiet = await evaluate(`!!document.getElementById('lyUpdateNotice')`);
+check('没有新版时回到前台不打扰', quiet === false, 'bar=' + quiet);
+
+await goto(HOME, 1500);
+await evaluate(STUB_FETCH);
+await evaluate(`window.__lyKeep = 1; document.dispatchEvent(new Event('visibilitychange')); 1`);
+await sleep(800);
+await evaluate(`document.querySelector('#lyUpdateNotice .notice-close').click(); 1`);
+await sleep(200);
+const dismissed = await evaluate(`({ bar: !!document.getElementById('lyUpdateNotice'), keep: window.__lyKeep === 1 })`);
+check('点 ✕ 关掉提示且不刷新', dismissed.bar === false && dismissed.keep, JSON.stringify(dismissed));
+
+section('版本新鲜度 · bfcache 恢复直接换新');
+await goto(HOME, 1500);
+htmlGen += 1;
+const persistGen = htmlGen;
+await evaluate(STUB_FETCH);
+await evaluate(`(() => {
+  window.__lyPersist = 1;
+  var e = new Event('pageshow');
+  Object.defineProperty(e, 'persisted', { value: true });
+  window.dispatchEvent(e);
+  return 1;
+})()`);
+await sleep(2200);
+const persisted = await evaluate(`({
+  marker: window.__lyPersist === 1,
+  gen: (document.querySelector('meta[name="e2e-gen"]') || {}).content || ''
+})`);
+check('从 bfcache 恢复发现新版：自动换新（返回即新版）',
+  !persisted.marker && persisted.gen === String(persistGen), JSON.stringify(persisted));
 
 section('全局');
 check('全程无未捕获异常', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 300));

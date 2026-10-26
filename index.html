@@ -19,12 +19,12 @@
        抢走同一条连接上的带宽（实测冷启动：cover 199ms 起、CSS 201ms 起）。
        这里改指 144x196 的 cover-thumb.webp（5.7KB），
        不再用 528x720 的 cover.webp（69.4KB）去画一个 46x62 的方块。 -->
-  <link rel="stylesheet" href="css/style.css?v=102">
+  <link rel="stylesheet" href="css/style.css?v=103">
   <link rel="preload" as="image" href="assets/cover-thumb.webp">
-  <script src="js/theme.js?v=102"></script>
-  <script src="js/native-bridge.js?v=102"></script>
+  <script src="js/theme.js?v=103"></script>
+  <script src="js/native-bridge.js?v=103"></script>
   <!-- 站内「新章节更新了」横幅（取 announce.json 与 localStorage 比对，每会话一次）。 -->
-  <script src="js/announce.js?v=102"></script>
+  <script src="js/announce.js?v=103"></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame home-page">
@@ -123,8 +123,8 @@
        弱网下 chapters.js 没回来之前整页白屏（首屏可感知卡顿）。
        放在这里首屏骨架先画出来；但必须保持在下面依赖 CHAPTERS 的内联脚本之前
        （经典脚本按文档顺序执行，内联脚本是同步 IIFE，等不到任何异步回调）。 -->
-  <script src="js/chapters.js?v=102"></script>
-  <script src="js/transition.js?v=102"></script>
+  <script src="js/chapters.js?v=103"></script>
+  <script src="js/transition.js?v=103"></script>
 
   <script>
   (function() {
@@ -517,9 +517,28 @@
       var fired = false;
       var resetTimer = null;
 
-      // 刷新回来后地址栏里会留着 ?r=…，抹掉它（replace 不新增历史记录）
+      // 刷新回来后地址栏里会留着 ?r=…，抹掉它（replace 不新增历史记录）。
+      //
+      // 为什么抹之前必须先对裸路径做一次 cache:'reload' 的 fetch：
+      // go() 里的 location.replace('/?r=' + ts) 只让「带时间戳那条 URL」的
+      // HTTP 缓存变成新版；裸 `/` 的 HTTP 缓存条目（Pages 给 HTML 的 max-age
+      // 是 600 秒）还是旧的。直接 replaceState 回 `/`，历史记录条目就指回了
+      // 那条旧缓存 —— 之后按系统返回键重新导航到 `/`（尤其 SW 被本按钮
+      // unregister 后、新 SW 还没装好的窗口期），HTTP 缓存把旧 HTML 顶回来，
+      // 表现就是「强制刷新完，返回又变回旧版」（Bug A 的一半根因）。
+      // fetch(..., { cache: 'reload' }) 强制「不读缓存、写回缓存」，把裸路径
+      // 的缓存条目也刷成新版，这时抹掉 ?r= 才是安全的。
+      // （另一半根因在 sw.js 的 fetchFresh：导航请求绕过 HTTP 缓存。）
       if (location.search.indexOf('r=') !== -1) {
-        try { history.replaceState(null, '', location.pathname); } catch (err) {}
+        var bare = location.pathname;
+        var cleanUrl = function () {
+          try { history.replaceState(null, '', bare); } catch (err) {}
+        };
+        if (window.fetch) {
+          fetch(bare, { cache: 'reload' }).then(cleanUrl, cleanUrl);
+        } else {
+          cleanUrl();
+        }
       }
 
       function go() {
