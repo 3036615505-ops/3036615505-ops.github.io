@@ -1,6 +1,35 @@
 /**
  * js/transition.js — 全站「页面切换过渡遮罩」的唯一实现
  *
+ * ══════════════════════════════════════════════════════════════════════
+ * 【当前状态：已全站停用，没有任何页面调用 PageTransition.init()】
+ *
+ * 停用原因（用户明确要求）：这套动画在「点章节 → 进阅读页」上产生了可感知的
+ * 等待。headless Chrome + CDP 实测（390×844，首页 .date-item → chapter-01）：
+ *   点下去 → 浏览器真正开始导航      481ms（就是下面的 exitDelay 430ms）
+ *   章节页遮罩盖住正文直到           708ms（enterHold 170 + 淡出 190 + 五层 JS 初始化）
+ *   章节页自身 FCP 112ms、DCL 412ms、长任务 0 个
+ * 也就是说：正文早就画好了，读者却在看遮罩。用户原话「进入阅读页不要有明显的卡顿，
+ * 可以不要动画」→ 停用后同一次点击的等待实测 4ms（且遮罩元素不再存在），
+ * 点完即见正文。
+ *
+ * 停用方式（**只摘调用，不删模块**）：
+ *   · index.html / novel/index.html 的内联 PageTransition.init(...) 已注释掉；
+ *   · js/reader.ui.js 的 initPageTransition() 连同调用点一起删除；
+ *   · novel/index.html 里那个写死旧叶子结构的静态 <div id="pageTransition"> 也删了
+ *     —— 留着它遮罩元素仍在 DOM 里，只是永远不会被激活。
+ *   · 本文件与 css/style.css 的 .page-transition / .book-* 样式**保留**：30+ 个生成页
+ *     （novel/chapter-*.html、novel/characters.html、novel/character-*.html 由
+ *     new-chapter.js / tools/make-characters.mjs 生成）的 <script> 还引用它，
+ *     删文件必须重新生成全站，风险与收益不成比例。保留的代价只是「加载一段没有
+ *     调用方的 IIFE」——本文件在被调用前不产生任何 DOM、定时器或监听。
+ *
+ * 重新启用的做法：在需要过渡的页面里恢复一次 PageTransition.init({...}) 即可
+ * （各页原配置见 index.html / novel/index.html 注释里保留的那几行）。
+ * 所以下面这套设计说明全部**仍然有效**，是「若将来重启过渡时的注意事项」——
+ * 不是「忘了接线的死代码」，请勿因为「没人调用」而删除。
+ * ══════════════════════════════════════════════════════════════════════
+ *
  * 历史：这段逻辑原来在三个地方各抄了一份（index.html 内联、novel/index.html 内联、
  * js/reader.js 的 initPageTransition），三份的状态机与标记格式一旦漂移就会互相
  * 误触发（改一处忘记改另一处 → 章节页认不出新标记 → 遮罩不出现或残留）。

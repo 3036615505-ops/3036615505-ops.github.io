@@ -1047,44 +1047,120 @@ check('新读者显示第一章、不显示进度',
   rcNew.name.indexOf('第一章') >= 0 && rcNew.meta.indexOf('%') < 0,
   rcNew.name + ' / ' + rcNew.meta);
 
-section('页面切换 · 3D 书翻开放大');
-/* 翻书靠 .book-cover（封面翻开）+ .book-page（内页铺满）+ .page-transition-veil（兜底）
-   三个钩子，类名是 CSS/JS 的目标，改名会静默失效（退回普通跳转，看不出坏了）。
-   运动序列：中央立起一本 3D 书 → 封面绕书脊翻开 → 内页放大铺满 → 揭示正文。 */
-const flipDom = await evaluate(`(() => {
-  const ov = document.getElementById('pageTransition');
-  return {
-    hasOv: !!ov,
-    stage: !!(ov && ov.querySelector('.book-stage')),
-    book: !!(ov && ov.querySelector('.book')),
-    cover: !!(ov && ov.querySelector('.book-cover img')),
-    pages: !!(ov && ov.querySelector('.book-pages')),
-    page: !!(ov && ov.querySelector('.book-page')),
-    veil: !!(ov && ov.querySelector('.page-transition-veil'))
-  };
-})()`);
-check('过渡层具备 3D 书（封面/书口/内页）与兜底遮罩',
-  flipDom.hasOv && flipDom.stage && flipDom.book && flipDom.cover &&
-  flipDom.pages && flipDom.page && flipDom.veil,
-  JSON.stringify(flipDom));
+section('页面切换 · 过渡已停用（进阅读页零等待）');
+/* 用户要求：「算了，我不要这个动画效果了，进入阅读页不要有明显的卡顿」。
+   过渡层（js/transition.js + .page-transition / .book-*）已全站停用，但模块与 CSS
+   刻意保留（30+ 个生成页还引用着它）。所以这里全部改成**反向断言**：谁把
+   PageTransition.init() 加回来、或把静态遮罩 DOM 加回来，这几条会立刻变红。
 
-/* 点章节链接必须真的播翻书出场（class 是 JS 加的，不是 CSS 自动）。
-   点完 430ms 才跳页，所以要在跳转前读到 class。 */
-await goto(HOME);
-const flipClick = await evaluate(`(() => {
+   改前实测（headless Chrome + CDP，390×844，点首页 .date-item 进 chapter-01）：
+     点下去 → 真正开始导航  481ms（transition.js 的 exitDelay 430ms）
+     章节页遮罩盖住正文到   708ms（enterHold 170 + 淡出 190）
+     章节页自身 FCP 112ms、长任务 0 个 —— 慢的全是这两段等待，不是阅读页。
+   改后：等待 0ms、遮罩元素根本不存在。 */
+
+/* ① 首页不再创建遮罩。判据用「元素」而不是「类名」：摘掉 init 后 #pageTransition
+   连创建都不该创建，历史上它是 init() 里 createElement 出来的。 */
+await goto(HOME, 1500);
+const noOvHome = await evaluate(`(() => ({
+  byId: !!document.getElementById('pageTransition'),
+  byClass: document.querySelectorAll('.page-transition').length,
+  apiLoaded: typeof (window.PageTransition || {}).init === 'function'
+}))()`);
+check('首页不再创建过渡遮罩（无 #pageTransition / .page-transition）',
+  !noOvHome.byId && noOvHome.byClass === 0,
+  JSON.stringify(noOvHome) + ' / 模块仍在=' + noOvHome.apiLoaded);
+
+/* ② 点章节链接：不播过渡 + 立即开始导航。
+   等待时长由「click 时刻 → pagehide 时刻」测出来（pagehide 就是浏览器开始卸载
+   当前文档、真正发出导航的时刻），跨一次导航用 sessionStorage 传递。
+   改前这个值是 481ms；改后必须是零等待，阈值取 50ms 给它余量。 */
+await evaluate(`(() => {
+  try { sessionStorage.removeItem('__e2eClickToNav'); } catch (e) {}
+  window.__e2eClickAt = 0;
+  window.addEventListener('click', function () { window.__e2eClickAt = performance.now(); }, true);
+  window.addEventListener('pagehide', function () {
+    if (!window.__e2eClickAt) return;
+    try {
+      sessionStorage.setItem('__e2eClickToNav', String(Math.round(performance.now() - window.__e2eClickAt)));
+    } catch (e) {}
+  });
+  return 1;
+})()`);
+const clickHref = await evaluate(`(() => {
   const a = document.querySelector('.date-item');
   if (!a) return 'no link';
   a.click();
-  return 'clicked';
+  return a.getAttribute('href');
 })()`);
-await sleep(110);
-const flipCls = await evaluate(`(() => {
+
+/* 120ms 内读遮罩状态：要么元素不存在，要么存在但没被激活（不含 active/flip-out）。
+   导航太快导致执行上下文被销毁也算通过 —— 那恰恰说明「立刻就走了」。 */
+await sleep(120);
+let earlyCls = null;
+try {
+  earlyCls = await evaluate(`(() => {
+    const ov = document.getElementById('pageTransition');
+    return ov ? ov.className : '';
+  })()`);
+} catch (err) {
+  earlyCls = '(context destroyed：点击后 120ms 内已开始导航)';
+}
+check('点章节链接不播过渡（120ms 内遮罩不存在或未激活）',
+  clickHref === 'novel/chapter-01.html' &&
+  (earlyCls.indexOf('flip-out') < 0 && earlyCls.indexOf('active') < 0),
+  clickHref + ' / ov.className=' + JSON.stringify(earlyCls));
+
+/* ③ 落到章节页：读回上一页记的等待时长，并确认章节页没有入场遮罩、正文在位。 */
+await sleep(2400);
+const enterState = await evaluate(`(() => {
+  let nav = null;
+  try {
+    const v = sessionStorage.getItem('__e2eClickToNav');
+    if (v !== null) nav = Number(v);
+  } catch (e) {}
   const ov = document.getElementById('pageTransition');
-  return ov ? ov.className : '';
+  return {
+    url: location.pathname,
+    clickToNav: nav,
+    hasOv: !!ov,
+    ovClass: ov ? ov.className : '',
+    ovCount: document.querySelectorAll('.page-transition').length,
+    paras: document.querySelectorAll('.chapter-content p').length,
+    title: document.title
+  };
 })()`);
-check('点章节链接触发翻书出场（flip-out）',
-  flipClick === 'clicked' && flipCls.indexOf('flip-out') >= 0,
-  flipClick + ' / ' + flipCls);
+check('点章节链接立即开始导航（<50ms，改前 481ms）',
+  typeof enterState.clickToNav === 'number' && enterState.clickToNav < 50,
+  'clickToNav=' + enterState.clickToNav + 'ms / url=' + enterState.url);
+check('章节页没有入场遮罩（无 #pageTransition / .page-transition）',
+  enterState.hasOv === false && enterState.ovCount === 0,
+  'hasOv=' + enterState.hasOv + ' / count=' + enterState.ovCount + ' / cls=' + JSON.stringify(enterState.ovClass));
+check('章节页正文已渲染（不靠遮罩掩盖白屏）',
+  enterState.url.indexOf('chapter-01') >= 0 && enterState.paras > 0 && !!enterState.title,
+  'paras=' + enterState.paras + ' / title=' + enterState.title);
+
+/* ④ 历史遗留标记：老版本会在 sessionStorage 留 page-transitioning。
+   现在没有消费方，必须彻底无副作用（不能因此冒出遮罩、也不能卡在那儿等）。
+   这轮只验证、不写迁移代码 —— 标记会随 sessionStorage 自然过期。 */
+await evaluate(`(() => {
+  try {
+    sessionStorage.setItem('page-transitioning',
+      JSON.stringify({ t: Date.now(), to: '/novel/chapter-01.html' }));
+  } catch (e) {}
+  return 1;
+})()`);
+await goto(CHAPTER, 2000);
+const staleState = await evaluate(`(() => ({
+  hasOv: !!document.getElementById('pageTransition'),
+  ovCount: document.querySelectorAll('.page-transition').length,
+  bodyCls: document.body.className
+}))()`);
+check('遗留的 page-transitioning 标记不产生任何遮罩',
+  !staleState.hasOv && staleState.ovCount === 0,
+  JSON.stringify(staleState));
+await evaluate(`(() => { try { sessionStorage.removeItem('page-transitioning'); } catch (e) {} return 1; })()`);
+
 /* 上面那次点击会真的跳页，重新开一页把状态洗掉，别污染后续断言 */
 await goto(HOME, 1500);
 

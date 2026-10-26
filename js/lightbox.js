@@ -7,9 +7,11 @@
  *
  * 设计约束（来自本轮需求，改动前先读这几条）：
  *   1. 入口必须是 <button type="button" data-lightbox-src data-lightbox-name>。
- *      不能用 <a href>：js/transition.js 会接管 a[href] 点击并先播放 120ms 页面
- *      切换遮罩，表现为「打开灯箱却先播一段叶子动画」。按钮没有 href，天然不在
- *      它的接管范围内（它只 query a[href]）。
+ *      不用 <a href>：页面切换过渡层（js/transition.js）会接管 a[href] 点击并先播
+ *      一段转场再跳转，表现为「打开灯箱却先播一段动画」。按钮没有 href，天然不在
+ *      它的接管范围内（它只 query a[href]）。该过渡层目前已全站停用，但这里仍按
+ *      「按钮而非链接」实现 —— 灯箱是弹层不是导航，换成 <a href> 会顺手多出一个
+ *      可被浏览器/壳处理的跳转语义，将来重启过渡时又会立刻踩回同一个坑。
  *   2. 弹层复用 css/style.css 的通用基建：.modal-overlay / .modal-backdrop /
  *      .modal-close 与 .visible 开关、z-index 400（高于 tab-bar 的 100，低于
  *      .page-transition 的 9999 —— 后者 pointer-events 永久为 none，不冲突）。

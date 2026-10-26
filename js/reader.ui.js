@@ -151,7 +151,6 @@
     applyLineHeight(state.lineHeight);
     applyParaGap(state.paraGap);
     applyTheme(state.theme);
-    initPageTransition();
     initTapArea();
     initSwipe();
     initReadingProgress();
@@ -869,25 +868,26 @@
   };
 
 
-  /* ===== PAGE TRANSITION =====
-   * 实现在 js/transition.js（全站唯一一份，与首页/书架同一套状态机）。
-   * 这里只传章节页的差异参数：
-   *   mount        —— 遮罩挂在 .reading-wrapper 内（沿用原来的层级，不影响 fixed 定位）
-   *   delegate     —— 事件委托：目录/设置面板里的链接是运行时插入的，必须委托才抓得到
-   *   hashScroll   —— 同页锚点链接改为平滑滚动，不触发过渡
-   *   leaves/icon  —— 与原来一致：5 片环绕叶 + 中间叶片图标
-   *   entryText    —— 入场时把文案换成随机诗句
-   * 不传 skipSelector：章节页没有底部 tab bar。
+  /* ===== PAGE TRANSITION：已停用（本文件不再调用 PageTransition.init） =====
+   *
+   * 章节页原来在这里 init 过一次（mount 到 .reading-wrapper、delegate: true、
+   * hashScroll: true、entryText: 'random'）。用户要求「进入阅读页不要有明显的卡顿，
+   * 可以不要动画」后整段摘掉，函数本体也一并删除 —— 留一个没人调用的函数，
+   * 下一个人会以为「只是忘了接线」，重新调一次就把这 1.2s 的等待带回来。
+   *
+   * 实测（headless Chrome + CDP，390×844，首页点 .date-item 进 chapter-01）：
+   *   点下去 → 真正开始导航      481ms（上一页 exitDelay 430ms）
+   *   章节页遮罩盖住正文直到     708ms（enterHold 170 + 淡出 190 + 五层 JS 初始化）
+   *   而章节页自身 FCP 112ms、长任务 0 个 —— 阅读页不慢，慢的全是这两段等待。
+   *
+   * 停用后需要保住的行为（别顺手「优化」掉）：
+   *   · 目录/正文里的章节链接仍由 initChapterSwap() 的捕获阶段接管 → 换成
+   *     「换章不换页」（swapTo）或章节流接续，那才是阅读页真正的零等待路径。
+   *     它原来抢的正是 transition.js 的整页转场，现在照样要抢：不抢就会整页跳转，
+   *     白屏 + 丢滚动位置，比动画更糟。
+   *   · 同页 #锚点 退回浏览器原生跳转（原来由 hashScroll 做平滑滚动）。有意不补：
+   *     阅读页的锚点跳转都带「关闭面板」动作，原生跳转更直接，也不会再引入一帧延迟。
    */
-
-  function initPageTransition() {
-    PageTransition.init({
-      mount: document.querySelector('.reading-wrapper') || document.body,
-      delegate: true,
-      hashScroll: true,
-      entryText: 'random'
-    });
-  }
 
 
   /* ===== BARS ===== */
@@ -1728,7 +1728,9 @@
 
 
   /* 正文流里的「下一章」、目录项、摘句簿的「回到这一页」都是普通链接，
-     这里用捕获阶段抢先接管，否则 transition.js 会把整页转场先跑起来。 */
+     这里用捕获阶段抢先接管：不接管就整页跳转 —— 白屏、丢滚动位置、链条重建。
+     （这段原本是为了抢在 transition.js 的整页转场之前；过渡已停用，但接管本身
+     仍然是「换章不换页」的唯一入口，不能一起删。） */
   function initChapterSwap() {
     document.addEventListener('click', function(e) {
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;

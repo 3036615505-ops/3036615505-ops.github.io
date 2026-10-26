@@ -25,11 +25,11 @@
     "author": { "@type": "Person", "name": "叶南衡" }
   }
   </script>
-  <link rel="stylesheet" href="../css/style.css?v=109">
-  <script src="../js/theme.js?v=109"></script>
-  <script src="../js/native-bridge.js?v=109"></script>
+  <link rel="stylesheet" href="../css/style.css?v=110">
+  <script src="../js/theme.js?v=110"></script>
+  <script src="../js/native-bridge.js?v=110"></script>
   <!-- 站内「新章节更新了」横幅（取 announce.json 与 localStorage 比对，每会话一次）。 -->
-  <script src="../js/announce.js?v=109"></script>
+  <script src="../js/announce.js?v=110"></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame">
@@ -105,31 +105,18 @@
 
   </div>
 
-  <!-- 页面切换动画 -->
-  <div class="page-transition" id="pageTransition">
-    <div class="transition-inner">
-      <div class="transition-leaves">
-        <span class="leaf gold"></span>
-        <span class="leaf green"></span>
-        <span class="leaf brown"></span>
-        <span class="leaf gold soft"></span>
-        <span class="leaf green soft"></span>
-      </div>
-      <svg viewBox="0 0 40 40" fill="none" width="40" height="40">
-        <path class="leaf-path" d="M20 4c0 0-8 4-10 12s4 16 10 20c6-4 12-12 10-20S20 4 20 4z" stroke="var(--accent)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-        <path class="leaf-vein" d="M20 8v24M20 14l-4 4M20 14l4 4M20 20l-5 3M20 20l5 3" stroke="var(--accent)" stroke-width="0.8" opacity="0.5" stroke-linecap="round"/>
-      </svg>
-      <div class="transition-text">梧桐叶正落下</div>
-    </div>
-  </div>
+  <!-- 页面切换动画：已按用户要求全站停用，所以这里既没有静态遮罩 DOM，
+       也没有 PageTransition.init() 调用（详见本文件脚本区与 HANDOVER.md 第 15 条）。
+       这里原本还有一个写死旧结构的 <div class="page-transition" id="pageTransition">，
+       一并删掉：留着它，遮罩元素依然存在，只是永远不会被激活 —— 既让「进页零等待」
+       的断言（DOM 里不该有 #pageTransition）无法成立，也让结构停留在早期叶子版本。 -->
 
   <!-- tab bar 放在下面这段内联脚本之前，只因执行顺序（DOM 位置不影响布局，
        .tab-bar 是 position:fixed）。
-       tab 链接是**刻意不参与**页面切换动效的（js/transition.js 的 skipSelector:
-       '.tab-bar'：同层级切换不该被遮罩挡住），所以「脚本必须先跑才能给 tab 挂动效」
-       这个理由已不成立；真正的约束只剩内联脚本要在 chapters.js 之后、依赖 CHAPTERS 渲染目录。
-       把 tab bar 留在脚本之前没有副作用：PageTransition.init() 内部仍会对
-       querySelectorAll('a[href]') 挂监听，只是命中 .tab-bar 的链接直接放行走默认跳转。 -->
+       tab 链接本来就是**刻意不参与**页面切换动效的，且过渡层现已停用，
+       所以「脚本必须先跑才能给 tab 挂动效」这个理由早已不成立；真正的约束只剩
+       内联脚本要在 chapters.js 之后、依赖 CHAPTERS 渲染目录。 -->
+
   <nav class="tab-bar">
     <a class="tab-item" href="../index.html">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
@@ -153,21 +140,15 @@
        弱网下 chapters.js 没回来之前整页白屏（书架页首屏可感知卡顿）。
        放在这里首屏骨架先画出来；但必须保持在下面依赖 CHAPTERS 的内联脚本之前
        （经典脚本按文档顺序执行，内联脚本是同步 IIFE，等不到任何异步回调）。 -->
-  <script src="../js/chapters.js?v=109"></script>
-  <script src="../js/transition.js?v=109"></script>
+  <script src="../js/chapters.js?v=110"></script>
+  <script src="../js/transition.js?v=110"></script>
 
   <script>
   (function() {
-    // ===== 页面切换动画 =====
-    // 实现在 js/transition.js（全站唯一一份）。本页差异参数：
-    //   skipSelector —— tab 栏内链接不参与过渡
-    //   entryText:'random' —— 入场时换成随机文案
-    //   delegate:false —— 与抽取前一致：只给 init 执行时已存在的链接挂监听
-    // 翻书用的封面是全站同一本（/assets/cover.webp），三页视觉统一
-    PageTransition.init({
-      skipSelector: '.tab-bar',
-      entryText: 'random'
-    });
+    // ===== 页面切换动画：已全站停用，这里刻意不调用 PageTransition.init() =====
+    // 停用原因与实测数据见 index.html 同位置注释与 HANDOVER.md 第 15 条。
+    // 恢复动画时本页的配置项是（与停用前一致）：
+    //   PageTransition.init({ skipSelector: '.tab-bar', entryText: 'random' });
 
     // ===== 目录渲染（唯一数据源：js/chapters.js 的 CHAPTERS） =====
     // 加新章节只需改 chapters.js，本页目录/章节数/总字数自动更新
