@@ -1047,25 +1047,29 @@ check('新读者显示第一章、不显示进度',
   rcNew.name.indexOf('第一章') >= 0 && rcNew.meta.indexOf('%') < 0,
   rcNew.name + ' / ' + rcNew.meta);
 
-section('页面切换 · hero 放大铺满');
-/* hero 放大靠 .hero-cover（封面）+ .page-transition-veil（兜底）两个钩子，
-   类名是 CSS/JS 的目标，改名会静默失效（退回普通跳转，看不出坏了）。
-   视觉参照开源项目 exzenter/web-transitions-api-logo：从点击处放大铺满 → 揭示正文。 */
+section('页面切换 · 3D 书翻开放大');
+/* 翻书靠 .book-cover（封面翻开）+ .book-page（内页铺满）+ .page-transition-veil（兜底）
+   三个钩子，类名是 CSS/JS 的目标，改名会静默失效（退回普通跳转，看不出坏了）。
+   运动序列：中央立起一本 3D 书 → 封面绕书脊翻开 → 内页放大铺满 → 揭示正文。 */
 const flipDom = await evaluate(`(() => {
   const ov = document.getElementById('pageTransition');
   return {
     hasOv: !!ov,
-    hero: !!(ov && ov.querySelector('.hero-cover')),
-    heroImg: !!(ov && ov.querySelector('.hero-cover img')),
+    stage: !!(ov && ov.querySelector('.book-stage')),
+    book: !!(ov && ov.querySelector('.book')),
+    cover: !!(ov && ov.querySelector('.book-cover img')),
+    pages: !!(ov && ov.querySelector('.book-pages')),
+    page: !!(ov && ov.querySelector('.book-page')),
     veil: !!(ov && ov.querySelector('.page-transition-veil'))
   };
 })()`);
-check('过渡层具备 hero 封面与兜底遮罩',
-  flipDom.hasOv && flipDom.hero && flipDom.heroImg && flipDom.veil,
+check('过渡层具备 3D 书（封面/书口/内页）与兜底遮罩',
+  flipDom.hasOv && flipDom.stage && flipDom.book && flipDom.cover &&
+  flipDom.pages && flipDom.page && flipDom.veil,
   JSON.stringify(flipDom));
 
 /* 点章节链接必须真的播翻书出场（class 是 JS 加的，不是 CSS 自动）。
-   点完 245ms 才跳页，所以要在跳转前读到 class。 */
+   点完 430ms 才跳页，所以要在跳转前读到 class。 */
 await goto(HOME);
 const flipClick = await evaluate(`(() => {
   const a = document.querySelector('.date-item');

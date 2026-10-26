@@ -27,17 +27,19 @@
  *     mount: el,           // 遮罩挂载点（默认 document.body）
  *     delegate: false,     // 事件委托 vs. 初始化时直接绑定，详见下方说明
  *     hashScroll: false,   // 同页锚点链接改为平滑滚动、不触发过渡（章节页用）
- *     exitDelay: 200,      // 等 veil 全遮、书翻完再跳转
- *     enterHold: 150,
+ *     exitDelay: 430,      // 等书翻开放大铺满再跳转
+ *     enterHold: 170,
  *     enterTtl: 8000
  *   });
  *
- *   视觉：点链接 → 一本封面书立起、放大、绕书脊翻走；翻到后半段时一层纸色
- *   veil 才淡入盖住跳转那一帧，新页面的 veil 再快速褪掉，直接露出正文。
- *   刻意**没有**「翻过来的空白纸面」—— 早期版本把翻过去的纸面放大到铺满，
- *   读者看到的是卡在一个奇怪的空白纸页上；又曾把阴影放在书本容器上，
- *   封面翻走后还剩一个带阴影的空壳卡片。现在遮挡交给 veil（opacity，合成层），
- *   书保持正常大小，阴影跟着封面一起走；veil 延后 150ms 才进，先让翻书被看见。
+ *   视觉：点链接 → 屏幕中央立起一本带书页厚度的 3D 书（封面 + 书口）→
+ *   封面绕左侧书脊翻开、整本书同步放大 → 露出的内页铺满全屏 → 跳转 →
+ *   新页面上那页纸继续放大并淡出，揭示正文。
+ *   这是「番茄小说点开一本书」的运动序列：**一本书 → 翻开 → 放大 → 进入**。
+ *
+ *   起点刻意**不是点击的条目**。曾按 FLIP 从点击元素的 rect 起飞，但书架/目录
+ *   是文字列表，从一行字上长出封面看着很怪；用户要的是「从一本书」开始。
+ *   所以书固定立在屏幕中央，翻开与放大的运动本身就是叙事。
  *
  * ── 关于 delegate（重要，别当成 bug 去"修"）──────────────────────────
  *   delegate: true  = 挂在 document 上做事件委托，之后**动态插入**的链接也能抓到
@@ -89,12 +91,31 @@
     return a.pathname;
   }
 
-  /** 生成遮罩内部结构：hero 封面（从点击处放大铺满）+ 兜底 veil + 底部小字 */
+  /**
+   * 生成遮罩内部结构：一本会翻开放大的 3D 书（封面 + 书页厚度）+ 兜底 veil + 底部小字。
+   *
+   * 结构参照 CodeMyUI/book-opening-animation 与 scastiel 的 3D 书：
+   *   .book-stage  —— 透视舞台（perspective 在它身上，书自己只管变换）
+   *   .book        —— 书的整体，负责放大
+   *   .book-cover  —— 封面，绕左缘（书脊）翻开
+   *   .book-pages  —— 右侧书页厚度（几层纸边），翻书时立着，放大后被内页接替
+   *   .book-page   —— 翻开后露出的内页，最终铺满全屏的那张纸
+   *
+   * 刻意不用 preserve-3d + backface-visibility 做「正反两面」：那套在无 GPU /
+   * headless 的 WebView 下背面剔除会失效，翻过去仍露出封面。这里封面用
+   * rotateY + opacity 直说「翻走就消失」，内页用另一个元素接棒，任何渲染路径一致。
+   */
   function buildHTML(o) {
     if (typeof o.html === 'string') return o.html;
     /* 封面用整书封面而不是缩略图：放大铺满时 thumb（144×196）会糊 */
     var cover = o.cover || '/assets/cover.webp';
-    return '<div class="hero-cover"><img src="' + cover + '" alt="" /></div>' +
+    return '<div class="book-stage">' +
+             '<div class="book">' +
+               '<div class="book-cover"><img src="' + cover + '" alt="" /></div>' +
+               '<div class="book-pages"></div>' +
+               '<div class="book-page"></div>' +
+             '</div>' +
+           '</div>' +
            '<div class="page-transition-veil"></div>' +
            '<div class="transition-text">' + (o.initialText || '梧桐叶正落下') + '</div>';
   }
@@ -122,9 +143,9 @@
   function init(options) {
     var o = options || {};
     var lines = o.lines && o.lines.length ? o.lines : DEFAULT_LINES;
-    var enterHold = typeof o.enterHold === 'number' ? o.enterHold : 190;
+    var enterHold = typeof o.enterHold === 'number' ? o.enterHold : 170;
     var enterTtl = typeof o.enterTtl === 'number' ? o.enterTtl : 8000;
-    var exitDelay = typeof o.exitDelay === 'number' ? o.exitDelay : 345;
+    var exitDelay = typeof o.exitDelay === 'number' ? o.exitDelay : 430;
     var skipSelector = o.skipSelector || null;
     var hashScroll = !!o.hashScroll;
     var mount = o.mount || document.body;
@@ -168,10 +189,11 @@
     }
 
     /**
-     * 离开当前页：hero 封面从点击处放大铺满全屏，铺满时跳转。
-     * 做法参照开源项目 exzenter/web-transitions-api-logo 的「Expand」阶段：
-     * 把全屏的 hero 用 transform 反演到点击元素的位置和大小（FLIP），
-     * 再放开 transform 让它动画回全屏 —— 这就是「从小到大、铺满全屏」。
+     * 离开当前页：中央的 3D 书翻开、放大铺满全屏，铺满时跳转。
+     *
+     * 起点刻意不是点击的条目（曾按 FLIP 从 sourceEl 的 rect 起飞，但书架/目录
+     * 是文字列表，从一行字上长出封面很怪）。现在书固定立在屏幕中央，
+     * 「翻开 → 放大」本身就是叙事，sourceEl 只留给将来按书籍封面定制时用。
      */
     function start(href, sourceEl) {
       if (!ov || prefersReducedMotion()) {
@@ -182,29 +204,12 @@
       ov.classList.remove('active', 'flip-out', 'flip-in');
       void ov.offsetWidth;
 
-      var hero = ov.querySelector('.hero-cover');
-      if (hero) {
-        var vw = global.innerWidth, vh = global.innerHeight;
-        var rect = (sourceEl && sourceEl.getBoundingClientRect) ? sourceEl.getBoundingClientRect() : null;
-        var s, tx, ty;
-        if (rect && rect.width > 0) {
-          /* cover 语义：取宽高比例里较大的那个，保证放大过程中不露边 */
-          s = Math.max(rect.width / vw, rect.height / vh);
-          /* 反演：hero 是全屏大小（transform-origin: 0 0），
-             缩放后要让它的中心对准点击元素的中心 */
-          tx = rect.left - (vw * s - rect.width) / 2;
-          ty = rect.top - (vh * s - rect.height) / 2;
-        } else {
-          /* 没有来源元素（比如键盘触发）就从中央偏上放大 */
-          s = 0.44;
-          tx = vw * 0.28;
-          ty = vh * 0.26;
-        }
-        hero.style.transform = 'translate3d(' + tx + 'px,' + ty + 'px,0) scale(' + s + ')';
-        hero.style.opacity = '0';
-        void hero.offsetWidth;   /* 让起点真正生效，否则会从全屏直接跳过去 */
-        hero.style.opacity = '1';
-        hero.style.transform = 'translate3d(0,0,0) scale(1)';
+      /* 书本从中央立起：起点变换写在这里（动画 keyframes 只描述翻开/放大的相对
+         过程），封面默认 opacity:0，由 flip-out 露脸 —— 不靠类名「藏」它。 */
+      var book = ov.querySelector('.book');
+      if (book) {
+        book.style.transform = '';
+        void book.offsetWidth;
       }
 
       ov.classList.add('active', 'flip-out');
