@@ -264,6 +264,10 @@
   --shadow: 0 1px 3px rgba(60, 40, 20, 0.05);
   --shadow-hover: 0 4px 16px rgba(60, 40, 20, 0.1);
   --site-bg: linear-gradient(180deg, #fbf7ef 0%, #f2eadc 46%, #ece0cd 100%);
+  /* 底部 tab 栏的底色。原来用近白 rgba(255,253,248,.94)，可页面渐变滚到底
+     已经是 #ece0cd，两者一撞就是一条横带（读者说的「断层」）。
+     取页面底部的同族色，并留成三元组方便和透明度组合。 */
+  --tabbar-tint: 240, 230, 213;
   --card-warm: rgba(255, 252, 246, 0.88);
   --card-warm-solid: #fffaf3;
   --card-border: rgba(137, 94, 46, 0.10);
@@ -359,6 +363,7 @@
   --shadow: 0 1px 3px rgba(0,0,0,0.32);
   --shadow-hover: 0 4px 16px rgba(0,0,0,0.42);
   --site-bg: linear-gradient(180deg, #1b1812 0%, #16130d 46%, #100e09 100%);
+  --tabbar-tint: 26, 23, 18;
   --card-warm: rgba(37, 33, 25, 0.88);
   --card-warm-solid: #252118;
   --card-border: rgba(212, 160, 80, 0.14);
@@ -554,6 +559,9 @@ a { color: inherit; text-decoration: none; }
   position: relative;
   min-height: 100vh;
   min-height: 100dvh;
+  /* 独立格式化上下文：内部元素的 margin 不再穿出去撑高 body，
+     底部的留白也就不会跑到这层暖白渐变之外（见下面 .tab-page-body 的说明）。 */
+  display: flow-root;
   background: linear-gradient(180deg, rgba(255,252,246,0.70) 0%, rgba(255,248,239,0.82) 28%, rgba(247,239,226,0.94) 100%);
 }
 
@@ -3319,14 +3327,27 @@ body.reading-page {
   right: 0;
   bottom: 0;
   display: flex;
-  background: rgba(255, 253, 248, 0.94);
-  border-top: 0.5px solid var(--border-light);
+  background: rgba(var(--tabbar-tint), 0.96);
+  border-top: 0.5px solid rgba(184, 134, 78, 0.10);
   padding: 8px 0 calc(9px + env(safe-area-inset-bottom, 0px));
   z-index: 100;
 }
 
+/* 栏上方 22px 渐隐：把「一条硬边」揉成过渡。
+   页面背景是渐变（越往下越深），固定栏只能取一个色，靠这一层把差补掉。 */
+.tab-bar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 22px;
+  background: linear-gradient(to top, rgba(var(--tabbar-tint), 0.96), rgba(var(--tabbar-tint), 0));
+  pointer-events: none;
+}
+
 :root[data-theme="dark"] .tab-bar {
-  background: rgba(30, 27, 21, 0.94);
+  background: rgba(var(--tabbar-tint), 0.96);
   border-top-color: var(--border);
 }
 
@@ -3352,6 +3373,15 @@ body.reading-page {
 }
 
 .tab-page-body {
+  /* 这里不留 padding：body 的内边距区只有 --site-bg 那层深色渐变，
+     而正文底色是 .phone-frame 上的暖白纱 —— 留白落在 body 上，页面最底部
+     就会露出窄窄一条深色，读者看到的就是「断层」。 */
+  padding-bottom: 0;
+}
+
+/* 给底部 tab 栏预留的空间必须落在 .phone-frame 里侧，背景才盖得住它。
+   没有 tab 栏的页面（人物详情等）同样多出这一截，但有底色、看起来就是页脚留白。 */
+.tab-page-body .phone-frame {
   padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
 }
 

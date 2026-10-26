@@ -949,6 +949,35 @@ check('第一章按 ← 只给提示、不跳转',
   edge.path.indexOf('chapter-01') >= 0 && /第一章/.test(edge.toast),
   edge.path + ' / ' + edge.toast);
 
+section('全站底部无缝隙');
+/* 底部「断层」两种成因都出现过，都是「留白落在没有背景的层上」：
+   ① body 的 padding-bottom 给 tab 栏预留空间 —— 那段只有 --site-bg 深色渐变，
+      正文的暖白纱盖不到；② 收束卡用 margin 留白，塌出 .reading-wrapper。
+   判据统一成一句：滚到底时，带背景的主容器必须铺到视口底。 */
+for (const p of ['/', '/novel/', '/novel/characters.html', '/novel/character-linshu.html', '/quotes.html']) {
+  await goto(BASE + p);
+  await sleep(400);
+  await evaluate(`window.scrollTo(0, document.documentElement.scrollHeight); 1`);
+  await sleep(250);
+  const frame = await evaluate(`(() => {
+    const pf = document.querySelector('.phone-frame');
+    if (!pf) return { gap: null };
+    return { gap: Math.round(innerHeight - pf.getBoundingClientRect().bottom) };
+  })()`);
+  check('底部铺满视口 ' + p, frame.gap !== null && Math.abs(frame.gap) <= 1, 'gap=' + frame.gap);
+}
+
+/* tab 栏要给底部留位，但这段留白必须在有背景的 .phone-frame 里侧 */
+await goto(BASE + '/');
+await sleep(400);
+const tabSpace = await evaluate(`({
+  bodyPad: getComputedStyle(document.body).paddingBottom,
+  framePad: getComputedStyle(document.querySelector('.phone-frame')).paddingBottom
+})`);
+check('给 tab 栏预留的空间在有背景的容器里',
+  parseFloat(tabSpace.bodyPad) === 0 && parseFloat(tabSpace.framePad) >= 60,
+  JSON.stringify(tabSpace));
+
 section('全局');
 check('全程无未捕获异常', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 300));
 

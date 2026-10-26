@@ -8,20 +8,20 @@
 | 项 | 值 |
 |---|---|
 | 线上 | <https://zephyrw.site>（GitHub Pages，push 即发布） |
-| 站点资源版本 | `?v=95`（全站 28 个 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
+| 站点资源版本 | `?v=99`（全站 28 个 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
 | SW 缓存名 | `linyuan-v58` |
 | 阅读器模块 | dom 77 行 · flags 87 · store 247 · engine 552 · ui 2613 · 入口 30 |
-| 样式 | `css/style.css` 4410 行（4 套主题令牌） |
+| 样式 | `css/style.css` 4450 行（4 套主题令牌） |
 | 章节 | 7 章（2858 / 2347 / 2029 / 2496 / 2076 / 2269 / 2081 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
 | 人物 | 17 人（新叶 7 / 乔木 10）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
 | 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 852KB**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
 | Android 壳 | v1.9.0 / versionCode 17（v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死；v1.8.7 修系统返回键直接退出；**v1.9.0 = A 档收官，壳进入封版状态**：桥接补丁下沉到站点 `js/native-bridge.js`（以后改桥不用发版）、原生分享桥、闪屏叠层淡出、onResume 补更新检查、锁竖屏。详见 `app/BACK-HANDLING.md` 与 `app/WEBVIEW-ROADMAP.md`） |
-| 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 86 项 |
+| 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 92 项 |
 
 ## 常用命令
 
 ```bash
-node tools/e2e.mjs                 # 86 项端到端（真浏览器，约 90 秒）
+node tools/e2e.mjs                 # 92 项端到端（真浏览器，约 95 秒）
 node tools/e2e.mjs --verbose       # 附带每项实测值
 npx -p typescript tsc -p jsconfig.json --noEmit   # 类型检查（零产出）
 node tools/bump-assets.mjs --write # 发版前必做：全站 ?v= 统一 +1
@@ -260,12 +260,17 @@ serif——观感一致，不是 bug。（17 人全部有立绘后，占位字�
    写着绿、手机上没反应（`tools/e2e.mjs` 的 `clickAt()` 用 `Input.dispatchTouchEvent` 真点）。
    另：分区自己是 `pointer-events:auto`，只把父层设 none 没用，子元素会重新启用命中。
 
-10. **底部那道「断层」是 margin 塌陷 + 两种底色**。`body` 用 `--site-bg`（**线性渐变**），
-    `.reading-wrapper` 用 `--reading-bg`（**纯色**）。`margin-bottom` 会一路穿过
-   `.chapter-block` / `#readingFlow` / `.reading-wrapper` 塌到外面，容器高度不含它 ——
-   滚到底就露一条 body 的渐变，和上面的纯色撞成一条横带。修法两条一起上：
-   底部留白改用 `padding`（章节页、收束卡都适用），另给阅读页 `body.is-reading`
-   铺 `--reading-bg`，以后再有 1px 漏底也看不出来。
+10. **「底部断层」只有一个根因：留白落在了没有背景的层上**。全站出现过三次，同一种错：
+    `body` 的底是 `--site-bg`，正文的底是另一层（阅读页 `--reading-bg` 纯色、其他页
+    `.phone-frame` 上那层暖白纱），**两者不是同一个值**。于是只要留白落在外面，滚到底
+    就露出一条不同的底色 —— 读者看到的就是一道横带。三次具体形态：
+      - 收束卡用 `margin-bottom` → 塌出 `.reading-wrapper`（容器高度不含它）；
+      - `.tab-page-body` 用 `padding-bottom: 72px` 给 tab 栏留位 → 这段只有 body 渐变；
+      - 章节页 `body` 是站点渐变、阅读区是纯色 → 任何缝隙都是色差。
+    现在的规矩：**留白必须落在有背景的那一层里面（用 padding，不用 margin），
+    并且阅读页给 `body.is-reading` 铺阅读色兜底**。改动前先问一句「这段空白显示的是
+    谁的背景」。`tools/e2e.mjs` 的「全站底部无缝隙」那 5 条断言就是守这个的：
+    滚到底时 `.phone-frame` 的底边必须等于视口底。
 
 ## 远程开关（出问题时先关功能，别回滚整站）
 
@@ -340,7 +345,7 @@ serif——观感一致，不是 bug。（17 人全部有立绘后，占位字�
 
 | 事项 | 建议时机 | 理由 |
 |---|---|---|
-| 老面板（目录/设置/摘句/备份）从 innerHTML 迁到 `el()` | 下次真要加界面时 | 纯内部质量，无用户可见收益；且 86 项断言测行为不测像素，风险兜不住 |
+| 老面板（目录/设置/摘句/备份）从 innerHTML 迁到 `el()` | 下次真要加界面时 | 纯内部质量，无用户可见收益；且 92 项断言测行为不测像素，风险兜不住 |
 | `ui.js` 再拆出 `panels.js`（纯移动） | 想拆随时可做 | 风险低，但也没收益；`ui.js` 2552 行目前还能忍 |
 | 选中文字气泡工具条（摘句/复制/搜索） | 想加功能时的首选 | 唯一“既有用户价值、又顺手带出 `el()` 迁移”的一步 |
 | 全书搜索 | 章节多了以后 | 现在只有 7 章，索引成本大于收益 |
@@ -350,7 +355,7 @@ serif——观感一致，不是 bug。（17 人全部有立绘后，占位字�
 
 ## 当前验证状态
 
-- 本地：`node tools/e2e.mjs` 86/86；pre-push 5 项通过（?v= 统一 / 预缓存 / 楷体覆盖 / 源稿一致 / 安装包校验）
+- 本地：`node tools/e2e.mjs` 92/92；pre-push 5 项通过（?v= 统一 / 预缓存 / 楷体覆盖 / 源稿一致 / 安装包校验）
 - 同学录专项（2026-10-24，无头 Edge 实测）：17 张卡片 + 2 个分组；点立绘弹灯箱且不跳页，
   点卡片其它位置跳详细页；详细页内容齐全；页脚不被 tab 栏遮挡；浅/深主题截图正常
 - CI：`verify` 每次 push 都跑（五项静态校验 + 端到端）
