@@ -475,3 +475,27 @@ serif——观感一致，不是 bug。（17 人全部有立绘后，占位字�
 - 同学录专项（2026-10-24，无头 Edge 实测）：17 张卡片 + 2 个分组；点立绘弹灯箱且不跳页，
   点卡片其它位置跳详细页；详细页内容齐全；页脚不被 tab 栏遮挡；浅/深主题截图正常
 - CI：`verify` 每次 push 都跑（五项静态校验 + 端到端）
+
+## 2026-10-27 底部 tab 对比度回归修复
+
+| 项 | 内容 |
+|---|---|
+| 提交 | `e215161`（已推送 main） |
+| 文件 | `css/style.css` 的 `.tab-item` |
+| 改动 | `color: var(--text-muted)` → `color: var(--text-secondary)`（#756654 → #6e5f4f） |
+| 原因 | Mac 端「修底部断层」换了背衬色，实测 tab 栏底色变成 `#f1e6d6`，11px 文字掉到 **4.49:1**（门槛 4.5），对比度审计报 12 项未达标（四个 tab × 多页） |
+| 验证 | 对比度 **12 → 0**（实测 4.99）；e2e 114/114；`?v=` 110 → 111 且 `--check` 报「版本号统一」；预缓存 / check-apk / 源稿 全绿 |
+
+教训：**改背衬色等于改所有压在上面的小字对比度**。同一处颜色别只看「好不好看」，
+改完必须跑 `node tools/contrast-audit.mjs`——它是拿真实渲染色算的，不看 CSS 变量名。
+
+### 本机 git 操作的两个坑（2026-10-27 实测，Windows）
+
+1. `git reset --hard` / `git checkout origin/main -- .` 会被 **SIGTERM 杀掉**，并留下 `.git/index.lock`，
+   之后所有写操作都失败（报 `Another git process seems to be running`）。
+   **先 `rm -f .git/index.lock`**，再**按目录分块** `git checkout origin/main -- js css tools novel assets app manuscript .github .githooks docs`，
+   最后 `git update-ref refs/heads/main $(git rev-parse origin/main)`。
+2. 漏掉 `docs/` 会让它在 `git status` 显示为已删除（`D`），补一句 `git checkout HEAD -- docs/` 即可。
+3. `git push` 若报 `schannel: CRYPT_E_NO_REVOCATION_CHECK`，那是证书吊销检查失败（不是没外网），
+   用 `git -c http.schannelCheckRevoke=false push` 即可；代理本身要通（HTTP 代理走 `CONNECT`，
+   `curl --ssl-no-revoke` 能验证）。
