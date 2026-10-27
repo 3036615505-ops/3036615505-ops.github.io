@@ -265,14 +265,14 @@ ws.onmessage = ev => {
   }
 };
 
-const send = (method, params = {}) => new Promise((resolve, reject) => {
+const send = (method, params = {}, timeoutMs = CMD_TIMEOUT) => new Promise((resolve, reject) => {
   const id = ++msgId;
   /* 每条命令都带超时：页面里的 Promise 不 settle、或者浏览器假死时，
      不加超时就是无响应等到底，CI 上表现为「跑了几小时没动静」。 */
   const timer = setTimeout(() => {
     pending.delete(id);
-    reject(new Error(`CDP ${method} 超过 ${CMD_TIMEOUT}ms 无响应（卡在「${CURRENT_STEP}」）`));
-  }, CMD_TIMEOUT);
+    reject(new Error(`CDP ${method} 超过 ${timeoutMs}ms 无响应（卡在「${CURRENT_STEP}」）`));
+  }, timeoutMs);
   pending.set(id, {
     resolve: v => { clearTimeout(timer); resolve(v); },
     reject: e => { clearTimeout(timer); reject(e); }
@@ -299,15 +299,36 @@ async function evaluate(expression) {
 }
 
 /** 按视口坐标真点一下。elementFromPoint / el.click() 都会绕过覆盖层，
- *  只有派发真实鼠标事件才能复现「按钮被翻页层挡住」。 */
+ *  只有派发真实输入事件才能复现「按钮被翻页层挡住」。
+ *
+ *  这一颗按钮必须能点中，所以输入通道要有降级：
+ *  CI（headless + --no-sandbox）实测 `Input.dispatchTouchEvent` 会**永远不回包**，
+ *  位置在「末章收束卡」那一节 —— 历史上 e2e 挂到 GitHub 6 小时上限，就是卡在这儿。
+ *  先清掉可能残留的触摸序列再发；还是超时就退回鼠标事件（同样按坐标命中，
+ *  覆盖层照样挡得住，断言要验的东西没变），并把降级写进日志。
+ *  E2E_CLICK_MODE=mouse 可强制走鼠标那条路，用来验证降级路径本身是好的。 */
+const TAP_TIMEOUT = Math.min(CMD_TIMEOUT, 8000);
 async function clickAt(x, y) {
-  /* 这个浏览器是按 mobile:true 起的，鼠标事件不会合成 click，必须发触摸。
-     touchEnd 之后再等一小会儿，click 是浏览器在 touch 序列结束后补发的。 */
-  await send('Input.dispatchTouchEvent', {
-    type: 'touchStart',
-    touchPoints: [{ x, y, radiusX: 1, radiusY: 1, force: 1 }]
-  });
-  await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  const forceMouse = process.env.E2E_CLICK_MODE === 'mouse';
+  if (!forceMouse) {
+    try {
+      /* 上一次点击留下的序列没被浏览器 ack 掉时，新 touch 会排队等——先取消一次 */
+      await send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] }, 3000)
+        .catch(() => { /* 没有可取消的序列是正常情况 */ });
+      await send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [{ x, y, radiusX: 1, radiusY: 1, force: 1 }]
+      }, TAP_TIMEOUT);
+      await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }, TAP_TIMEOUT);
+      return;
+    } catch (e) {
+      console.log('  ↷ 触摸事件无响应，退回鼠标点击：' + e.message);
+    }
+  }
+  await send('Input.dispatchMouseEvent',
+    { type: 'mousePressed', x, y, button: 'left', clickCount: 1 }, TAP_TIMEOUT);
+  await send('Input.dispatchMouseEvent',
+    { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 }, TAP_TIMEOUT);
 }
 
 const BASE = `http://127.0.0.1:${PORT}`;

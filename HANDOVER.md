@@ -538,3 +538,17 @@ git config --local --unset-all credential.helper
 另外：WebSocket 连不上原来也是无限等（`ws.onopen` 没有超时），现在是 15s 报错；
 每个 `section()` 会打当前耗时（`+128.1s`），CI 上哪一节慢一眼能看出来。
 本机基准：**114/114，147.7s**。
+
+### 挂死的真凶（首轮定位结果）
+
+加了超时之后第一轮 CI 就抓到了：**`Input.dispatchTouchEvent` 在「末章收束卡」那一节永远不回包**。
+以前没有超时 → 一直等 → 6 小时被 cancel。现在 `clickAt()` 的处理顺序是：
+
+1. 先发一次 `touchCancel` 冲掉上一次没被 ack 的触摸序列（3s，失败不报错）
+2. 正常 `touchStart` / `touchEnd`（各 8s 超时）
+3. 还是没响应 → 退回 `mousePressed` / `mouseReleased`，并在日志里打 `↷ 触摸事件无响应，退回鼠标点击`
+
+鼠标那条路同样是「按坐标命中真实元素」，覆盖层照样挡得住，断言要验的东西没变。
+`E2E_CLICK_MODE=mouse node tools/e2e.mjs` 可强制走降级路径自测。
+
+两条路都本机验证过：touch **114/114 / 147.8s**，mouse **114/114 / 147.6s**。
