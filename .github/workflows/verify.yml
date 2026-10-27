@@ -19,6 +19,7 @@ jobs:
   static-checks:
     name: 静态校验
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
@@ -48,6 +49,7 @@ jobs:
   e2e:
     name: 端到端（真浏览器）
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -73,7 +75,11 @@ jobs:
           echo "CHROME_BIN=${{ steps.setup-chrome.outputs.chrome-path }}"
           "${{ steps.setup-chrome.outputs.chrome-path || '/usr/bin/google-chrome' }}" --version || true
 
-      - name: 阅读器端到端 38 项
+      - name: 阅读器端到端
+        # timeout-minutes 是死线的第二道保险：e2e 自己 7 分钟会超时退出，
+        # 万一卡在 Node 还没接管的地方（Chrome 起不来、apt 卡住），也不至于
+        # 一路耗到 GitHub 的 6 小时上限才被 cancel —— 那种日志什么都查不出来。
+        timeout-minutes: 10
         run: node tools/e2e.mjs
         env:
           CI: true

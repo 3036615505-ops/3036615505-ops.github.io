@@ -571,8 +571,9 @@ CI 上那一次触摸仍然无响应（`Input.dispatchTouchEvent` 超 8s），�
 也就是说：**焦点模拟没能解决这条无头 Chrome 的输入通道问题**，兜底那一层在顶着。
 真要根治得换驱动方式（Playwright / puppeteer 的输入封装），那是另一件事，先记着。
 
-### 遗留：verify.yml 的 timeout-minutes 还没推
+### verify.yml 的 timeout-minutes（已推）
 
-PAT 缺 `workflow` scope，GitHub 直接拒绝（`refusing to allow a Personal Access Token to create or update workflow`）。
-改动还在本地工作区（e2e job 15min / 步骤 10min / 静态 5min + 步骤名去掉过期的「38 项」）。
-三条路：给 token 补 workflow scope 后照常推 / 在网页端改这两行 / 干脆不要（e2e 自己 7 分钟就会退，这层只是双保险）。
+第一次推被 GitHub 拒绝：`refusing to allow a Personal Access Token to create or update workflow`，
+原因是旧 PAT 只有 `repo` 没 `workflow`。换成带 `repo, workflow` 的 PAT 后正常推上（2026-10-27）。
+真正生效的是：e2e job 15min / e2e 步骤 10min / 静态校验 5min，步骤名也去掉了过期的「38 项」。
+注意：**改 workflow 文件必须用带 `workflow` scope 的凭据**，否则整笔 push 会被拒，不只是这一个文件。
