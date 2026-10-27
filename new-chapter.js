@@ -258,8 +258,12 @@ const tpl = `<!DOCTYPE html>
        所以紧跟样式表；它必须早于正文末尾的 reader.* 模块执行 —— 那些模块
        会直接使用 navigator.clipboard 与 navigator.share。 -->
   <script src="../js/native-bridge.js?v=${ASSET_V}"></script>
-  <!-- 站内「新章节更新了」横幅（取 announce.json 与 localStorage 比对，每会话一次）。 -->
-  <script src="../js/announce.js?v=${ASSET_V}"></script>
+  <!-- 站内「新章节更新了」横幅（取 announce.json 与 localStorage 比对，每会话一次）。
+       defer：它只读 DOM 与 localStorage、往 body 补一条横幅，不参与首绘；
+       留在 head 里同步加载会让正文白等一个网络往返（4G 实测首绘 +150~300ms）。 -->
+  <script src="../js/announce.js?v=${ASSET_V}" defer></script>
+  <!-- 点击即反馈：按下就在顶部点亮一条细线，盖住「跳转前的空窗期」。 -->
+  <script src="../js/nav-feedback.js?v=${ASSET_V}" defer></script>
 </head>
 <body class="reading-page">
   <div class="reading-wrapper">

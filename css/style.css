@@ -3522,6 +3522,16 @@ body.reading-page {
   align-items: center;
   padding: 12px 0 10px;
   border-bottom: 0.5px solid var(--border-light);
+  /* 按下要立刻有反应：过渡只作用在 background/transform 上，
+     不能让「按下」本身产生延迟感（transition 短一点更跟手）。 */
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+
+/* 首页章节列表原来没有 :active —— 点下去 0 反馈，紧接着是 0.3~0.9s 的导航空窗，
+   读者只会觉得「点空了 / 卡住了」。这一条必须保留。 */
+.date-item:active {
+  background: rgba(184, 134, 78, 0.08);
+  transform: scale(0.994);
 }
 
 .date-item:last-child {
@@ -4716,4 +4726,56 @@ body.is-reading {
   transform: scale(0.97);
   opacity: 0.86;
   transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+/* ===== 站内跳转的「正在打开」细线（js/nav-feedback.js）=====
+   页面过渡动画停用后，从按下链接到新页画出正文之间有一段 0.3~0.9s 的
+   完全静止（4G 实测 TTFB 524ms + 首绘 884ms）。这段时间里屏幕上没有任何
+   变化，读者会当成「点空了 / 卡住了」。
+   这条 2px 线在按下的那一帧就亮起来，明确表示「在打开」：
+     · 不拦点击（pointer-events: none），不加任何导航延迟，不遮正文；
+     · 延迟 60ms 才淡入 —— 命中缓存的那次跳转（约 100ms）根本看不见它，
+       不会闪一下又消失；
+     · 新页一开始解析，旧文档就没了，线自然跟着消失，不需要收尾逻辑。 */
+.nav-opening-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 400;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(to right,
+    transparent 0%,
+    var(--accent) 35%,
+    var(--autumn) 65%,
+    transparent 100%);
+  background-size: 45% 100%;
+  background-repeat: no-repeat;
+  background-position: -45% 0;
+  animation: nav-open-sweep 820ms linear infinite;
+  transition: opacity 0.14s ease 0.06s;
+}
+
+.nav-opening-bar.is-on {
+  opacity: 0.9;
+}
+
+@keyframes nav-open-sweep {
+  from { background-position: -45% 0; }
+  to   { background-position: 145% 0; }
+}
+
+/* 减少动态效果：只留一条静态细线，不做扫动 */
+@media (prefers-reduced-motion: reduce) {
+  .nav-opening-bar {
+    animation: none;
+    background: var(--accent);
+    background-size: 100% 100%;
+    background-position: 0 0;
+    opacity: 0;
+  }
+  .nav-opening-bar.is-on { opacity: 0.75; }
+  .date-item { transition: none; }
 }

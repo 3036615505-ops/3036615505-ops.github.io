@@ -29,7 +29,7 @@
  * **刻意不升**（升了会让全量预缓存白下载一遍；旧缓存里的残留 HTML 会在下一次
  * 导航时被 reload 模式的网络响应覆盖，只影响 500ms 兜底的窗口期，可接受）。
  */
-var CACHE = 'linyuan-v59';
+var CACHE = 'linyuan-v60';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
@@ -114,6 +114,8 @@ var PRECACHE = [
      且壳内的剪贴板 / 分享 / 导出全靠它，缺了等于这三个功能消失。 */
   '/js/native-bridge.js',
   '/js/announce.js',
+  /* 跳转即时反馈：首页/书架/章节页的 <head> 里 defer 引用，弱网必命中 */
+  '/js/nav-feedback.js',
   '/js/lightbox.js',
   '/quotes.html',
   '/novel/',

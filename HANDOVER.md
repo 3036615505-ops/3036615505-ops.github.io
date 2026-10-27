@@ -16,7 +16,7 @@
 | 人物 | 17 人（新叶 7 / 乔木 10）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
 | 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 852KB**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
 | Android 壳 | v1.9.0 / versionCode 17（v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死；v1.8.7 修系统返回键直接退出；**v1.9.0 = A 档收官，壳进入封版状态**：桥接补丁下沉到站点 `js/native-bridge.js`（以后改桥不用发版）、原生分享桥、闪屏叠层淡出、onResume 补更新检查、锁竖屏。详见 `app/BACK-HANDLING.md` 与 `app/WEBVIEW-ROADMAP.md`） |
-| 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 114 项 |
+| 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 116 项 |
 
 ## 常用命令
 
@@ -464,10 +464,11 @@ serif——观感一致，不是 bug。（17 人全部有立绘后，占位字�
 
 ## 当前验证状态
 
-- 本地：`node tools/e2e.mjs` 114/114；pre-push 5 项通过（?v= 统一 / 预缓存 / 楷体覆盖 / 源稿一致 / 安装包校验）
+- 本地：`node tools/e2e.mjs` 116/116；pre-push 5 项通过（?v= 统一 / 预缓存 / 楷体覆盖 / 源稿一致 / 安装包校验）
   - 本机没装 Chrome/Edge 时用 `CI=1 CHROME_BIN=<chrome-headless-shell 路径> node tools/e2e.mjs`
     （`CI=1` 才会加 `--no-sandbox`，容器/沙箱里不加必然起不来）
-  - 114 = 原 110 − 2（翻书 DOM 钩子 / `flip-out` 两条正向断言）+ 6（「过渡已停用」的
+  - 116 = 上一版 114 + 2（「按下就亮细线 / 细线不拦点击」，2026-10-27 加）；
+    那 114 = 原 110 − 2（翻书 DOM 钩子 / `flip-out` 两条正向断言）+ 6（「过渡已停用」的
     反向断言：首页无遮罩 / 点击不播过渡 / 50ms 内开始导航 / 章节页无入场遮罩 /
     正文已渲染 / 遗留标记无副作用）
 - 进阅读页耗时（2026-10-26，停用过渡后实测）：点章节链接 → 开始导航 **4ms**（改前 481ms），
@@ -577,3 +578,33 @@ CI 上那一次触摸仍然无响应（`Input.dispatchTouchEvent` 超 8s），�
 原因是旧 PAT 只有 `repo` 没 `workflow`。换成带 `repo, workflow` 的 PAT 后正常推上（2026-10-27）。
 真正生效的是：e2e job 15min / e2e 步骤 10min / 静态校验 5min，步骤名也去掉了过期的「38 项」。
 注意：**改 workflow 文件必须用带 `workflow` scope 的凭据**，否则整笔 push 会被拒，不只是这一个文件。
+## 2026-10-27 · 过渡停用后暴露的「空窗期」（点击像卡住）
+
+**现象**：用户反馈「删掉加载动画后，点击之后页面不动了，像卡住了」。
+**实测**（4G 节流 150ms RTT / 1.6Mbps，390×844，首页点 `.date-item` → chapter-01）：
+
+| 指标 | 数值 | 含义 |
+|---|---|---|
+| TTFB | **524ms** | 导航 HTML 走 networkFirst + `cache:'reload'`，每次都要真网络 |
+| 首绘 FCP | **884ms** | 这 0.9 秒里屏幕上**没有任何变化**，所以「像卡住」 |
+| 命中缓存那次 | ~100ms | 快的跳转反而不能加遮罩，会闪 |
+
+**三处改动**：
+
+1. `.date-item:active` —— 首页章节卡片原来**完全没有按下态**（`.chapter-item`、`.book-item` 都有，
+   唯独首页这个列表漏了）。按下立刻 `rgba(184,134,78,.08)` + `scale(.994)`。
+2. `js/nav-feedback.js`（新增）—— `pointerdown` 那一帧就在顶部点亮 2px 细线：
+   · 不 preventDefault、不 delay，导航时序一个字不变（e2e 的「<50ms 开始导航」仍然绿）
+   · `pointer-events: none`，不遮内容、不拦点击
+   · 延迟 60ms 淡入：缓存命中的 ~100ms 跳转根本看不到它，不会闪
+   · 没跳成（离线/被拦）6 秒自收；`prefers-reduced-motion` 下只留静态线
+3. `announce.js` 全站改 `defer` —— 它在 `<head>` 里同步加载，白占一个网络往返
+   （只读 DOM/localStorage、往 body 补横幅，不参与首绘）。`native-bridge.js` 保持同步：
+   它必须早于正文末尾的 `reader.*` 模块。
+
+**配套**：`sw.js` PRECACHE 加 `/js/nav-feedback.js`、`CACHE v59 → v60`；`?v= 111 → 112`；
+`new-chapter.js` 模板同步（否则下次生成的章节页又退回同步 announce）；
+e2e 加 2 条断言钉住「按下即亮线 / 不拦点击」，**114 → 116**。
+
+**没做**（有明确代价，先不碰）：导航改「缓存优先 + 后台校验」能省掉那 524ms，
+但会把之前修过的「返回首页看到旧版」放回来 —— 要动得连更新提示一起重新设计。
