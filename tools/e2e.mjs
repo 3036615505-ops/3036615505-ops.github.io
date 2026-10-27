@@ -386,6 +386,19 @@ const smoke = await evaluate(`({
 check('阅读器初始化完成（设置面板、底部状态条已注入）', smoke.settings && smoke.status && smoke.paras > 10, JSON.stringify(smoke));
 check('存储 schema 已写入 v2', smoke.schema === '2', 'schema=' + smoke.schema);
 
+/* 文案规则（作者 2026-10-27 定）：「一章一句」卡的卡头必须是《章节标题》，
+   不再是「这一章的蝉鸣」这种自拟词。这条钉住生成器模板，别哪天顺手改回去。 */
+const kicker = await evaluate(`(() => {
+  const k = document.querySelector('.chapter-afterglow .afterglow-kicker');
+  if (!k) return null;
+  const r = k.getBoundingClientRect();
+  return { text: k.textContent.trim(), wrapped: k.scrollWidth > Math.ceil(r.width) + 1 };
+})()`);
+check('余韵卡卡头是《章节标题》格式（不是「这一章的XX」）',
+  !!kicker && /^《第[一二三四五六七八九十百]+章·.+》$/.test(kicker.text) && kicker.text.indexOf('这一章') < 0,
+  JSON.stringify(kicker));
+check('卡头单行不换行（书名号 + 章节名放得下）', kicker && kicker.wrapped === false, JSON.stringify(kicker));
+
 section('阅读页 · 位置锚点');
 await evaluate(`localStorage.clear(); location.reload(); 1`);
 await sleep(2000);

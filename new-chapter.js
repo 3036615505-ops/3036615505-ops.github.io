@@ -289,7 +289,9 @@ const tpl = `<!DOCTYPE html>
 ${dateLineTop}${contentHtml}  </article>
 
   <div class="chapter-afterglow">
-    <div class="afterglow-kicker">这一章的风</div>
+    <!-- 卡头固定写「《章节标题》」，不要再写成「这一章的XX」——
+         这是站点的文案约定（见 HANDOVER「文案规则」），生成的每一章都要遵守。 -->
+    <div class="afterglow-kicker">《${escapeHtml(title)}》</div>
     <p>${escapeHtml(afterglow)}</p>
     <button type="button" class="afterglow-share" onclick="shareChapter(this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
