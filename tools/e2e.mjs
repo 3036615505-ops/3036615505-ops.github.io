@@ -14,6 +14,11 @@
  *   node tools/e2e.mjs --verbose    # 打印断言明细
  *   node tools/e2e.mjs --port 8799  # 换端口（端口被占时）
  *
+ * 超时（默认值已按 CI 的慢机器留足余量，本机不用管）：
+ *   E2E_DEADLINE=420000     整体死线，超时打「卡在哪一节」后按失败退出
+ *   E2E_CMD_TIMEOUT=20000   单条 CDP 命令的等待上限
+ *   CI 上另有 workflow 的 timeout-minutes 兜底，不会再耗到 GitHub 的 6 小时上限。
+ *
  * 退出码：0 全绿 / 1 有失败 / 0 跳过（无浏览器）
  *
  * 覆盖范围（每次改 reader.js 或 style.css 都应跑一遍）：
@@ -123,6 +128,14 @@ await new Promise((resolve, reject) => {
 
 /* ---------- 启动浏览器 ---------- */
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+/* 当前所在的测试小节：卡住/超时时把它打出来，否则 CI 日志里只剩「job cancelled」。
+   section() 每次进入新小节都会更新它，看门狗和 CDP 超时都会带上它。 */
+let CURRENT_STEP = '启动浏览器';
+const T0 = Date.now();
+const elapsed = () => (Date.now() - T0) / 1000;
+/* 单条 CDP 命令的等待上限。Runtime.evaluate 带 awaitPromise，页面里的 Promise
+   要是一直不 settle，这里没超时就是无限等 —— CI 上挂死 6 小时就是这么来的。 */
+const CMD_TIMEOUT = parseInt(process.env.E2E_CMD_TIMEOUT || '20000', 10);
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'linyuan-e2e-'));
 const BASE_ARGS = [
   '--remote-debugging-port=' + CDP_PORT,
@@ -187,6 +200,19 @@ async function cleanup(code) {
   process.exit(code);
 }
 
+/* ---------- 全局看门狗 ---------- */
+/* 历史上 CI 的 e2e 会挂死到 GitHub 的 6 小时上限才被 cancel，日志里什么都没有。
+   死线到了就自己退出，并说明卡在哪一节、最后一条断言是什么。
+   本机实测 148s（114 条断言），CI 常常慢一倍，所以留到 7 分钟；workflow 那边
+   的 timeout-minutes 是 10 分钟，比它更晚才会触发。 */
+const DEADLINE = parseInt(process.env.E2E_DEADLINE || '420000', 10);
+setTimeout(async () => {
+  console.error(`\n✗ 端到端超时：${Math.round(DEADLINE / 1000)}s 没跑完，卡在「${CURRENT_STEP}」`);
+  console.error(`  已跑 ${results.length} 条断言，用时 ${elapsed().toFixed(1)}s`);
+  if (browserLog.trim()) console.error('  浏览器输出尾部:\n' + browserLog.trim().slice(-1500));
+  await cleanup(1);
+}, DEADLINE);
+
 let target = null;
 let launchedWith = '';
 for (let i = 0; i < LAUNCH_VARIANTS.length && !target; i++) {
@@ -213,7 +239,11 @@ console.log('浏览器就绪：' + launchedWith);
 if (verbose) console.log('  可执行: ' + browserPath);
 
 const ws = new WebSocket(target.webSocketDebuggerUrl);
-await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject; });
+await new Promise((resolve, reject) => {
+  const t = setTimeout(() => reject(new Error('CDP WebSocket 15s 内没连上（' + target.webSocketDebuggerUrl + '）')), 15000);
+  ws.onopen = () => { clearTimeout(t); resolve(); };
+  ws.onerror = e => { clearTimeout(t); reject(e); };
+});
 
 let msgId = 0;
 const pending = new Map();
@@ -237,8 +267,23 @@ ws.onmessage = ev => {
 
 const send = (method, params = {}) => new Promise((resolve, reject) => {
   const id = ++msgId;
-  pending.set(id, { resolve, reject });
-  ws.send(JSON.stringify({ id, method, params }));
+  /* 每条命令都带超时：页面里的 Promise 不 settle、或者浏览器假死时，
+     不加超时就是无响应等到底，CI 上表现为「跑了几小时没动静」。 */
+  const timer = setTimeout(() => {
+    pending.delete(id);
+    reject(new Error(`CDP ${method} 超过 ${CMD_TIMEOUT}ms 无响应（卡在「${CURRENT_STEP}」）`));
+  }, CMD_TIMEOUT);
+  pending.set(id, {
+    resolve: v => { clearTimeout(timer); resolve(v); },
+    reject: e => { clearTimeout(timer); reject(e); }
+  });
+  try {
+    ws.send(JSON.stringify({ id, method, params }));
+  } catch (e) {
+    clearTimeout(timer);
+    pending.delete(id);
+    reject(e);
+  }
 });
 
 await send('Page.enable');
@@ -285,7 +330,10 @@ function check(name, ok, detail) {
   const line = (ok ? '  ✓ ' : '  ✗ ') + name + (!ok && detail ? '  → ' + detail : (verbose && detail ? '  (' + detail + ')' : ''));
   console.log(line);
 }
-function section(title) { console.log('\n' + title); }
+function section(title) {
+  CURRENT_STEP = title;
+  console.log('\n' + title + '  +' + elapsed().toFixed(1) + 's');
+}
 
 /* ================= 阅读页 ================= */
 section('阅读页 · 初始化');
@@ -1367,5 +1415,5 @@ section('全局');
 check('全程无未捕获异常', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 300));
 
 const passed = results.filter(r => r.ok).length;
-console.log('\n' + (passed === results.length ? '✓ 全部通过' : '✗ 有失败') + `：${passed}/${results.length}`);
+console.log('\n' + (passed === results.length ? '✓ 全部通过' : '✗ 有失败') + `：${passed}/${results.length}（用时 ${elapsed().toFixed(1)}s）`);
 await cleanup(passed === results.length ? 0 : 1);

@@ -7,3 +7,5 @@
 *.css text eol=lf
 *.html text eol=lf
 *.json text eol=lf
+# workflow 也用 LF：CRLF 虽然不影响 Actions 解析，但会让每次编辑都带一行整文件 diff
+*.yml text eol=lf

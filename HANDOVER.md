@@ -499,3 +499,42 @@ serif——观感一致，不是 bug。（17 人全部有立绘后，占位字�
 3. `git push` 若报 `schannel: CRYPT_E_NO_REVOCATION_CHECK`，那是证书吊销检查失败（不是没外网），
    用 `git -c http.schannelCheckRevoke=false push` 即可；代理本身要通（HTTP 代理走 `CONNECT`，
    `curl --ssl-no-revoke` 能验证）。
+
+## 2026-10-27 · 令牌移出 .git/config + e2e 不再挂死
+
+### 令牌不再写在 remote URL 里
+
+原来 `git remote origin` 的 URL 是 `https://<user>:<PAT>@github.com/...`，令牌明文躺在 `.git/config`：
+整个仓库目录拷给别人、打包、截图排障、`git config -l` 一下就全出去了。现在改成：
+
+```
+remote.origin.url = https://3036615505-ops@github.com/3036615505-ops/3036615505-ops.github.io.git
+```
+
+只有用户名（不是秘密），密码交给 **Windows 凭据管理器**（Git Credential Manager 2.9，系统级
+`credential.helper=manager`）。验证方式：`git push` 正常、`git config --local -l | grep ghp_` 为空。
+
+**这里踩到一个坑**：`.git/config` 里原本有一条空的 `credential.helper=`（等号后什么都没有）。
+空值不是「没配」，而是**把凭据助手列表清空**——system 级的 `manager` 被它顶掉，于是 git 退回
+终端提示，非交互环境直接报 `fatal: could not read Password`。删掉那一行就好了：
+
+```bash
+git config --local --unset-all credential.helper
+```
+
+另外 `http.schannelCheckRevoke=false` 已经写进仓库配置，以后不用每次带 `-c`。
+
+### e2e 三层超时
+
+之前 CI 的 e2e 会挂到 GitHub 6 小时上限才被 cancel，日志里只有一句 job cancelled。
+现在：
+
+| 层 | 机制 | 值 |
+|---|---|---|
+| CDP 命令 | `send()` 每条命令一个计时器，超时抛 `CDP <method> 超过 Nms 无响应（卡在「<小节>」）` | 20s |
+| 整体 | 看门狗，超时打「卡在哪一节 + 已跑断言数 + 浏览器日志尾部」再按失败退出 | 7min |
+| job | workflow `timeout-minutes`（e2e 15 / 步骤 10 / 静态 5） | 15min |
+
+另外：WebSocket 连不上原来也是无限等（`ws.onopen` 没有超时），现在是 15s 报错；
+每个 `section()` 会打当前耗时（`+128.1s`），CI 上哪一节慢一眼能看出来。
+本机基准：**114/114，147.7s**。
