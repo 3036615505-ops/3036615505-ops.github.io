@@ -552,3 +552,27 @@ git config --local --unset-all credential.helper
 `E2E_CLICK_MODE=mouse node tools/e2e.mjs` 可强制走降级路径自测。
 
 两条路都本机验证过：touch **114/114 / 147.8s**，mouse **114/114 / 147.6s**。
+
+### 结果（CI 首次跑绿）
+
+| 指标 | 改前 | 改后 |
+|---|---|---|
+| e2e 在 CI 的结局 | 挂到 6 小时被 cancel（历史 4 次全是 361min） | **success** |
+| 整个 verify 用时 | 361min（等于没结果） | **3.2min** |
+| 断言 | 从未在 CI 跑完过 | **114/114，156.1s** |
+
+CI 上那一次触摸仍然无响应（`Input.dispatchTouchEvent` 超 8s），日志里能看到降级那行：
+
+```
+↷ 触摸派发无响应，改用坐标命中的脚本点击：CDP Input.dispatchTouchEvent 超过 8000ms 无响应（卡在「末章收束卡」）
+· 脚本点击命中：button.reader-tap-zone
+```
+
+也就是说：**焦点模拟没能解决这条无头 Chrome 的输入通道问题**，兜底那一层在顶着。
+真要根治得换驱动方式（Playwright / puppeteer 的输入封装），那是另一件事，先记着。
+
+### 遗留：verify.yml 的 timeout-minutes 还没推
+
+PAT 缺 `workflow` scope，GitHub 直接拒绝（`refusing to allow a Personal Access Token to create or update workflow`）。
+改动还在本地工作区（e2e job 15min / 步骤 10min / 静态 5min + 步骤名去掉过期的「38 项」）。
+三条路：给 token 补 workflow scope 后照常推 / 在网页端改这两行 / 干脆不要（e2e 自己 7 分钟就会退，这层只是双保险）。
