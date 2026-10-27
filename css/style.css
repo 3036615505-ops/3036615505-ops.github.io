@@ -3628,7 +3628,12 @@ body.reading-page {
 .tab-item {
   flex: 1;
   text-align: center;
-  color: var(--text-muted);
+  /* 用 --text-secondary 而不是 --text-muted：11px 小字压在半透明 tab 栏上，
+     实测底色是 #f1e6d6（暖白纱叠在页面暖底上），--text-muted #756654 只有
+     4.49:1，恰好差 0.01 不达标（对比度审计报 12 项，全是四个 tab 的文字）。
+     #6e5f4f 在同一底色上约 5.0:1，达 4.5 门槛；与激活态的金色仍是两档层次。
+     —— 2026-10-27，Windows 端同步 Mac 改动后跑审计发现。 */
+  color: var(--text-secondary);
   text-decoration: none;
 }
 
