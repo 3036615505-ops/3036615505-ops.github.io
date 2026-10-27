@@ -318,11 +318,13 @@ async function tapByScript(x, y) {
   const hit = await evaluate(`(() => {
     const el = document.elementFromPoint(${x}, ${y});
     if (!el) return null;
-    const o = { bubbles: true, cancelable: true, clientX: ${x}, clientY: ${y}, view: window };
+    const o = { bubbles: true, cancelable: true, clientX: ${x}, clientY: ${y}, view: window, button: 0 };
     el.dispatchEvent(new PointerEvent('pointerdown', o));
     el.dispatchEvent(new MouseEvent('mousedown', o));
     el.dispatchEvent(new MouseEvent('mouseup', o));
-    el.click();                       /* <a> 的默认跳转只有 click() 会触发 */
+    /* 必须带坐标派发 click，不能用 el.click()：click() 造出来的事件 clientX/Y 是 0，
+       阅读页的翻页感应区会拿着 0,0 去找「下面是谁」，直接翻页把断言打飞。 */
+    el.dispatchEvent(new MouseEvent('click', o));
     return el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\\s+/)[0] : '');
   })()`);
   return hit;
