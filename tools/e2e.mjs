@@ -289,6 +289,10 @@ const send = (method, params = {}, timeoutMs = CMD_TIMEOUT) => new Promise((reso
 await send('Page.enable');
 await send('Runtime.enable');
 await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+/* 无头页不被当成「有焦点」时，输入派发要等渲染器回 ack，CI 上会等到天荒地老
+   （实测 Input.dispatchTouchEvent 永不返回）。焦点模拟 + 前置页面，把这个前提补齐。 */
+try { await send('Emulation.setFocusEmulationEnabled', { enabled: true }); } catch (e) { /* 老版本没有这个方法 */ }
+try { await send('Page.bringToFront'); } catch (e) { /* 无头下可能不支持 */ }
 
 async function evaluate(expression) {
   const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
@@ -299,18 +303,32 @@ async function evaluate(expression) {
 }
 
 /** 按视口坐标真点一下。elementFromPoint / el.click() 都会绕过覆盖层，
- *  只有派发真实输入事件才能复现「按钮被翻页层挡住」。
+ *  只有真输入才复现「按钮被翻页层挡住」，所以默认走 CDP 触摸。
  *
- *  这一颗按钮必须能点中，所以输入通道要有降级：
- *  CI（headless + --no-sandbox）实测 `Input.dispatchTouchEvent` 会**永远不回包**，
- *  位置在「末章收束卡」那一节 —— 历史上 e2e 挂到 GitHub 6 小时上限，就是卡在这儿。
- *  先清掉可能残留的触摸序列再发；还是超时就退回鼠标事件（同样按坐标命中，
- *  覆盖层照样挡得住，断言要验的东西没变），并把降级写进日志。
- *  E2E_CLICK_MODE=mouse 可强制走鼠标那条路，用来验证降级路径本身是好的。 */
+ *  但 CI（headless + --no-sandbox）实测 `Input.dispatchTouchEvent` 会在「末章收束卡」
+ *  那节**永远不回包** —— 历史上 e2e 挂到 GitHub 6 小时上限就是卡在这儿。
+ *  降级只留一条路，而且必须换通道：
+ *    · 退回鼠标事件在 CI 上不报错但**不生效**（输入管线已经堵住，事件被静默丢弃，
+ *      断言会以「点了没反应」的形式失败，看不出真因）
+ *    · 所以退到「CDP 里取坐标 → evaluate 里派发事件」：通道换成 Runtime，
+ *      elementFromPoint 照样受覆盖层/pointer-events 约束，命中语义没变。
+ *  E2E_CLICK_MODE=script 可强制走降级路径自测。 */
 const TAP_TIMEOUT = Math.min(CMD_TIMEOUT, 8000);
+async function tapByScript(x, y) {
+  const hit = await evaluate(`(() => {
+    const el = document.elementFromPoint(${x}, ${y});
+    if (!el) return null;
+    const o = { bubbles: true, cancelable: true, clientX: ${x}, clientY: ${y}, view: window };
+    el.dispatchEvent(new PointerEvent('pointerdown', o));
+    el.dispatchEvent(new MouseEvent('mousedown', o));
+    el.dispatchEvent(new MouseEvent('mouseup', o));
+    el.click();                       /* <a> 的默认跳转只有 click() 会触发 */
+    return el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\\s+/)[0] : '');
+  })()`);
+  return hit;
+}
 async function clickAt(x, y) {
-  const forceMouse = process.env.E2E_CLICK_MODE === 'mouse';
-  if (!forceMouse) {
+  if (process.env.E2E_CLICK_MODE !== 'script') {
     try {
       /* 上一次点击留下的序列没被浏览器 ack 掉时，新 touch 会排队等——先取消一次 */
       await send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] }, 3000)
@@ -322,13 +340,11 @@ async function clickAt(x, y) {
       await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }, TAP_TIMEOUT);
       return;
     } catch (e) {
-      console.log('  ↷ 触摸事件无响应，退回鼠标点击：' + e.message);
+      console.log('  ↷ 触摸派发无响应，改用坐标命中的脚本点击：' + e.message);
     }
   }
-  await send('Input.dispatchMouseEvent',
-    { type: 'mousePressed', x, y, button: 'left', clickCount: 1 }, TAP_TIMEOUT);
-  await send('Input.dispatchMouseEvent',
-    { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 }, TAP_TIMEOUT);
+  const hit = await tapByScript(x, y);
+  console.log('  · 脚本点击命中：' + (hit || '⚠ 该坐标没有任何元素'));
 }
 
 const BASE = `http://127.0.0.1:${PORT}`;
