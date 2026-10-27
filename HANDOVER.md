@@ -13,7 +13,7 @@
 | 阅读器模块 | dom 77 行 · flags 87 · store 247 · engine 552 · ui 2719 · 入口 30 |
 | 样式 | `css/style.css` 4450 行（4 套主题令牌） |
 | 章节 | 7 章（2858 / 2347 / 2029 / 2496 / 2076 / 2269 / 2081 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
-| 人物 | 18 人（新叶 7 / 乔木 11）；其中 17 人有立绘（`assets/portrait-<slug>-1024.webp`，1024×960），沈若栖暂无立绘走 `initial` 占位；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
+| 人物 | 18 人（新叶 7 / 乔木 11）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
 | 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 852KB**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
 | Android 壳 | v1.9.0 / versionCode 17（v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死；v1.8.7 修系统返回键直接退出；**v1.9.0 = A 档收官，壳进入封版状态**：桥接补丁下沉到站点 `js/native-bridge.js`（以后改桥不用发版）、原生分享桥、闪屏叠层淡出、onResume 补更新检查、锁竖屏。详见 `app/BACK-HANDLING.md` 与 `app/WEBVIEW-ROADMAP.md`） |
 | 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 116 项 |
@@ -207,7 +207,7 @@ node tools/make-characters.mjs
 `YYYY.MM.DD`；作者 2026-10-25 定稿，别改回中文数字）。
 
 姓氏占位字走 ZCOOL XiaoWei 子集（928 字），樽/颜/澜/灼 不在子集里，会回落到系统
-serif——观感一致，不是 bug。（沈若栖目前没有立绘，占位字重新出现在列表页上——这是设计内的兜底，不是破图。）
+serif——观感一致，不是 bug。（18 人全部有立绘后，占位字实际已不再显示；字段保留作兜底——沈若栖最初就是靠它上线的。）
 
 **立绘一致性做法**：新叶 4 位学生用图生图（参考现有立绘、保真度调低、提示词显式
 指定新人物的姿势发型表情 + 锁住校服校徽画风）；乔木 10 位长辈文生图（同画风描述 +
@@ -616,6 +616,25 @@ e2e 加 2 条断言钉住「按下即亮线 / 不拦点击」，**114 → 116**�
 - 只改了 `js/characters-data.js`（唯一数据源），然后 `node tools/make-characters.mjs` 重新生成 ——
   列表页 18 人、详细页 `novel/character-shenruoqi.html`、sitemap 29 条、PRECACHE 登记、`CACHE v60 → v61`
 - `slug: 'shenruoqi'`，`group: 'qiaomu'`（26 岁咖啡店主，属长辈/成人组），数组里紧挨在 `yeyulan` 前面
-- **没有立绘**：走 `initial: '沈'` 占位（生成器本来就有这条兜底，`.char-photo.initial` 的对比度也在设计稿里）。
-  作者给了 1024 母版后，补 `portrait: 'portrait-shenruoqi-1024.webp'` 再跑一次生成器即可，另有工具会自动补缩略图
+- 立绘先用 `initial: '沈'` 占位上线；当天补了 AI 生成立绘（见下一节）后改为 `portrait: 'portrait-shenruoqi-1024.webp'`
 - 人设取小传原文：上海广告公司三年 → 四十八楼落地窗前那句「我又游向哪里呢？」→ 回南城开「临渊羡鱼」
+
+### 沈若栖立绘（AI 生成，2026-10-27）
+
+现有 17 张是作者给的定稿母版；她这一张没有，用 AI 生成补齐，要求是**风格必须与既有立绘一致**。
+
+做法：
+- 先把 `portrait-yeyulan` / `portrait-linxihe` 两张当风格样本描述出来：钢笔淡彩水彩、米白奶油+琥珀金的暖秋配色、
+  逆光散景、胸像构图、柔和边缘+纸张纹理 → 作为 prompt 的风格段
+- 内容按人小传：低髻碎发、洗旧的靛蓝亚麻围裙（下摆一块咖啡渍）、米色针织毛衣、眼角浅笑纹、松弛温柔
+- 用户追加要求「要有梧桐树和咖啡店的暖意元素」→ 背景给到：窗外的金黄色梧桐枝叶与斑驳树影、灯串、
+  咖啡机与杯子、窗边绿植、秋日午后逆光
+- 生成 1024×1024 → **裁掉底部 64px**（站点母版是 1024×960，同时正好切掉工具自带的
+  「AI生成 WorkBuddy」水印；水印固定在右下角，裁完无残留，已逐行核验）→ WebP quality 80 = 163.5KB
+  （既有母版区间 80~185KB）
+
+流程照旧：母版丢进 `assets/` → 数据里补 `portrait` → `node tools/make-characters.mjs`
+（自动生成 128×150 缩略图、登记 PRECACHE、`CACHE v61 → v62`、刷新 sitemap）。
+
+**注意**：AI 立绘是「风格贴合」，不是作者的手绘母版。作者日后想换成自己的画，直接替换同名 webp 再跑生成器即可，
+其它地方一个字都不用改。

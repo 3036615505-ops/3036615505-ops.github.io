@@ -29,7 +29,7 @@
  * **刻意不升**（升了会让全量预缓存白下载一遍；旧缓存里的残留 HTML 会在下一次
  * 导航时被 reload 模式的网络响应覆盖，只影响 500ms 兜底的窗口期，可接受）。
  */
-var CACHE = 'linyuan-v61';
+var CACHE = 'linyuan-v62';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
@@ -127,6 +127,7 @@ var PRECACHE = [
   '/novel/chapter-06.html',
   '/novel/chapter-07.html',
   '/novel/characters.html',
+  '/assets/portrait-shenruoqi-thumb.webp',,
   '/novel/character-shenruoqi.html',,
   /* 同学录列表页立绘缩略图（128×150，17 张合计约 70KB）。
      列表页 .char-photo 只有 48×56，object-fit: cover + object-position: 50% 28%

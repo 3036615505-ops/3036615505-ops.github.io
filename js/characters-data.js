@@ -293,8 +293,8 @@ var CHARACTERS = [
     slug: 'shenruoqi',
     name: '沈若栖',
     group: 'qiaomu',
-    /* 还没有立绘：走 initial 占位。等作者给了 1024 母版，补上 portrait 再跑一次生成器即可。 */
     initial: '沈',
+    portrait: 'portrait-shenruoqi-1024.webp',
     role: '「临渊羡鱼」店主',
     tags: ['温柔', '观察者'],
     quote: '“我又游向哪里呢？”',
