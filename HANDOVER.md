@@ -13,7 +13,7 @@
 | 阅读器模块 | dom 77 行 · flags 87 · store 247 · engine 552 · ui 2719 · 入口 30 |
 | 样式 | `css/style.css` 4450 行（4 套主题令牌） |
 | 章节 | 7 章（2858 / 2347 / 2029 / 2496 / 2076 / 2269 / 2081 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
-| 人物 | 18 人（新叶 7 / 乔木 11）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
+| 人物 | 18 人（新叶 7 / 青枝 4 / 乔木 7）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
 | 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 852KB**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
 | Android 壳 | v1.9.0 / versionCode 17（v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死；v1.8.7 修系统返回键直接退出；**v1.9.0 = A 档收官，壳进入封版状态**：桥接补丁下沉到站点 `js/native-bridge.js`（以后改桥不用发版）、原生分享桥、闪屏叠层淡出、onResume 补更新检查、锁竖屏。详见 `app/BACK-HANDLING.md` 与 `app/WEBVIEW-ROADMAP.md`） |
 | 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 116 项 |
@@ -638,3 +638,14 @@ e2e 加 2 条断言钉住「按下即亮线 / 不拦点击」，**114 → 116**�
 
 **注意**：AI 立绘是「风格贴合」，不是作者的手绘母版。作者日后想换成自己的画，直接替换同名 webp 再跑生成器即可，
 其它地方一个字都不用改。
+
+## 2026-10-27 · 人物分类加「青枝」
+
+作者要求：在「新叶」和「乔木」之间插一组「青枝」，把**桃夭夭 → 肖灼 → 沈若栖 → 叶羽澜**按这个顺序放进去。
+
+- `js/characters-data.js`：四人 `group` 由 `qiaomu` 改 `qingzhi`，并把条目整体搬到新叶之后、乔木之前
+  （**列表页的显示顺序就是数组顺序，同一 group 必须连在一起**，否则会重复打印分组标题）
+- `tools/make-characters.mjs`：`GROUP_NAMES` 加 `qingzhi: '青枝'` —— 这个映射是白名单，
+  漏了会渲染出 `undefined` 当标题
+- 结果：新叶 7 / **青枝 4** / 乔木 7，共 18 人；分组标题样式沿用 `.char-group-label`，无需改 CSS
+- 数据文件头部的 group 字段说明同步更新（写清三个取值 + 「同组要连着写」这条约束）

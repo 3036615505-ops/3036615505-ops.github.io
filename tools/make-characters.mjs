@@ -244,7 +244,7 @@ const TAB_BAR = [
   '  </nav>'
 ].join('\n');
 
-const GROUP_NAMES = { xinlei: '新叶', qiaomu: '乔木' };
+const GROUP_NAMES = { xinlei: '新叶', qingzhi: '青枝', qiaomu: '乔木' };
 
 /* ---------- 1. 列表页 ---------- */
 /* 滚动位置记忆（ES5，照顾老 WebView）：
