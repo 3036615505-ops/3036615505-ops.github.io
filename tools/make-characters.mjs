@@ -278,8 +278,16 @@ const LIST_SCROLL_SNIPPET = [
   '    } catch (err) {}',
   '    if (!y) return;',
   '    if (\'scrollRestoration\' in history) history.scrollRestoration = \'manual\';',
+  /* 读者一动手就立刻放弃恢复：原来会连试 6 次（150ms 一次），
+     读者往下滑时被反复拽回原位，观感就是「页面自己在刷/跳」。 */
+  '    var aborted = false;',
+  '    var stop = function () { aborted = true; };',
+  '    [\'touchstart\', \'wheel\', \'keydown\', \'pointerdown\'].forEach(function (t) {',
+  '      window.addEventListener(t, stop, { passive: true, once: true });',
+  '    });',
   '    var tries = 0;',
   '    (function restore() {',
+  '      if (aborted) return;',
   '      window.scrollTo(0, y);',
   '      tries++;',
   '      var cur = window.scrollY || window.pageYOffset || 0;',

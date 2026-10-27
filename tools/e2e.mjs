@@ -1463,28 +1463,44 @@ const persisted = await evaluate(`({
 check('从 bfcache 恢复发现新版：自动换新（返回即新版）',
   !persisted.marker && persisted.gen === String(persistGen), JSON.stringify(persisted));
 
-section('页面切换 · 按下就有反馈（空窗期不空）');
+section('页面切换 · 点一下就有反馈（空窗期不空）');
 /* 过渡动画停用后，点章节到新页首绘之间有 0.3~0.9s 完全静止（4G 实测 TTFB 524ms /
-   首绘 884ms），读者会当成「点空了」。js/nav-feedback.js 在 pointerdown 那一帧
-   就点亮顶部 2px 细线；这两条断言把它钉住 —— 别哪天被当成「又加动画」删掉。 */
+   首绘 884ms），读者会当成「点空了」。js/nav-feedback.js 在「短按且几乎没位移」
+   松手时点亮顶部 2px 细线；下面三条把它钉住，别哪天被当成「又加动画」删掉。
+   反面案例（2026-10-27 线上）：早先实现是 pointerdown 就亮，结果在列表页
+   按着卡片往上划（只想滚动）也会亮，滑动产生的 pointercancel 还收不掉 ——
+   「划一下顶部就跳一下」。所以第三条断言专门守「滑动不许误亮」。 */
 await goto(HOME, 1500);
 const navBar = await evaluate(`(() => {
   const a = document.querySelector('.date-item');
   const r = a.getBoundingClientRect();
-  a.dispatchEvent(new PointerEvent('pointerdown', {
-    bubbles: true, clientX: Math.round(r.left + 6), clientY: Math.round(r.top + 6)
-  }));
+  const at = { clientX: Math.round(r.left + 6), clientY: Math.round(r.top + 6) };
+  const on = () => { const el = document.getElementById('navOpeningBar'); return !!(el && el.classList.contains('is-on')); };
+  /* ① 划一下：按下 → 位移 40px → cancel */
+  a.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 11, isPrimary: true, ...at }));
+  const onAfterDown = on();
+  a.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 11, isPrimary: true, clientX: at.clientX, clientY: at.clientY + 40 }));
+  const onAfterMove = on();
+  a.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true, pointerId: 11, isPrimary: true, ...at }));
+  const onAfterCancel = on();
+  /* ② 真点一下：按下 → 原地松手 */
+  a.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 12, isPrimary: true, ...at }));
+  const onTapDown = on();
+  a.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 12, isPrimary: true, ...at }));
   const el = document.getElementById('navOpeningBar');
-  if (!el) return { exists: false };
-  const cs = getComputedStyle(el);
+  const cs = el && getComputedStyle(el);
   const hit = document.elementFromPoint(8, 1);
   return {
-    exists: true, on: el.classList.contains('is-on'), h: cs.height,
-    pe: cs.pointerEvents, hitIsBar: hit === el
+    exists: !!el, onAfterDown, onAfterMove, onAfterCancel, onTapDown,
+    on: !!(el && el.classList.contains('is-on')),
+    h: cs && cs.height, pe: cs && cs.pointerEvents, hitIsBar: hit === el
   };
 })()`);
-check('按下章节链接就亮起顶部细线（不等导航）',
+check('点一下章节链接就亮起顶部细线（不等导航）',
   navBar.exists === true && navBar.on === true && navBar.h === '2px', JSON.stringify(navBar));
+check('滑动（按下→位移→cancel）不会误亮细线',
+  navBar.onAfterDown === false && navBar.onAfterMove === false && navBar.onAfterCancel === false,
+  JSON.stringify(navBar));
 check('细线不拦点击（pointer-events: none）',
   navBar.pe === 'none' && navBar.hitIsBar === false, JSON.stringify(navBar));
 

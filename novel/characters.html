@@ -13,11 +13,11 @@
   <meta property="og:image" content="https://zephyrw.site/assets/og-cover.jpg">
   <meta property="og:type" content="article">
   <link rel="manifest" href="../manifest.json">
-  <link rel="stylesheet" href="../css/style.css?v=112">
-  <script src="../js/theme.js?v=112"></script>
-  <script src="../js/native-bridge.js?v=112"></script>
-  <script src="../js/announce.js?v=112" defer></script>
-  <script src="../js/nav-feedback.js?v=112" defer></script>
+  <link rel="stylesheet" href="../css/style.css?v=113">
+  <script src="../js/theme.js?v=113"></script>
+  <script src="../js/native-bridge.js?v=113"></script>
+  <script src="../js/announce.js?v=113" defer></script>
+  <script src="../js/nav-feedback.js?v=113" defer></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame">
@@ -429,7 +429,7 @@
       <span>剪贴本</span>
     </a>
   </nav>
-  <script src="../js/lightbox.js?v=112"></script>
+  <script src="../js/lightbox.js?v=113"></script>
   <script>
   (function () {
     var KEY_Y = 'linyuan.charListY';
@@ -454,8 +454,14 @@
     } catch (err) {}
     if (!y) return;
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    var aborted = false;
+    var stop = function () { aborted = true; };
+    ['touchstart', 'wheel', 'keydown', 'pointerdown'].forEach(function (t) {
+      window.addEventListener(t, stop, { passive: true, once: true });
+    });
     var tries = 0;
     (function restore() {
+      if (aborted) return;
       window.scrollTo(0, y);
       tries++;
       var cur = window.scrollY || window.pageYOffset || 0;

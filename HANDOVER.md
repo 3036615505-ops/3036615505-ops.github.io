@@ -16,7 +16,7 @@
 | 人物 | 18 人（新叶 7 / 青枝 4 / 乔木 7）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
 | 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 852KB**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
 | Android 壳 | v1.9.0 / versionCode 17（v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死；v1.8.7 修系统返回键直接退出；**v1.9.0 = A 档收官，壳进入封版状态**：桥接补丁下沉到站点 `js/native-bridge.js`（以后改桥不用发版）、原生分享桥、闪屏叠层淡出、onResume 补更新检查、锁竖屏。详见 `app/BACK-HANDLING.md` 与 `app/WEBVIEW-ROADMAP.md`） |
-| 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 118 项 |
+| 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 119 项 |
 
 ## 常用命令
 
@@ -476,10 +476,11 @@ serif——观感一致，不是 bug。（18 人全部有立绘后，占位字�
 
 ## 当前验证状态
 
-- 本地：`node tools/e2e.mjs` 118/118；pre-push 5 项通过（?v= 统一 / 预缓存 / 楷体覆盖 / 源稿一致 / 安装包校验）
+- 本地：`node tools/e2e.mjs` 119/119；pre-push 5 项通过（?v= 统一 / 预缓存 / 楷体覆盖 / 源稿一致 / 安装包校验）
   - 本机没装 Chrome/Edge 时用 `CI=1 CHROME_BIN=<chrome-headless-shell 路径> node tools/e2e.mjs`
     （`CI=1` 才会加 `--no-sandbox`，容器/沙箱里不加必然起不来）
-  - 118 = 上一版 116 + 2（「余韵卡卡头是《章节标题》/ 单行不换行」，2026-10-27 加）；
+  - 119 = 上一版 118 + 1（「滑动不会误亮导航细线」，2026-10-27 加）；
+    那 118 = 116 + 2（「余韵卡卡头是《章节标题》/ 单行不换行」）；
     那 116 = 更早的 114 + 2（「按下就亮细线 / 细线不拦点击」）；
     那 114 = 原 110 − 2（翻书 DOM 钩子 / `flip-out` 两条正向断言）+ 6（「过渡已停用」的
     反向断言：首页无遮罩 / 点击不播过渡 / 50ms 内开始导航 / 章节页无入场遮罩 /
@@ -662,3 +663,26 @@ e2e 加 2 条断言钉住「按下即亮线 / 不拦点击」，**114 → 116**�
   漏了会渲染出 `undefined` 当标题
 - 结果：新叶 7 / **青枝 4** / 乔木 7，共 18 人；分组标题样式沿用 `.char-group-label`，无需改 CSS
 - 数据文件头部的 group 字段说明同步更新（写清三个取值 + 「同组要连着写」这条约束）
+
+## 2026-10-27 · 人物列表页「划一下就刷」的两个真因
+
+作者反馈：人物页很卡，顶部刷新条一直在跳，往下滑就会刷。**不是预加载机制** —— 这个页面
+没有预加载（立绘 `loading="lazy" decoding="async"`，`lightbox` 点开才取 1024 母版）。真因两个，
+都是「我们自己加的交互」，不是渲染成本：
+
+| 真因 | 机制 | 表现 |
+|---|---|---|
+| 导航细线误触发 | `nav-feedback.js` 原来在 **pointerdown** 就点亮；手指按着卡片往上一划（只想滚动）也会亮，而滑动产生的是 **pointercancel**，老代码不收 | 「划一下顶部跳一下」，一直闪 |
+| 滚动恢复抢滚动 | 列表页从详情页返回时用「150ms × 6 次」重试恢复 `scrollY`，读者中途自己滑动会被**反复拽回原位** | 「往下滑又被刷回去」 |
+
+**修法**：
+1. `nav-feedback.js` 改成手势判定：按下只记账，`pointermove` 位移 > 10px 或 `pointercancel`
+   → 判定为滑动，**永不点亮**并立即收线；「短按（<700ms）且位移 ≤10px」在 `pointerup` 时才亮
+   （click 紧接着发生，导航前照样亮得出来）。老 WebView 无 PointerEvent 时退回 touch 事件。
+2. 扫动动画只在 `.is-on` 时跑 —— 常驻 `infinite` 动画即使 `opacity: 0` 也在每帧消耗合成器。
+3. 滚动恢复加 `abort`：一有 `touchstart / wheel / keydown / pointerdown` 就放弃后续重试。
+4. e2e 补一条「滑动（按下→位移→cancel）不会误亮细线」，把这个 bug 钉死（119 项）。
+
+**顺带量了一遍**（headless + CPU 4× 降速）：滚动长任务 0 个、帧间隔中位 17ms、p95 19ms，
+说明**页面本身不卡**，之前的「卡」主要来自上面两个自造抖动。真要再压成本可以上
+`content-visibility: auto`（18 张卡片量级收益很小，且会干扰滚动恢复，暂不做）。

@@ -4754,12 +4754,14 @@ body.is-reading {
   background-size: 45% 100%;
   background-repeat: no-repeat;
   background-position: -45% 0;
-  animation: nav-open-sweep 820ms linear infinite;
   transition: opacity 0.14s ease 0.06s;
 }
 
+/* 扫动只在「亮着」的时候跑：常驻一个 infinite 动画，即使 opacity 为 0，
+   合成器也照样每帧干活 —— 列表页划几下就被误点亮时，这点开销会直接变成掉帧。 */
 .nav-opening-bar.is-on {
   opacity: 0.9;
+  animation: nav-open-sweep 820ms linear infinite;
 }
 
 @keyframes nav-open-sweep {

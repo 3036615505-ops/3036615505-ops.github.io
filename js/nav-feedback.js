@@ -75,27 +75,73 @@
     return true;
   }
 
-  function onPress(e) {
-    var t = e.target;
-    var a = t && t.closest ? t.closest('a[href]') : null;
-    if (shouldFollow(a)) show();
+  /* ===== 手势判定：这是「点」，还是「划」？=====
+     反面教材（2026-10-27 线上反馈）：原来在 pointerdown 就亮线，结果在列表页
+     手指按着卡片往上一划（只想滚动），线就亮起来；滑动产生的是 pointercancel，
+     没人收，于是「划一下顶部就跳一下」。所以现在不在按下时亮，先记账，松手时
+     确认是「短按且几乎没位移」才亮 —— click 紧接着就来，导航前一定亮得出来。 */
+  var TAP_MAX_MS = 700;   /* 超过这个时长按着不动，算长按，不当成跳转意图 */
+  var TAP_MAX_PX = 10;    /* 位移超过这个像素，算滑动 */
+  var press = null;       /* {a, x, y, t} */
+  var scrolled = false;
+
+  function reset() { press = null; }
+
+  function isTap(e) {
+    if (!press) return false;
+    var dx = Math.abs(e.clientX - press.x);
+    var dy = Math.abs(e.clientY - press.y);
+    return dx <= TAP_MAX_PX && dy <= TAP_MAX_PX && (Date.now() - press.t) <= TAP_MAX_MS;
   }
 
-  /* pointerdown 覆盖鼠标与触摸；老 WebView 只有 touchstart，两条都挂（show 幂等） */
-  document.addEventListener('pointerdown', onPress, true);
-  document.addEventListener('touchstart', onPress, { capture: true, passive: true });
+  function onDown(e) {
+    scrolled = false;
+    var t = e.target;
+    var a = t && t.closest ? t.closest('a[href]') : null;
+    if (!shouldFollow(a)) { press = null; return; }
+    press = { a: a, x: e.clientX, y: e.clientY, t: Date.now() };
+  }
+
+  function onMove(e) {
+    if (!press) return;
+    if (Math.abs(e.clientX - press.x) > TAP_MAX_PX || Math.abs(e.clientY - press.y) > TAP_MAX_PX) {
+      /* 划走了：这一次不是点击，永远不要亮线 */
+      scrolled = true;
+      reset();
+      hide();
+    }
+  }
+
+  function onUp(e) {
+    if (press && isTap(e)) show();
+    reset();
+  }
+
+  function onCancel() { scrolled = true; reset(); hide(); }
+
+  document.addEventListener('pointerdown', onDown, true);
+  document.addEventListener('pointermove', onMove, { capture: true, passive: true });
+  document.addEventListener('pointerup', onUp, true);
+  document.addEventListener('pointercancel', onCancel, true);
+  /* 老 WebView 只有 touch 事件：touchstart 记账（pointerdown 缺失时兜底） */
+  if (!window.PointerEvent) {
+    document.addEventListener('touchstart', onDown, { capture: true, passive: true });
+    document.addEventListener('touchmove', onMove, { capture: true, passive: true });
+    document.addEventListener('touchend', onUp, { capture: true, passive: true });
+    document.addEventListener('touchcancel', onCancel, { capture: true, passive: true });
+  }
+  /* 滚动本身也收线：万一上面哪条判定漏了，滚起来就别再亮着 */
+  window.addEventListener('scroll', function () { if (!scrolled) return; hide(); }, { passive: true });
+
+  /* click 兜底：键盘回车 / 程序触发 click 时也必须亮（此时已经没有 pointer 序列） */
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    var a = t && t.closest ? t.closest('a[href]') : null;
+    if (shouldFollow(a) && !scrolled) show();
+  }, true);
 
   /* 从 bfcache 回来：上一程留下的线要收掉 */
   window.addEventListener('pageshow', hide);
-  /* 松手后如果既没跳走也没触发 click（拖拽取消），2 秒后收线 */
-  document.addEventListener('pointerup', function () {
-    setTimeout(function () {
-      if (barEl && barEl.classList.contains('is-on') && document.visibilityState === 'visible') {
-        /* 只有确实没有发生跳转时才收（click 会紧跟着发生，这里再等一拍） */
-        setTimeout(hide, 800);
-      }
-    }, 200);
-  }, true);
 
   window.LY = window.LY || {};
   window.LY.navFeedback = { show: show, hide: hide };
