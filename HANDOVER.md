@@ -16,7 +16,7 @@
 | 人物 | 18 人（新叶 7 / 青枝 4 / 乔木 7）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
 | 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 852KB**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
 | Android 壳 | v1.9.0 / versionCode 17（v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死；v1.8.7 修系统返回键直接退出；**v1.9.0 = A 档收官，壳进入封版状态**：桥接补丁下沉到站点 `js/native-bridge.js`（以后改桥不用发版）、原生分享桥、闪屏叠层淡出、onResume 补更新检查、锁竖屏。详见 `app/BACK-HANDLING.md` 与 `app/WEBVIEW-ROADMAP.md`） |
-| 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 122 项 |
+| 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 125 项 |
 
 ## 常用命令
 
@@ -476,10 +476,11 @@ serif——观感一致，不是 bug。（18 人全部有立绘后，占位字�
 
 ## 当前验证状态
 
-- 本地：`node tools/e2e.mjs` 122/122；pre-push 5 项通过（?v= 统一 / 预缓存 / 楷体覆盖 / 源稿一致 / 安装包校验）
+- 本地：`node tools/e2e.mjs` 125/125；pre-push 5 项通过（?v= 统一 / 预缓存 / 楷体覆盖 / 源稿一致 / 安装包校验）
   - 本机没装 Chrome/Edge 时用 `CI=1 CHROME_BIN=<chrome-headless-shell 路径> node tools/e2e.mjs`
     （`CI=1` 才会加 `--no-sandbox`，容器/沙箱里不加必然起不来）
-  - 122 = 上一版 119 + 3（「换人看立绘不串图 / 母版解码后换 1024」，2026-10-28 加）；
+  - 125 = 上一版 122 + 3（「分类按钮存在与锚点 / 点青枝真跳过去 / 标题不被吸顶条盖住」，2026-10-28 加）；
+    那 122 = 119 + 3（「换人看立绘不串图 / 母版解码后换 1024」）；
     那 119 = 118 + 1（「滑动不会误亮导航细线」）；
     那 118 = 116 + 2（「余韵卡卡头是《章节标题》/ 单行不换行」）；
     那 116 = 更早的 114 + 2（「按下就亮细线 / 细线不拦点击」）；
@@ -709,3 +710,21 @@ e2e 加 2 条断言钉住「按下即亮线 / 不拦点击」，**114 → 116**�
 验证：本地限速 300ms 复现，第二个人打开瞬间 `src` 就是 `portrait-nanheng-thumb.webp`，
 1.6s 后变 `portrait-nanheng-1024.webp`（`naturalWidth=1024`）；
 e2e 新增 3 条断言（119 → **122**）。
+
+## 2026-10-28 · 同学录分类直达按钮（新叶 / 青枝 / 乔木）
+
+作者要求：把三个分组做成可点的按钮，能直接到那一组。
+
+做法（生成器里改，别手改 `novel/characters.html`）：
+- `tools/make-characters.mjs` 新增 `buildGroupNav()`：按数据里分组的实际出现顺序和人数，
+  生成 `<nav class="char-group-nav">` + 三个 `<a class="char-group-chip" href="#group-<key>">名字<count></a>`
+- 每个分组标题加 `id="group-<key>"`，锚点由此而来 —— **没有 JS 也能跳**（href 是原生锚点）
+- 内联 `CHAR_NAV_SNIPPET`（ES5）：点击 `preventDefault` 后 `scrollIntoView({behavior:'smooth'})`，
+  并在滚动时用 rAF 节流同步高亮「当前所在的组」
+- 样式：按钮条 `position: sticky; top: 45px`（正好贴在 `.detail-header` 下沿，实测顶栏 45px），
+  实色 `var(--bg-card)` 遮住下面滚过的卡片；选中态深金底白字（白字 on #8f6636 = 5.09:1，与全站填充按钮同一口径）；
+  `.char-group-label { scroll-margin-top: 92px }` 让标题落位刚好在按钮条下面（45 + 47 = 92）
+- **不要**写 `html { scroll-behavior: smooth }`：那样阅读器的位置恢复、列表滚动恢复都会变成动画
+
+实测：点「青枝」→ `scrollY 1610`，标题顶边 = 按钮条底边（92），高亮第 2 个按钮；
+滚到底部高亮自动变第 3 个。e2e 加 3 条断言（122 → **125**）。`CACHE v63 → v64`（列表页在预缓存里）。

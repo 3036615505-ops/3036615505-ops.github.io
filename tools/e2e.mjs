@@ -1547,6 +1547,47 @@ check('母版解码后换上 1024 母版',
   JSON.stringify(lbMaster));
 await evaluate(`document.querySelector('.lightbox-close').click(); 1`);
 
+section('同学录 · 分类直达按钮');
+/* 新叶 / 青枝 / 乔木 三个按钮：点了要真的滚到那一组，且标题不能被吸顶条盖住。
+   2026-10-28 加，作者要求「做成可点击的按钮，可以直达这个分类」。 */
+const groupNav = await evaluate(`(() => {
+  const chips = [...document.querySelectorAll('.char-group-chip')];
+  const nav = document.querySelector('.char-group-nav');
+  return {
+    count: chips.length,
+    hrefs: chips.map(c => c.getAttribute('href')),
+    texts: chips.map(c => c.textContent.replace(/\\d+$/, '')),
+    sticky: nav ? getComputedStyle(nav).position : 'none',
+    navBottom: nav ? Math.round(nav.getBoundingClientRect().bottom) : -1
+  };
+})()`);
+check('三个分类按钮都在，锚点指向各自分组',
+  groupNav.count === 3 &&
+  groupNav.hrefs.join(',') === '#group-xinlei,#group-qingzhi,#group-qiaomu' &&
+  groupNav.texts.join('/') === '新叶/青枝/乔木' && groupNav.sticky === 'sticky',
+  JSON.stringify(groupNav));
+
+await evaluate(`document.querySelectorAll('.char-group-chip')[1].click(); 1`);
+await sleep(900);
+const jumped = await evaluate(`(() => {
+  const nav = document.querySelector('.char-group-nav');
+  const label = document.getElementById('group-qingzhi');
+  const chips = [...document.querySelectorAll('.char-group-chip')];
+  return {
+    active: chips.findIndex(c => c.classList.contains('is-active')),
+    labelTop: Math.round(label.getBoundingClientRect().top),
+    navBottom: Math.round(nav.getBoundingClientRect().bottom),
+    scrolled: Math.round(window.scrollY)
+  };
+})()`);
+check('点「青枝」真的跳到青枝分组',
+  jumped.scrolled > 200 && jumped.active === 1 && Math.abs(jumped.labelTop - jumped.navBottom) <= 6,
+  JSON.stringify(jumped));
+check('落位后分组标题没被吸顶条盖住',
+  jumped.labelTop >= jumped.navBottom - 1, JSON.stringify(jumped));
+await evaluate(`window.scrollTo(0, 0); 1`);
+await sleep(400);
+
 section('全局');
 check('全程无未捕获异常', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 300));
 

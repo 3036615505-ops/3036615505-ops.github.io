@@ -13,11 +13,11 @@
   <meta property="og:image" content="https://zephyrw.site/assets/og-cover.jpg">
   <meta property="og:type" content="article">
   <link rel="manifest" href="../manifest.json">
-  <link rel="stylesheet" href="../css/style.css?v=114">
-  <script src="../js/theme.js?v=114"></script>
-  <script src="../js/native-bridge.js?v=114"></script>
-  <script src="../js/announce.js?v=114" defer></script>
-  <script src="../js/nav-feedback.js?v=114" defer></script>
+  <link rel="stylesheet" href="../css/style.css?v=116">
+  <script src="../js/theme.js?v=116"></script>
+  <script src="../js/native-bridge.js?v=116"></script>
+  <script src="../js/announce.js?v=116" defer></script>
+  <script src="../js/nav-feedback.js?v=116" defer></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame">
@@ -37,8 +37,13 @@
     </div>
 
     <div class="character-list">
+      <nav class="char-group-nav" aria-label="人物分类">
+        <a class="char-group-chip" href="#group-xinlei">新叶<span class="char-group-count">7</span></a>
+        <a class="char-group-chip" href="#group-qingzhi">青枝<span class="char-group-count">4</span></a>
+        <a class="char-group-chip" href="#group-qiaomu">乔木<span class="char-group-count">7</span></a>
+      </nav>
 
-      <div class="char-group-label">新叶</div>
+      <div class="char-group-label" id="group-xinlei">新叶</div>
 
       <section class="character-card primary">
         <div class="char-top">
@@ -180,7 +185,7 @@
         <a class="char-more" href="character-baiyuhuan.html">详细<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></a>
       </section>
 
-      <div class="char-group-label">青枝</div>
+      <div class="char-group-label" id="group-qingzhi">青枝</div>
 
       <section class="character-card">
         <div class="char-top">
@@ -263,7 +268,7 @@
         <a class="char-more" href="character-yeyulan.html">详细<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></a>
       </section>
 
-      <div class="char-group-label">乔木</div>
+      <div class="char-group-label" id="group-qiaomu">乔木</div>
 
       <section class="character-card">
         <div class="char-top">
@@ -429,7 +434,47 @@
       <span>剪贴本</span>
     </a>
   </nav>
-  <script src="../js/lightbox.js?v=114"></script>
+  <script src="../js/lightbox.js?v=116"></script>
+  <script>
+  (function () {
+    var nav = document.querySelector('.char-group-nav');
+    if (!nav) return;
+    var chips = [].slice.call(nav.querySelectorAll('.char-group-chip'));
+    var targets = chips.map(function (a) {
+      return document.getElementById(a.getAttribute('href').slice(1));
+    });
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function setActive(i) {
+      chips.forEach(function (c, k) { c.classList.toggle('is-active', k === i); });
+    }
+    chips.forEach(function (a, i) {
+      a.addEventListener('click', function (e) {
+        var t = targets[i];
+        if (!t) return;
+        e.preventDefault();
+        setActive(i);
+        t.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      });
+    });
+    /* 手动滚动时按钮跟着走：取「已经滚过吸顶条」的最后一组 */
+    var ticking = false;
+    function sync() {
+      ticking = false;
+      var line = nav.getBoundingClientRect().bottom + 8;
+      var idx = 0;
+      for (var i = 0; i < targets.length; i++) {
+        if (targets[i] && targets[i].getBoundingClientRect().top <= line) idx = i;
+      }
+      setActive(idx);
+    }
+    window.addEventListener('scroll', function () {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(sync);
+    }, { passive: true });
+    sync();
+  })();
+  </script>
   <script>
   (function () {
     var KEY_Y = 'linyuan.charListY';
