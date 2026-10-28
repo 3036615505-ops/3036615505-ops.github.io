@@ -3826,57 +3826,22 @@ body.reading-page {
   margin-top: 4px;
 }
 
-/* ---- 同学录：分类直达（新叶 / 青枝 / 乔木）----
-   列表 18 张卡，滚到中段想换组不该一路滑回去。这排按钮吸在顶栏下面
-   （.detail-header 是 sticky top:0、实测高 45px），点一下平移到对应分组。
-   href 是锚点：JS 挂了也能跳，只是没有平滑动画。 */
-.char-group-nav {
-  position: sticky;
-  top: 45px;
-  z-index: 90;                    /* 低于 .detail-header(100)，高于卡片热区 */
-  display: flex;
-  gap: 8px;
-  margin: 0 0 2px;
-  padding: 6px 0 8px;
-  background: var(--bg-card);     /* 实色遮住从下面滚过的卡片 */
-  border-bottom: 1px solid var(--border-light);
-}
-
-.char-group-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 13px;
-  border: 1px solid var(--border-light);
-  border-radius: 999px;
-  background: var(--bg-card);
-  color: var(--text-secondary);
-  font-size: 13px;
-  letter-spacing: 1px;
-  text-decoration: none;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-
-/* 选中态用深金底白字：白字 on #8f6636 = 5.09:1，符合本文件其它填充按钮的口径 */
-.char-group-chip.is-active {
-  background: var(--accent-fill);
-  border-color: var(--accent-fill);
-  color: #fff;
-}
-
-.char-group-chip:active {
-  transform: scale(0.97);
-}
-
-.char-group-count {
-  font-size: 11px;
-  letter-spacing: 0;
-  opacity: 0.72;
-}
-
-/* 锚点落位要让开「顶栏 45 + 按钮条 ~38」，否则点完分组标题被压在条子下面 */
+/* ---- 同学录：分组标题本身就是「跳到本组」的按钮 ----
+   作者否掉了额外的按钮条 + 人数角标（2026-10-28）：多出来的白条会压住卡片，
+   数字也没必要。所以按钮就长在原有的字样上，视觉与之前保持一致，
+   只是多了一点按压反馈。点一下 = 把本组标题顶到视口上方（顶栏下面），
+   分组标题在屏幕下沿只露一半时特别好用。 */
 .char-group-label {
-  scroll-margin-top: 92px;
+  scroll-margin-top: 72px;      /* 让开 sticky 顶栏（实测 61px）+ 一点呼吸 */
+  -webkit-tap-highlight-color: transparent;
+}
+
+.char-group-label:active {
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .char-group-label:active { opacity: 1; }
 }
 
 /* ---- 同学录卡片：整卡可点进详细页 ----

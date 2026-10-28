@@ -297,80 +297,37 @@ const LIST_SCROLL_SNIPPET = [
   '  </script>'
 ].join('\n');
 
-/* 分类直达按钮：18 张卡滚到中段时，想换组不用一路滑回去。
-   href 是锚点（没 JS 也能跳），JS 只负责「平滑滚动 + 高亮当前组」。 */
-function buildGroupNav(chars) {
-  const groups = [];
-  chars.forEach((c) => {
-    let g = groups[groups.length - 1];
-    if (!g || g.key !== c.group) {
-      g = { key: c.group, name: GROUP_NAMES[c.group], count: 0 };
-      groups.push(g);
-    }
-    g.count++;
-  });
-  return [
-    '      <nav class="char-group-nav" aria-label="人物分类">',
-    ...groups.map((g) =>
-      '        <a class="char-group-chip" href="#group-' + g.key + '">' + g.name +
-      '<span class="char-group-count">' + g.count + '</span></a>'),
-    '      </nav>'
-  ].join('\n');
-}
-
-const CHAR_NAV_SNIPPET = [
+/* 分组标题本身就是按钮：点「新叶 / 青枝 / 乔木」把该组顶到视口上方，
+   不加额外的按钮条（作者 2026-10-28 明确否掉了那条白条 + 数字）。
+   href 是原生锚点，没有 JS 也能跳；JS 只把它变成平滑滚动。 */
+const GROUP_LABEL_SNIPPET = [
   '  <script>',
   '  (function () {',
-  '    var nav = document.querySelector(\'.char-group-nav\');',
-  '    if (!nav) return;',
-  '    var chips = [].slice.call(nav.querySelectorAll(\'.char-group-chip\'));',
-  '    var targets = chips.map(function (a) {',
-  '      return document.getElementById(a.getAttribute(\'href\').slice(1));',
-  '    });',
+  '    var labels = document.querySelectorAll(\'a.char-group-label[href^="#group-"]\');',
+  '    if (!labels.length) return;',
   '    var reduce = window.matchMedia && window.matchMedia(\'(prefers-reduced-motion: reduce)\').matches;',
-  /* 不写 html{scroll-behavior:smooth}：那会把阅读器的位置恢复也变成动画，
-     只在这一次点击里用 scrollIntoView 显式指定。 */
-  '    function setActive(i) {',
-  '      chips.forEach(function (c, k) { c.classList.toggle(\'is-active\', k === i); });',
-  '    }',
-  '    chips.forEach(function (a, i) {',
+  '    [].forEach.call(labels, function (a) {',
   '      a.addEventListener(\'click\', function (e) {',
-  '        var t = targets[i];',
+  '        var t = document.getElementById(a.getAttribute(\'href\').slice(1));',
   '        if (!t) return;',
   '        e.preventDefault();',
-  '        setActive(i);',
   '        t.scrollIntoView({ behavior: reduce ? \'auto\' : \'smooth\', block: \'start\' });',
   '      });',
   '    });',
-  '    /* 手动滚动时按钮跟着走：取「已经滚过吸顶条」的最后一组 */',
-  '    var ticking = false;',
-  '    function sync() {',
-  '      ticking = false;',
-  '      var line = nav.getBoundingClientRect().bottom + 8;',
-  '      var idx = 0;',
-  '      for (var i = 0; i < targets.length; i++) {',
-  '        if (targets[i] && targets[i].getBoundingClientRect().top <= line) idx = i;',
-  '      }',
-  '      setActive(idx);',
-  '    }',
-  '    window.addEventListener(\'scroll\', function () {',
-  '      if (ticking) return;',
-  '      ticking = true;',
-  '      requestAnimationFrame(sync);',
-  '    }, { passive: true });',
-  '    sync();',
   '  })();',
   '  </script>'
 ].join('\n');
 
 function buildListPage(chars) {
   const cards = [];
-  const navHtml = buildGroupNav(chars);
   let lastGroup = null;
   chars.forEach((c) => {
     if (c.group !== lastGroup) {
       lastGroup = c.group;
-      cards.push('      <div class="char-group-label" id="group-' + c.group + '">' + GROUP_NAMES[c.group] + '</div>');
+      cards.push(
+        '      <a class="char-group-label" id="group-' + c.group + '" href="#group-' + c.group + '"' +
+        ' aria-label="跳到' + GROUP_NAMES[c.group] + '分组">' + GROUP_NAMES[c.group] + '</a>'
+      );
     }
     cards.push(
       '      <section class="character-card' + (c.primary ? ' primary' : '') + '">\n' +
@@ -405,7 +362,6 @@ function buildListPage(chars) {
     '    </div>\n' +
     '\n' +
     '    <div class="character-list">\n' +
-    navHtml + '\n' +
     '\n' +
     cards.join('\n\n') + '\n' +
     '\n' +
@@ -417,7 +373,7 @@ function buildListPage(chars) {
     '\n' +
     TAB_BAR + '\n' +
     '  <script src="../js/lightbox.js?v=' + ASSET_V + '"></script>\n' +
-    CHAR_NAV_SNIPPET + '\n' +
+    GROUP_LABEL_SNIPPET + '\n' +
     LIST_SCROLL_SNIPPET + '\n' +
     '</body>\n' +
     '</html>\n';

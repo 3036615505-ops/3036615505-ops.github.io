@@ -711,20 +711,24 @@ e2e 加 2 条断言钉住「按下即亮线 / 不拦点击」，**114 → 116**�
 1.6s 后变 `portrait-nanheng-1024.webp`（`naturalWidth=1024`）；
 e2e 新增 3 条断言（119 → **122**）。
 
-## 2026-10-28 · 同学录分类直达按钮（新叶 / 青枝 / 乔木）
+## 2026-10-28 · 同学录：分组标题本身就是「跳到本组」按钮
 
-作者要求：把三个分组做成可点的按钮，能直接到那一组。
+作者要求：把「新叶 / 青枝 / 乔木」做成可点的按钮，能直接到那一组。
 
-做法（生成器里改，别手改 `novel/characters.html`）：
-- `tools/make-characters.mjs` 新增 `buildGroupNav()`：按数据里分组的实际出现顺序和人数，
-  生成 `<nav class="char-group-nav">` + 三个 `<a class="char-group-chip" href="#group-<key>">名字<count></a>`
-- 每个分组标题加 `id="group-<key>"`，锚点由此而来 —— **没有 JS 也能跳**（href 是原生锚点）
-- 内联 `CHAR_NAV_SNIPPET`（ES5）：点击 `preventDefault` 后 `scrollIntoView({behavior:'smooth'})`，
-  并在滚动时用 rAF 节流同步高亮「当前所在的组」
-- 样式：按钮条 `position: sticky; top: 45px`（正好贴在 `.detail-header` 下沿，实测顶栏 45px），
-  实色 `var(--bg-card)` 遮住下面滚过的卡片；选中态深金底白字（白字 on #8f6636 = 5.09:1，与全站填充按钮同一口径）；
-  `.char-group-label { scroll-margin-top: 92px }` 让标题落位刚好在按钮条下面（45 + 47 = 92）
-- **不要**写 `html { scroll-behavior: smooth }`：那样阅读器的位置恢复、列表滚动恢复都会变成动画
+**第一版做错了**：加了一条吸顶按钮条（白底 + 人数角标）。作者否掉三条 ——
+白条在奶油底页面上是一块突兀的实色、数字没必要、而且吸在顶栏下面会压住正在滚的卡片。
+**现在的做法：按钮就长在原来的分组标题上，视觉与之前完全一致，只是变得可点。**
 
-实测：点「青枝」→ `scrollY 1610`，标题顶边 = 按钮条底边（92），高亮第 2 个按钮；
-滚到底部高亮自动变第 3 个。e2e 加 3 条断言（122 → **125**）。`CACHE v63 → v64`（列表页在预缓存里）。
+- `tools/make-characters.mjs`：分组标题由 `<div>` 改成
+  `<a class="char-group-label" id="group-<key>" href="#group-<key>">名字</a>` —— href 指向自己，
+  所以**滚过去之后想再对齐到本组**也有意义，且没有 JS 时是原生锚点跳转
+- 内联 `GROUP_LABEL_SNIPPET`（ES5，约 10 行）：点击 `preventDefault` 后
+  `scrollIntoView({behavior:'smooth'})`，`prefers-reduced-motion` 时退化为瞬时
+- CSS 只加三条：`scroll-margin-top: 72px`（让开实测 61px 的 sticky 顶栏 + 呼吸）、
+  `:active { opacity: .6 }` 按压反馈、减少动效时取消透明度变化。
+  **没有**新增任何容器、背景、圆角、角标
+- **不要**写 `html { scroll-behavior: smooth }`：那会把阅读器位置恢复、列表滚动恢复都变成动画
+
+实测：把「青枝」标题挪到屏幕下沿只露一条边，点它 → `scrollY 1553`，标题顶边 72，
+顶栏底边 61 → 完整可见。e2e 仍是 3 条断言（改名「分类标题本身可点」），总数 125。
+`CACHE v64 → v65`（列表页在预缓存里）。
