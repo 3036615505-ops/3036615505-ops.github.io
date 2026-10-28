@@ -817,7 +817,7 @@ e2e 新增 3 条断言（119 → **122**）。
 |---|---|
 | `HANDOVER.md` | `?v=112`→**120**（两处：现状表、版本号现状）；`linyuan-v63`→**v67**；`4450 行`→**4839**；楷体 `852KB`→**891.5KB**（主片 273.1 + 兜底片 618.4）；`92 项 / 约 95 秒`→**127 项 / 约 155 秒**；`69 项`→**127 项**；`114 项断言`→**127 项**；阅读器 `ui 2719 / 2552 行`→**2726**；`17 张立绘 / × 17`→**18**；「新叶 / 乔木」→**「新叶 / 青枝 / 乔木」**；删掉悬空的 `app/WEBVIEW-ROADMAP.md`（文件不存在）；**「transition.js 有 30+ 个生成页引用」→ 实测 9 个页面**（并写明保留理由改为「重启过渡时的结论载体」，删文件的真实改动面也写全了） |
 | `README.md` | 「扫描 **6** 个 HTML」→**29**；「**22** 项断言，约 40 秒」→**127 项，约 155 秒**；CI「**27** 项」→**127 项**；「× **17**」→**× 18**；「新叶 / 乔木」→**「新叶 / 青枝 / 乔木」**；pre-push 表补第 5 行（`check-apk.mjs`）；CI 静态校验补 ⑤ 安装包校验；`npx -p typescript`→`npx -y -p typescript`（首次运行会交互式询问，CI/非交互 shell 会卡住）；「改 workflow 需要 token，**当前 PAT 没有**」→ 该说法已过期（2026-10-25 已换带 `repo, workflow` 的 PAT）；文件树补 `package.json` / `.editorconfig` |
-| `PROJECT-OVERVIEW.md` | `?v=70`→**120**、`linyuan-v59`→**v67**；离线预缓存 `74 条 / 1,347KB`→**77 条 / 1,448.1KB**（两处）；「**28** 个静态页面」→**29** |
+| `PROJECT-OVERVIEW.md` | `?v=70`→**120**、`linyuan-v59`→**v67**；离线预缓存 `74 条 / 1,347KB`→**77 条 / 1,451.8KB**（两处）；「**28** 个静态页面」→**29** |
 | `.github/workflows/verify.yml` | 头部注释「⑥ 阅读器 **61** 项」→「**⑤ 阅读器 127 项**」（编号 ④ 跳 ⑥ 的断裂一并修好）。**逻辑一行未动** |
 
 ### 六、结构优化落地（T04 只做了两项零风险的）
@@ -835,7 +835,9 @@ e2e 新增 3 条断言（119 → **122**）。
 - `npm run verify` 四项全绿；`npm run verify:all`（含楷体 3906 字覆盖）全绿
 - `npm run typecheck` → **0 诊断**
 - `npm run e2e` → **127/127，154.8s**
-- `node tools/check-precache.mjs` → **77 条 / 1,448.1 KB**，`character-shenruoqi` 两项都在列
+- `node tools/check-precache.mjs` → **77 条 / 1,451.8 KB**（比审计基线的 1,448.1 多 3.7 KB ——
+  就是 `style.css` 顶部那 57 行分区目录注释；它进了线上 CSS 本体，gzip 后约 1 KB，换来翻文件不用瞎搜），
+  `character-shenruoqi` 两项都在列
 - `grep -n ",," sw.js` → **0 命中**
 - `git ls-files --eol tools/make-kai-subset.py` → **`i/lf w/lf`**（重新检出一次后落盘为 LF）
 

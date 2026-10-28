@@ -21,7 +21,7 @@ js/reader.store.js    阅读页 · 存储层（所有 localStorage 读写的唯�
 js/reader.engine.js   阅读页 · 引擎（位置锚点、恢复、自动滚屏、阅读计时）
 js/reader.ui.js       阅读页 · 界面层（面板、主题、字体、状态条、阅读辅助）
 js/reader.js          阅读页 · 入口（按顺序装配上面四个模块并启动）
-js/transition.js      页面切换过渡（全站唯一实现）
+js/transition.js      页面切换过渡（已全站停用，模块保留备用；重启方式见文件头注释）
 js/theme.js           主题 + Service Worker 注册
 js/types.d.ts         共享类型声明（只给 JSDoc / 编辑器用，不产出代码）
 jsconfig.json         类型检查配置（npx -y -p typescript tsc -p jsconfig.json --noEmit）

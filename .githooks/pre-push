@@ -88,7 +88,7 @@ if [ "$failed" -ne 0 ]; then
   echo ""
   echo "修复方式："
   echo "  ① 版本号混版： node tools/bump-assets.mjs --write"
-  echo "     （扫描 6 个 HTML，取最大 ?v= +1 后全站统一替换；只改文件，不自动 commit）"
+  echo "     （扫描全站 HTML，取最大 ?v= +1 后全站统一替换；只改文件，不自动 commit）"
   echo "  ② 预缓存缺失： 按上面列出的路径补文件，或从 sw.js 的 PRECACHE 删掉该条"
   echo "  ③ 楷体缺字： python tools/make-kai-subset.py（重新生成子集并提交 woff2）"
   echo "  ④ 正文与源稿不一致：若是有意改文，node tools/manuscript-sync.mjs --write --only chapter-0N"
