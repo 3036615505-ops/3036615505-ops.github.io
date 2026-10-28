@@ -29,7 +29,7 @@ package.json          npm run 入口（零依赖，只是把 tools/ 下的脚本
 .editorconfig         编辑器格式约定（缩进 / 换行；与 .gitattributes 分工，一个管键盘一个管仓库）
 sw.js                 Service Worker
 tools/                开发/校验脚本（不参与页面运行）
-.github/workflows/    服务端校验（每次 push 跑五项静态校验 + 端到端）
+.github/workflows/    服务端校验（每次 push 跑六项静态校验 + 端到端）
 app/                  安装包与 version.json（SW 不拦截，直连网络）
 ```
 

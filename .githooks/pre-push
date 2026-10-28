@@ -11,12 +11,18 @@
 # 临时跳过（不推荐）：
 #     git push --no-verify
 #
-# 检查五项：
+# 检查六项：
 #   1. node tools/bump-assets.mjs --check   —— 全站 HTML 的 ?v= 是否统一（混版 = 有人拿旧文件）
-#   2. node tools/check-precache.mjs        —— sw.js 的 PRECACHE 每条是否真实存在、脚本引用是否齐全
-#   3. python tools/make-kai-subset.py --check —— 楷体字体子集是否覆盖当前正文用字
-#   4. node tools/manuscript-sync.mjs       —— 章节正文与 manuscript/ 源稿是否逐字一致
-#   5. node tools/check-apk.mjs             —— version.json 的 size / sha256 与安装包是否一致
+#   2. node tools/bump-assets.mjs --stale   —— 资源内容变了，缓存键有没有跟着变（见下）
+#   3. node tools/check-precache.mjs        —— sw.js 的 PRECACHE 每条是否真实存在、脚本引用是否齐全
+#   4. python tools/make-kai-subset.py --check —— 楷体字体子集是否覆盖当前正文用字
+#   5. node tools/manuscript-sync.mjs       —— 章节正文与 manuscript/ 源稿是否逐字一致
+#   6. node tools/check-apk.mjs             —— version.json 的 size / sha256 与安装包是否一致
+#
+# 第 2 项为什么必要：第 1 项只检查「HTML 里的 ?v= 是否统一」，**完全不比对文件内容**。
+# 改了 style.css 却忘了 +1 时，全站版本号依然统一 → 检查全绿 → 发版 → 老读者拿旧 CSS
+# 配新 HTML，症状只在别人的手机上出现。第 2 项用 git 里的远端提交当基准做内容比对，
+# 只改注释不会误报（CSS 先剥注释再比）；纯注释/纯数据改动可用 ASSET_STALE_OK=1 显式放行。
 # 任一失败 → 退出码 1 → push 被阻止。想放行请先修好，不要养成 --no-verify 的习惯。
 
 set -u
@@ -38,19 +44,26 @@ fi
 failed=0
 
 echo ""
-echo "→ [1/5] 检查全站 ?v= 版本号是否统一 …"
+echo "→ [1/6] 检查全站 ?v= 版本号是否统一 …"
 if ! node tools/bump-assets.mjs --check; then
   failed=1
 fi
 
 echo ""
-echo "→ [2/5] 检查 sw.js 的 PRECACHE 条目与脚本引用 …"
+echo "→ [2/6] 检查资源内容变了之后，缓存键有没有跟着变 …"
+# 与 [1/6] 互补：[1/6] 只看版本号是否统一，不看文件内容。
+if ! node tools/bump-assets.mjs --stale; then
+  failed=1
+fi
+
+echo ""
+echo "→ [3/6] 检查 sw.js 的 PRECACHE 条目与脚本引用 …"
 if ! node tools/check-precache.mjs; then
   failed=1
 fi
 
 echo ""
-echo "→ [3/5] 检查楷体字体是否覆盖当前正文用字 …"
+echo "→ [4/6] 检查楷体字体是否覆盖当前正文用字 …"
 PY=""
 if command -v python >/dev/null 2>&1; then PY=python
 elif command -v python3 >/dev/null 2>&1; then PY=python3; fi
@@ -63,7 +76,7 @@ else
 fi
 
 echo ""
-echo "→ [4/5] 检查章节正文与 manuscript/ 源稿是否一致 …"
+echo "→ [5/6] 检查章节正文与 manuscript/ 源稿是否一致 …"
 if [ -f tools/manuscript-sync.mjs ]; then
   if ! node tools/manuscript-sync.mjs; then
     failed=1
@@ -73,7 +86,7 @@ else
 fi
 
 echo ""
-echo "→ [5/5] 检查 app/version.json 与安装包是否一致 …"
+echo "→ [6/6] 检查 app/version.json 与安装包是否一致 …"
 if [ -f tools/check-apk.mjs ]; then
   if ! node tools/check-apk.mjs; then
     failed=1
@@ -94,7 +107,10 @@ if [ "$failed" -ne 0 ]; then
   echo "  ④ 正文与源稿不一致：若是有意改文，node tools/manuscript-sync.mjs --write --only chapter-0N"
   echo "  ⑤ 安装包与清单不一致： node tools/check-apk.mjs --write
      （打完新包必须跑一次，且 APK 与 version.json 要进同一次提交）
-  ⑥ 若改了 sw.js 的 PRECACHE 内容，记得把 CACHE 版本号一起 +1"
+  ⑥ 内容变了但缓存键没变： node tools/bump-assets.mjs --write
+     （只改注释/纯数据、确认不影响渲染时，可用 ASSET_STALE_OK=1 显式放行，
+       并在提交信息里写清为什么不需要升版）
+  ⑦ 若改了 sw.js 的 PRECACHE 内容，记得把 CACHE 版本号一起 +1"
   echo "     （如 linyuan-v16 → v17，否则老用户不会重新 install）"
   echo ""
   echo "确实要绕过（不推荐）： git push --no-verify"

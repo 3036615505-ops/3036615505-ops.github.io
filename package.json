@@ -11,8 +11,10 @@
     "//1": "— 发版（改 HTML/CSS/JS 后必做）—",
     "bump": "node tools/bump-assets.mjs --write",
     "bump:check": "node tools/bump-assets.mjs --check",
+    "stale": "node tools/bump-assets.mjs --stale",
+    "//2b": "stale 不在 verify 里：它拿 git 的远端提交当基准（--since / @{upstream} / origin/main），换台没远端引用的机器就会跳过，不适合当与机器无关的静态项。",
 
-    "//2": "— 五项静态守卫（与 pre-push / CI 一一对应）—",
+    "//2": "— 静态守卫（pre-push 与 CI 各 6 项；下列条目都能单机裸跑，stale 例外：它要 git 基准）—",
     "precache": "node tools/check-precache.mjs",
     "kai:check": "python tools/make-kai-subset.py --check",
     "manuscript": "node tools/manuscript-sync.mjs",
