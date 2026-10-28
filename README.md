@@ -31,6 +31,7 @@ sw.js                 Service Worker
 tools/                开发/校验脚本（不参与页面运行）
 .github/workflows/    服务端校验（每次 push 跑六项静态校验 + 端到端）
 app/                  安装包与 version.json（SW 不拦截，直连网络）
+docs/                 设计笔记与历史（CHANGELOG.md 改动流水 · INFINITE-SCROLL.md · archive/ 归档快照）
 ```
 
 ## 发版前必须做的一件事：升 `?v=`
