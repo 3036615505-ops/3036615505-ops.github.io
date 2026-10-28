@@ -1570,6 +1570,23 @@ check('顶栏右侧有三个分类入口，且没有多余按钮条与数字',
   tabsInfo.extraBar === false,
   JSON.stringify(tabsInfo));
 
+/* 标题左靠齐：作者 2026-10-28 要求「同学录」紧贴返回键，右侧整块留给分类入口。
+   注意 .detail-header-title 是 flex:1，只改了 text-align，所以量的是文字盒子左边缘。 */
+const headAlign = await evaluate(`(() => {
+  const title = document.querySelector('.detail-header-title');
+  const back = document.querySelector('.detail-back').getBoundingClientRect();
+  const tabs = document.querySelector('.char-tabs').getBoundingClientRect();
+  const box = title.getBoundingClientRect();
+  return {
+    textAlign: getComputedStyle(title).textAlign,
+    leftGap: Math.round(box.left - back.right),
+    beforeTabs: box.right <= tabs.left + 1
+  };
+})()`);
+check('「同学录」标题左靠齐，右侧不被分类入口挤到',
+  headAlign.textAlign === 'left' && headAlign.leftGap >= 0 && headAlign.leftGap <= 12 && headAlign.beforeTabs === true,
+  JSON.stringify(headAlign));
+
 /* 关键场景：人已经在新叶中间，直接点顶栏的「乔木」 */
 await evaluate(`(() => {
   const l = document.getElementById('group-qingzhi');

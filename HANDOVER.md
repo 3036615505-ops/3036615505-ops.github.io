@@ -16,7 +16,7 @@
 | 人物 | 18 人（新叶 7 / 青枝 4 / 乔木 7）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
 | 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 852KB**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
 | Android 壳 | v1.9.0 / versionCode 17（v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死；v1.8.7 修系统返回键直接退出；**v1.9.0 = A 档收官，壳进入封版状态**：桥接补丁下沉到站点 `js/native-bridge.js`（以后改桥不用发版）、原生分享桥、闪屏叠层淡出、onResume 补更新检查、锁竖屏。详见 `app/BACK-HANDLING.md` 与 `app/WEBVIEW-ROADMAP.md`） |
-| 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 126 项 |
+| 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 127 项 |
 
 ## 常用命令
 
@@ -476,10 +476,10 @@ serif——观感一致，不是 bug。（18 人全部有立绘后，占位字�
 
 ## 当前验证状态
 
-- 本地：`node tools/e2e.mjs` 126/126；pre-push 5 项通过（?v= 统一 / 预缓存 / 楷体覆盖 / 源稿一致 / 安装包校验）
+- 本地：`node tools/e2e.mjs` 127/127；pre-push 5 项通过（?v= 统一 / 预缓存 / 楷体覆盖 / 源稿一致 / 安装包校验）
   - 本机没装 Chrome/Edge 时用 `CI=1 CHROME_BIN=<chrome-headless-shell 路径> node tools/e2e.mjs`
     （`CI=1` 才会加 `--no-sandbox`，容器/沙箱里不加必然起不来）
-  - 126 = 上一版 125 + 1（分类入口从「按钮条」改成「顶栏 tab + 标题」后重排为 4 条，净 +1）；
+  - 127 = 上一版 126 + 1（「同学录标题左靠齐」，2026-10-28 加）；
     那 122 = 119 + 3（「换人看立绘不串图 / 母版解码后换 1024」）；
     那 119 = 118 + 1（「滑动不会误亮导航细线」）；
     那 118 = 116 + 2（「余韵卡卡头是《章节标题》/ 单行不换行」）；
@@ -723,6 +723,8 @@ e2e 新增 3 条断言（119 → **122**）。
 
 实现（都在 `tools/make-characters.mjs`，**别手改 `novel/characters.html`**）：
 
+- 顶栏标题**左靠齐**（`.detail-header.has-tabs .detail-header-title { text-align:left }`，
+  只影响有这个修饰类的同学录页，其它详细页仍居中）
 - 顶栏：`<nav class="char-tabs">` 三个 `<a class="char-tab" href="#group-<key>">`，纯文字 12px，
   当前组金色 + 下划线（`--text-muted` 5.45:1 / `--accent-text` 5.88:1，都在 4.5 以上）
 - 分组标题：`<a class="char-group-label" id="group-<key>" href="#group-<key>">`

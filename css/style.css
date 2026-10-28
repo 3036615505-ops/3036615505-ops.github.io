@@ -1454,6 +1454,14 @@ a { color: inherit; text-decoration: none; }
   letter-spacing: 0.6px;
 }
 
+/* 同学录列表页：标题左靠齐、紧贴返回键，右侧整块留给分类入口。
+   其它详细页没有 .has-tabs，仍保持原来的居中 + 36px 右侧补偿。 */
+.detail-header.has-tabs .detail-header-title {
+  text-align: left;
+  padding-right: 0;
+  padding-left: 2px;
+}
+
 .detail-info {
   padding: 26px 22px;
   background: var(--card-warm);

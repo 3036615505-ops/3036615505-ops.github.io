@@ -384,7 +384,7 @@ function buildListPage(chars) {
     '<body class="tab-page-body">\n' +
     '  <div class="phone-frame">\n' +
     '\n' +
-    '    <div class="detail-header">\n' +
+    '    <div class="detail-header has-tabs">\n' +
     '      <a href="../index.html" class="detail-back">\n' +
     '        ' + BACK_SVG + '\n' +
     '      </a>\n' +
