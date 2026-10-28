@@ -4,34 +4,61 @@
 线上地址：<https://zephyrw.site>
 
 ```
-index.html            首页（梧桐进度带 / 光阴目录 / 金句轮播）
-novel/index.html      书架（目录 + 阅读进度）
-novel/chapter-*.html  章节页
-novel/characters.html 同学录（人物列表，由脚本生成）
-novel/character-*.html  人物详细页（每人一个，由脚本生成）
-quotes.html           剪贴本
-css/style.css         全站样式（含浅色 / 深色两套令牌）
-js/chapters.js        章节数据（唯一数据源，加章节只改这里）
-js/characters-data.js 人物数据（唯一数据源，不参与页面运行，只被生成脚本读取）
-flags.json            线上功能开关（不缓存，改一行即生效，见下）
-manuscript/           章节源稿（原文快照，push 前与章节页逐字比对）
-js/reader.flags.js    阅读页 · 远程开关客户端
-js/reader.dom.js      阅读页 · DOM 工具（el/text，替代手拼 innerHTML）
-js/reader.store.js    阅读页 · 存储层（所有 localStorage 读写的唯一入口）
-js/reader.engine.js   阅读页 · 引擎（位置锚点、恢复、自动滚屏、阅读计时）
-js/reader.ui.js       阅读页 · 界面层（面板、主题、字体、状态条、阅读辅助）
-js/reader.js          阅读页 · 入口（按顺序装配上面四个模块并启动）
-js/transition.js      页面切换过渡（已全站停用，模块保留备用；重启方式见文件头注释）
-js/theme.js           主题 + Service Worker 注册
-js/types.d.ts         共享类型声明（只给 JSDoc / 编辑器用，不产出代码）
-jsconfig.json         类型检查配置（npx -y -p typescript tsc -p jsconfig.json --noEmit）
-package.json          npm run 入口（零依赖，只是把 tools/ 下的脚本收成一张索引）
-.editorconfig         编辑器格式约定（缩进 / 换行；与 .gitattributes 分工，一个管键盘一个管仓库）
-sw.js                 Service Worker
-tools/                开发/校验脚本（不参与页面运行）
-.github/workflows/    服务端校验（每次 push 跑六项静态校验 + 端到端）
-app/                  安装包与 version.json（SW 不拦截，直连网络）
-docs/                 设计笔记与历史（CHANGELOG.md 改动流水 · INFINITE-SCROLL.md · archive/ 归档快照）
+站点根（GitHub Pages 直接发布这一层）
+index.html              首页（梧桐进度带 / 光阴目录 / 金句轮播）
+quotes.html             剪贴本
+sw.js                   Service Worker（预缓存清单 + 各资源的缓存策略）
+flags.json              线上功能开关（不缓存，改一行即生效，见下）
+announce.json           「第 N 章更新了」横幅的数据源（make-announce.mjs 生成）
+sitemap.xml             站点地图（make-sitemap.mjs 生成）
+robots.txt              爬虫规则（含 Disallow: /manuscript/）
+CNAME / favicon.png / manifest.json / .nojekyll / .well-known/
+                        域名、窗口图标与平台约定，平时不用动（PWA 图标与 apple-touch-icon 在 assets/）
+
+页面（novel/，27 个文件；除书架页外全是生成物，别手改）
+novel/index.html        书架（目录 + 阅读进度）
+novel/chapter-*.html    章节页（01..07 共 7 个）   ← new-chapter.js 生成
+novel/characters.html   同学录列表                  ← tools/make-characters.mjs 生成
+novel/character-*.html  18 个人物详细页             ← 同上
+
+数据源（改内容改这里，不要改页面）
+js/chapters.js          章节数据（唯一数据源）
+js/characters-data.js   人物数据（不参与页面运行，只被生成脚本读取）
+manuscript/             章节源稿（原文快照，push 前与章节页逐字比对）
+
+阅读器（js/ 下六个模块，依赖单向：入口 → ui → engine → store；dom 谁都能用）
+js/reader.js            入口（按顺序装配下面四层并启动）
+js/reader.ui.js         界面层（面板、主题、字体、状态条、阅读辅助）
+js/reader.engine.js     引擎（位置锚点、恢复、自动滚屏、阅读计时）
+js/reader.store.js      存储层（所有 localStorage 读写的唯一入口）
+js/reader.dom.js        DOM 工具（el/text，替代手拼 innerHTML）
+js/reader.flags.js      远程开关客户端
+js/theme.js             主题 + Service Worker 注册
+js/transition.js        页面切换过渡（已全站停用，模块保留备用；重启方式见文件头注释）
+js/types.d.ts           共享类型声明（只给 JSDoc / 编辑器用，不产出代码）
+
+样式与资源
+css/style.css           全站样式（浅色 / 深色两套令牌都在 :root 与 [data-theme="dark"]）
+assets/                 立绘 18 张 + 楷体子集 + 封面/背景图（都由脚本产出，见下文两节）
+
+文档（分层，同一件事只写一处）
+README.md               本文 —— 怎么改
+HANDOVER.md             交接说明 —— 现在是什么状态、哪里埋着坑（动工前先读）
+PROJECT-OVERVIEW.md     项目全貌（对外介绍用）
+docs/CHANGELOG.md       改动流水（只追加，最新的在最上面）
+docs/INFINITE-SCROLL.md 无限流设计的实测笔记
+docs/archive/           历史快照（停在当天，别当现状读）
+app/                    安装包与 version.json（SW 不拦截，直连网络）
+
+工具链（不参与页面运行）
+tools/                  校验与生成脚本（`npm run` 是它们的一张索引）
+new-chapter.js          加新章节（写 manuscript/ + 生成章节页）
+.githooks/pre-push      发版前六项校验（每个 clone 需启用一次，见下）
+.github/workflows/      CI：每次 push 跑六项静态校验 + 端到端
+package.json            npm run 入口（零依赖，只有 scripts）
+jsconfig.json           类型检查配置（npx -y -p typescript tsc -p jsconfig.json --noEmit）
+.editorconfig           缩进 / 换行（管键盘那侧）；.gitattributes 管仓库那侧
+.gitignore
 ```
 
 ## 发版前必须做的一件事：升 `?v=`
@@ -51,11 +78,12 @@ node tools/bump-assets.mjs --write   # 扫描 29 个 HTML，取最大 ?v= +1，�
 git config core.hooksPath .githooks
 ```
 
-启用后每次 `git push` 会先跑：
+启用后每次 `git push` 会先跑六项：
 
 | 检查 | 脚本 | 拦住什么 |
 |---|---|---|
 | 全站 `?v=` 是否统一 | `node tools/bump-assets.mjs --check` | 有人拿到旧 CSS/JS（混版缓存） |
+| 内容变了但缓存键没变 | `node tools/bump-assets.mjs --stale` | 改了 CSS/JS 忘了 +1：老读者拿旧文件配新 HTML（`--check` 只看「是否统一」，不看内容，所以另需一项） |
 | PRECACHE 条目是否都存在、脚本引用是否齐全 | `node tools/check-precache.mjs` | SW 预缓存里放了一条 404 |
 | 楷体子集是否覆盖正文 | `python tools/make-kai-subset.py --check` | 正文用了子集外的字（GB2312 一级字之外的生僻字）会显示成豆腐块 |
 | 章节正文与源稿是否一致 | `node tools/manuscript-sync.mjs` | 正文被误改而没人发现 |
@@ -170,7 +198,7 @@ npx -y -p typescript tsc -p jsconfig.json --noEmit
 
 | job | 内容 |
 |---|---|
-| 静态校验 | ① `?v=` 统一 ② 预缓存条目 ③ 楷体子集覆盖 ④ 正文与源稿一致 ⑤ 安装包与 `version.json` 一致 |
+| 静态校验 | ① `?v=` 统一 ② 内容变了但缓存键没变 ③ 预缓存条目 ④ 楷体子集覆盖 ⑤ 正文与源稿一致 ⑥ 安装包与 `version.json` 一致 |
 | 端到端 | 127 项真浏览器断言（ubuntu 自带 Chrome，`CI=true` 时自动补 `--no-sandbox`） |
 
 为什么还要 CI：pre-push 钩子只在**配过 `core.hooksPath` 的那个 clone** 里生效。
