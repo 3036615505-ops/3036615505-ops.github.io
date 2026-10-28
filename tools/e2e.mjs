@@ -1547,50 +1547,65 @@ check('母版解码后换上 1024 母版',
   JSON.stringify(lbMaster));
 await evaluate(`document.querySelector('.lightbox-close').click(); 1`);
 
-section('同学录 · 分类标题本身可点');
-/* 作者 2026-10-28：不要额外按钮条、不要人数角标，按钮就长在「新叶/青枝/乔木」字样上。
-   点一下 = 把本组标题顶到顶栏下面（标题在屏幕下沿只露一半时最有用）。 */
-const groupLabels = await evaluate(`(() => {
-  const labels = [...document.querySelectorAll('.char-group-label')];
+section('同学录 · 分类入口（顶栏 tab + 分组标题）');
+/* 作者 2026-10-28 的第二次反馈：标题只在各组开头，人在组内就没法换组。
+   解决方式是把入口放进页面原有的 sticky 顶栏（不加白条、不加数字）；
+   分组标题本身也保留可点（把自己那一组顶到顶栏下面）。 */
+const tabsInfo = await evaluate(`(() => {
+  const tabs = [...document.querySelectorAll('.char-tab')];
+  const last = tabs[tabs.length - 1];
   return {
-    count: labels.length,
-    tag: labels[0] && labels[0].tagName,
-    hrefs: labels.map(l => l.getAttribute('href')),
-    texts: labels.map(l => l.textContent.trim()),
-    extraBar: !!document.querySelector('.char-group-nav'),
-    countBadge: !!document.querySelector('.char-group-count')
+    count: tabs.length,
+    texts: tabs.map(t => t.textContent.trim()),
+    hrefs: tabs.map(t => t.getAttribute('href')),
+    overflow: last ? Math.round(last.getBoundingClientRect().right) > window.innerWidth : true,
+    inHeader: !!document.querySelector('.detail-header .char-tabs'),
+    extraBar: !!document.querySelector('.char-group-nav') || !!document.querySelector('.char-group-count')
   };
 })()`);
-check('三个分组标题本身就是锚点按钮，且没有多余按钮条与数字',
-  groupLabels.count === 3 && groupLabels.tag === 'A' &&
-  groupLabels.hrefs.join(',') === '#group-xinlei,#group-qingzhi,#group-qiaomu' &&
-  groupLabels.texts.join('/') === '新叶/青枝/乔木' &&
-  groupLabels.extraBar === false && groupLabels.countBadge === false,
-  JSON.stringify(groupLabels));
+check('顶栏右侧有三个分类入口，且没有多余按钮条与数字',
+  tabsInfo.count === 3 && tabsInfo.texts.join('/') === '新叶/青枝/乔木' &&
+  tabsInfo.hrefs.join(',') === '#group-xinlei,#group-qingzhi,#group-qiaomu' &&
+  tabsInfo.inHeader === true && tabsInfo.overflow === false &&
+  tabsInfo.extraBar === false,
+  JSON.stringify(tabsInfo));
 
-/* 先把「青枝」标题挪到屏幕最下沿（只露一条边），模拟"想从这一组开始读" */
+/* 关键场景：人已经在新叶中间，直接点顶栏的「乔木」 */
 await evaluate(`(() => {
   const l = document.getElementById('group-qingzhi');
-  window.scrollTo(0, l.getBoundingClientRect().top + window.scrollY - (window.innerHeight - 40));
+  window.scrollTo(0, l.getBoundingClientRect().top + window.scrollY - 600);
   return 1;
 })()`);
 await sleep(400);
-await evaluate(`document.getElementById('group-qingzhi').click(); 1`);
+await evaluate(`document.querySelectorAll('.char-tab')[2].click(); 1`);
 await sleep(900);
 const jumped = await evaluate(`(() => {
-  const label = document.getElementById('group-qingzhi');
+  const label = document.getElementById('group-qiaomu');
   const header = document.querySelector('.detail-header');
+  const tabs = [...document.querySelectorAll('.char-tab')];
   return {
     labelTop: Math.round(label.getBoundingClientRect().top),
     headerBottom: Math.round(header.getBoundingClientRect().bottom),
-    scrolled: Math.round(window.scrollY)
+    scrolled: Math.round(window.scrollY),
+    active: tabs.findIndex(t => t.classList.contains('is-active'))
   };
 })()`);
-check('点「青枝」标题后这一组被顶到顶栏下面',
-  jumped.scrolled > 200 && jumped.labelTop > jumped.headerBottom - 1 && jumped.labelTop - jumped.headerBottom < 40,
+check('在新叶中间点顶栏「乔木」：直接跳到乔木组',
+  jumped.scrolled > 500 && jumped.active === 2 &&
+  jumped.labelTop > jumped.headerBottom - 1 && jumped.labelTop - jumped.headerBottom < 40,
   JSON.stringify(jumped));
-check('落位后标题完整可见，没被顶栏压住',
+check('落位后分组标题完整可见，没被顶栏压住',
   jumped.labelTop >= jumped.headerBottom, JSON.stringify(jumped));
+
+/* 反方向：再点「新叶」也要能回去 */
+await evaluate(`document.querySelectorAll('.char-tab')[0].click(); 1`);
+await sleep(900);
+const back = await evaluate(`(() => {
+  const tabs = [...document.querySelectorAll('.char-tab')];
+  return { active: tabs.findIndex(t => t.classList.contains('is-active')), scrolled: Math.round(window.scrollY) };
+})()`);
+check('再点「新叶」能回到第一组',
+  back.active === 0 && back.scrolled < 400, JSON.stringify(back));
 await evaluate(`window.scrollTo(0, 0); 1`);
 await sleep(300);
 

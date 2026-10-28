@@ -16,7 +16,7 @@
 | 人物 | 18 人（新叶 7 / 青枝 4 / 乔木 7）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
 | 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 852KB**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
 | Android 壳 | v1.9.0 / versionCode 17（v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死；v1.8.7 修系统返回键直接退出；**v1.9.0 = A 档收官，壳进入封版状态**：桥接补丁下沉到站点 `js/native-bridge.js`（以后改桥不用发版）、原生分享桥、闪屏叠层淡出、onResume 补更新检查、锁竖屏。详见 `app/BACK-HANDLING.md` 与 `app/WEBVIEW-ROADMAP.md`） |
-| 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 125 项 |
+| 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 126 项 |
 
 ## 常用命令
 
@@ -476,10 +476,10 @@ serif——观感一致，不是 bug。（18 人全部有立绘后，占位字�
 
 ## 当前验证状态
 
-- 本地：`node tools/e2e.mjs` 125/125；pre-push 5 项通过（?v= 统一 / 预缓存 / 楷体覆盖 / 源稿一致 / 安装包校验）
+- 本地：`node tools/e2e.mjs` 126/126；pre-push 5 项通过（?v= 统一 / 预缓存 / 楷体覆盖 / 源稿一致 / 安装包校验）
   - 本机没装 Chrome/Edge 时用 `CI=1 CHROME_BIN=<chrome-headless-shell 路径> node tools/e2e.mjs`
     （`CI=1` 才会加 `--no-sandbox`，容器/沙箱里不加必然起不来）
-  - 125 = 上一版 122 + 3（「分类按钮存在与锚点 / 点青枝真跳过去 / 标题不被吸顶条盖住」，2026-10-28 加）；
+  - 126 = 上一版 125 + 1（分类入口从「按钮条」改成「顶栏 tab + 标题」后重排为 4 条，净 +1）；
     那 122 = 119 + 3（「换人看立绘不串图 / 母版解码后换 1024」）；
     那 119 = 118 + 1（「滑动不会误亮导航细线」）；
     那 118 = 116 + 2（「余韵卡卡头是《章节标题》/ 单行不换行」）；
@@ -711,24 +711,26 @@ e2e 加 2 条断言钉住「按下即亮线 / 不拦点击」，**114 → 116**�
 1.6s 后变 `portrait-nanheng-1024.webp`（`naturalWidth=1024`）；
 e2e 新增 3 条断言（119 → **122**）。
 
-## 2026-10-28 · 同学录：分组标题本身就是「跳到本组」按钮
+## 2026-10-28 · 同学录分类入口（两轮返工后的定稿）
 
-作者要求：把「新叶 / 青枝 / 乔木」做成可点的按钮，能直接到那一组。
+作者两次否掉方案，记清楚，别再走回头路：
 
-**第一版做错了**：加了一条吸顶按钮条（白底 + 人数角标）。作者否掉三条 ——
-白条在奶油底页面上是一块突兀的实色、数字没必要、而且吸在顶栏下面会压住正在滚的卡片。
-**现在的做法：按钮就长在原来的分组标题上，视觉与之前完全一致，只是变得可点。**
+| 版本 | 做法 | 为什么不接受 |
+|---|---|---|
+| v1 | 吸顶按钮条（白底药丸 + 人数角标） | 白条在奶油底上突兀、数字多余、吸顶会压住卡片 |
+| v2 | 只把分组标题变成锚点 | **标题只在各组开头**，人在组内就换不了组 |
+| **v3（定稿）** | 入口放进**页面原有的 sticky 顶栏**右侧 + 标题仍可点 | 一直在屏幕上、不新增任何横条/底色/数字 |
 
-- `tools/make-characters.mjs`：分组标题由 `<div>` 改成
-  `<a class="char-group-label" id="group-<key>" href="#group-<key>">名字</a>` —— href 指向自己，
-  所以**滚过去之后想再对齐到本组**也有意义，且没有 JS 时是原生锚点跳转
-- 内联 `GROUP_LABEL_SNIPPET`（ES5，约 10 行）：点击 `preventDefault` 后
-  `scrollIntoView({behavior:'smooth'})`，`prefers-reduced-motion` 时退化为瞬时
-- CSS 只加三条：`scroll-margin-top: 72px`（让开实测 61px 的 sticky 顶栏 + 呼吸）、
-  `:active { opacity: .6 }` 按压反馈、减少动效时取消透明度变化。
-  **没有**新增任何容器、背景、圆角、角标
-- **不要**写 `html { scroll-behavior: smooth }`：那会把阅读器位置恢复、列表滚动恢复都变成动画
+实现（都在 `tools/make-characters.mjs`，**别手改 `novel/characters.html`**）：
 
-实测：把「青枝」标题挪到屏幕下沿只露一条边，点它 → `scrollY 1553`，标题顶边 72，
-顶栏底边 61 → 完整可见。e2e 仍是 3 条断言（改名「分类标题本身可点」），总数 125。
-`CACHE v64 → v65`（列表页在预缓存里）。
+- 顶栏：`<nav class="char-tabs">` 三个 `<a class="char-tab" href="#group-<key>">`，纯文字 12px，
+  当前组金色 + 下划线（`--text-muted` 5.45:1 / `--accent-text` 5.88:1，都在 4.5 以上）
+- 分组标题：`<a class="char-group-label" id="group-<key>" href="#group-<key>">`
+- 内联 `GROUP_NAV_SNIPPET`（ES5，~25 行）：两处入口共用一套点击逻辑（平滑滚动，
+  `prefers-reduced-motion` 时瞬时）；滚动时用 rAF 节流同步顶栏高亮
+- 高亮判定线必须**和落位点一致**：标题 `scroll-margin-top: 72px`，判定线取
+  `顶栏底(61) + 20`；若写成「顶栏底 + 4」，刚落位的标题会被判成还没到，高亮慢一组（踩过）
+- **不要**写 `html { scroll-behavior: smooth }`：会把阅读器位置恢复、列表滚动恢复都变成动画
+
+实测：在新叶中部点顶栏「乔木」→ `scrollY > 500`，乔木标题顶 72、顶栏底 61（不被遮），
+顶栏高亮切到乔木；再点「新叶」回到第一组。e2e 4 条断言，总数 **126**。`CACHE v65 → v66`。

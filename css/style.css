@@ -3826,6 +3826,36 @@ body.reading-page {
   margin-top: 4px;
 }
 
+/* ---- 同学录：顶栏里的分类入口（新叶 / 青枝 / 乔木）----
+   分组标题只在该组开头出现，人在组内就没法换组。顶栏本来就是 sticky，
+   所以把入口放在它右侧：一直在屏幕上，又不用额外加一条会压住卡片的横条。
+   纯文字、无底、无边框、无数字；当前组用金色 + 短下划线。 */
+.char-tabs {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.char-tab {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--text-muted);          /* #756654 on #FFFAF2 = 5.45:1 */
+  text-decoration: none;
+  padding: 2px 0 3px;
+  border-bottom: 1px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.char-tab.is-active {
+  color: var(--accent-text);         /* #855a2b = 5.88:1 */
+  border-bottom-color: var(--accent);
+}
+
+.char-tab:active {
+  opacity: 0.6;
+}
+
 /* ---- 同学录：分组标题本身就是「跳到本组」的按钮 ----
    作者否掉了额外的按钮条 + 人数角标（2026-10-28）：多出来的白条会压住卡片，
    数字也没必要。所以按钮就长在原有的字样上，视觉与之前保持一致，

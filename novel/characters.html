@@ -13,11 +13,11 @@
   <meta property="og:image" content="https://zephyrw.site/assets/og-cover.jpg">
   <meta property="og:type" content="article">
   <link rel="manifest" href="../manifest.json">
-  <link rel="stylesheet" href="../css/style.css?v=117">
-  <script src="../js/theme.js?v=117"></script>
-  <script src="../js/native-bridge.js?v=117"></script>
-  <script src="../js/announce.js?v=117" defer></script>
-  <script src="../js/nav-feedback.js?v=117" defer></script>
+  <link rel="stylesheet" href="../css/style.css?v=119">
+  <script src="../js/theme.js?v=119"></script>
+  <script src="../js/native-bridge.js?v=119"></script>
+  <script src="../js/announce.js?v=119" defer></script>
+  <script src="../js/nav-feedback.js?v=119" defer></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame">
@@ -29,6 +29,11 @@
         </svg>
       </a>
       <span class="detail-header-title">同学录</span>
+      <nav class="char-tabs" aria-label="人物分类">
+        <a class="char-tab" href="#group-xinlei">新叶</a>
+        <a class="char-tab" href="#group-qingzhi">青枝</a>
+        <a class="char-tab" href="#group-qiaomu">乔木</a>
+      </nav>
     </div>
 
     <div class="char-hero">
@@ -429,20 +434,40 @@
       <span>剪贴本</span>
     </a>
   </nav>
-  <script src="../js/lightbox.js?v=117"></script>
+  <script src="../js/lightbox.js?v=119"></script>
   <script>
   (function () {
-    var labels = document.querySelectorAll('a.char-group-label[href^="#group-"]');
-    if (!labels.length) return;
+    var links = document.querySelectorAll('.char-tab, a.char-group-label[href^="#group-"]');
+    if (!links.length) return;
+    var tabs = [].slice.call(document.querySelectorAll('.char-tab'));
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    [].forEach.call(labels, function (a) {
+    function targetOf(a) { return document.getElementById((a.getAttribute('href') || '').slice(1)); }
+    [].forEach.call(links, function (a) {
       a.addEventListener('click', function (e) {
-        var t = document.getElementById(a.getAttribute('href').slice(1));
+        var t = targetOf(a);
         if (!t) return;
         e.preventDefault();
         t.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
       });
     });
+    /* 顶栏 tab 跟着当前所在分组亮：取「已经滚过顶栏下沿」的最后一组 */
+    function sync() {
+      if (!tabs.length) return;
+      var line = document.querySelector('.detail-header').getBoundingClientRect().bottom + 20;
+      var idx = 0;
+      tabs.forEach(function (a, i) {
+        var t = targetOf(a);
+        if (t && t.getBoundingClientRect().top <= line) idx = i;
+      });
+      tabs.forEach(function (a, i) { a.classList.toggle('is-active', i === idx); });
+    }
+    var ticking = false;
+    window.addEventListener('scroll', function () {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(function () { ticking = false; sync(); });
+    }, { passive: true });
+    sync();
   })();
   </script>
   <script>

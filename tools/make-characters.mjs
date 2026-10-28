@@ -297,26 +297,61 @@ const LIST_SCROLL_SNIPPET = [
   '  </script>'
 ].join('\n');
 
-/* 分组标题本身就是按钮：点「新叶 / 青枝 / 乔木」把该组顶到视口上方，
-   不加额外的按钮条（作者 2026-10-28 明确否掉了那条白条 + 数字）。
-   href 是原生锚点，没有 JS 也能跳；JS 只把它变成平滑滚动。 */
-const GROUP_LABEL_SNIPPET = [
+/* 分类入口两处，共用一套逻辑：
+     ① 顶栏右侧的 新叶 / 青枝 / 乔木 —— 一直在屏幕上，人在任何一组里都能换组
+     ② 各分组标题本身 —— 把本组顶到顶栏下面（标题在下沿只露一条边时有用）
+   顶栏是页面原有的 sticky 元素，所以不需要再额外加一条按钮条（作者否过那种白条）。 */
+const GROUP_NAV_SNIPPET = [
   '  <script>',
   '  (function () {',
-  '    var labels = document.querySelectorAll(\'a.char-group-label[href^="#group-"]\');',
-  '    if (!labels.length) return;',
+  '    var links = document.querySelectorAll(\'.char-tab, a.char-group-label[href^="#group-"]\');',
+  '    if (!links.length) return;',
+  '    var tabs = [].slice.call(document.querySelectorAll(\'.char-tab\'));',
   '    var reduce = window.matchMedia && window.matchMedia(\'(prefers-reduced-motion: reduce)\').matches;',
-  '    [].forEach.call(labels, function (a) {',
+  '    function targetOf(a) { return document.getElementById((a.getAttribute(\'href\') || \'\').slice(1)); }',
+  '    [].forEach.call(links, function (a) {',
   '      a.addEventListener(\'click\', function (e) {',
-  '        var t = document.getElementById(a.getAttribute(\'href\').slice(1));',
+  '        var t = targetOf(a);',
   '        if (!t) return;',
   '        e.preventDefault();',
   '        t.scrollIntoView({ behavior: reduce ? \'auto\' : \'smooth\', block: \'start\' });',
   '      });',
   '    });',
+  '    /* 顶栏 tab 跟着当前所在分组亮：取「已经滚过顶栏下沿」的最后一组 */',
+  '    function sync() {',
+  '      if (!tabs.length) return;',
+  /* 判定线要跟「落位点」一致：标题的 scroll-margin-top 是 72px，
+     顶栏 61px —— 用顶栏+4 的话刚落位的标题(72) 会被算成还没到，高亮就慢一组。 */
+  '      var line = document.querySelector(\'.detail-header\').getBoundingClientRect().bottom + 20;',
+  '      var idx = 0;',
+  '      tabs.forEach(function (a, i) {',
+  '        var t = targetOf(a);',
+  '        if (t && t.getBoundingClientRect().top <= line) idx = i;',
+  '      });',
+  '      tabs.forEach(function (a, i) { a.classList.toggle(\'is-active\', i === idx); });',
+  '    }',
+  '    var ticking = false;',
+  '    window.addEventListener(\'scroll\', function () {',
+  '      if (ticking) return;',
+  '      ticking = true;',
+  '      requestAnimationFrame(function () { ticking = false; sync(); });',
+  '    }, { passive: true });',
+  '    sync();',
   '  })();',
   '  </script>'
 ].join('\n');
+
+/* 顶栏右侧的分类入口：三个纯文字 tab，没有底、没有边框、没有数字 */
+function buildHeaderTabs(chars) {
+  const seen = [];
+  chars.forEach((c) => { if (seen.indexOf(c.group) < 0) seen.push(c.group); });
+  return [
+    '      <nav class="char-tabs" aria-label="人物分类">',
+    ...seen.map((k) =>
+      '        <a class="char-tab" href="#group-' + k + '">' + GROUP_NAMES[k] + '</a>'),
+    '      </nav>'
+  ].join('\n');
+}
 
 function buildListPage(chars) {
   const cards = [];
@@ -354,6 +389,7 @@ function buildListPage(chars) {
     '        ' + BACK_SVG + '\n' +
     '      </a>\n' +
     '      <span class="detail-header-title">同学录</span>\n' +
+    buildHeaderTabs(chars) + '\n' +
     '    </div>\n' +
     '\n' +
     '    <div class="char-hero">\n' +
@@ -373,7 +409,7 @@ function buildListPage(chars) {
     '\n' +
     TAB_BAR + '\n' +
     '  <script src="../js/lightbox.js?v=' + ASSET_V + '"></script>\n' +
-    GROUP_LABEL_SNIPPET + '\n' +
+    GROUP_NAV_SNIPPET + '\n' +
     LIST_SCROLL_SNIPPET + '\n' +
     '</body>\n' +
     '</html>\n';
