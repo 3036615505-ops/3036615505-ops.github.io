@@ -177,14 +177,15 @@ node tools/make-characters.mjs     # 改完数据文件后跑这条
 在假 DOM 里测没有意义，所以测试直接开无头 Chromium 驱动真页面：
 
 ```bash
-node tools/e2e.mjs            # 127 项断言，约 155 秒；失败退出码 1
+node tools/e2e.mjs            # 端到端断言（全绿才算过），约 2~3 分钟；失败退出码 1
 node tools/e2e.mjs --verbose  # 顺带打印每项的实际值
 ```
 
 它会自己起静态服务器（默认 8765，可用 `--port` 改）、自己找本机 Chrome/Edge、
 跑完自清理。**没有浏览器或 Node < 22 时打印提示并 exit 0**，不会卡住 push。
 覆盖：init 与存储迁移、锚点写入/恢复（±6%）、改字号不跑位、目录/摘句/设置面板、
-主题三处同步、自动滚屏四条路径、备份导出/导入、书架页指标、全程无未捕获异常。
+主题三处同步、自动滚屏四条路径、备份导出/导入、书架页指标、阅读器内全章搜索
+（中文命中 / 落点是否准 / 断网仍可搜）、全程无未捕获异常。
 
 类型检查（JSDoc，不产出文件；VS Code 打开即有波浪线）：
 
@@ -199,7 +200,7 @@ npx -y -p typescript tsc -p jsconfig.json --noEmit
 | job | 内容 |
 |---|---|
 | 静态校验 | ① `?v=` 统一 ② 内容变了但缓存键没变 ③ 预缓存条目 ④ 楷体子集覆盖 ⑤ 正文与源稿一致 ⑥ 安装包与 `version.json` 一致 |
-| 端到端 | 127 项真浏览器断言（ubuntu 自带 Chrome，`CI=true` 时自动补 `--no-sandbox`） |
+| 端到端 | 真浏览器断言全套（ubuntu 自带 Chrome，`CI=true` 时自动补 `--no-sandbox`） |
 
 为什么还要 CI：pre-push 钩子只在**配过 `core.hooksPath` 的那个 clone** 里生效。
 换台机器（比如 Mac 上）改完推上去，一项都不会跑；CI 在服务端跑，谁的机器都一样。
