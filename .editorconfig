@@ -1,0 +1,26 @@
+# .editorconfig — 编辑器层面的格式约定
+# 与 .gitattributes 分工：.gitattributes 管「进仓库时怎么存」（强制 LF），
+# .editorconfig 管「敲键盘时怎么打」（缩进、行尾空格、末尾换行）。
+# 两者都必要：.gitattributes 管不了 IDE 的 Tab 键，.editorconfig 管不了 Windows 的 autocrlf。
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Markdown 的行尾两个空格是有意义的硬换行，不能裁
+[*.md]
+trim_trailing_whitespace = false
+
+# Python 生态惯例，且 tools/*.py 现有代码就是 4 空格
+[*.py]
+indent_size = 4
+
+# 钩子脚本：LF + 可执行位由 .gitattributes 保证，这里只管缩进
+[.githooks/*]
+indent_style = space
+indent_size = 2

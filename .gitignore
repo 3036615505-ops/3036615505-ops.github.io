@@ -1,6 +1,32 @@
-# macOS
+# ── macOS ──────────────────────────────────────────
 .DS_Store
 
-# 误提交防护：本仓库只放站点文件
+# ── Windows ────────────────────────────────────────
+# 本仓库的主力机器是 Windows，资源管理器一浏览缩略图就会生成 Thumbs.db
+Thumbs.db
+desktop.ini
+
+# ── 误提交防护：本仓库只放站点文件 ──────────────────
 .claude/
 ~/
+
+# ── Node ───────────────────────────────────────────
+# 本项目零依赖，永远不会真的有 node_modules；
+# 这一行是给「有人手滑跑了 npm install」兜底，不让 3000 个文件进 git status。
+# package-lock.json 同理：没有依赖就不该有锁文件。
+node_modules/
+package-lock.json
+npm-debug.log*
+
+# ── 本地工作目录（不进仓库，但会真实出现在工作区）──
+# _source-assets/  图片母版（cover.jpg / tree-*.jpg / portrait-*.jpg 的原始件，见 docs/REPO-AUDIT.md §2.1）
+# _perf/           性能测试产物与封面候选（PROJECT-OVERVIEW.md §九 提到的 _perf/cover-candidates/）
+# _backup/         签名密钥的加密备份（HANDOVER.md 明确写了不进公开仓库）
+_source-assets/
+_perf/
+_backup/
+
+# ── 编辑器 ─────────────────────────────────────────
+# 项目靠 jsconfig.json 提供 IntelliSense，不需要提交编辑器私有配置。
+# 若日后想共享调试配置，把这一行删掉并只提交 settings.json。
+.vscode/

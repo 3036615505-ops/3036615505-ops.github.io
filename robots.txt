@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
 
+# 源稿目录与正文 HTML 同内容，拦索引避免重复内容（见 docs/REPO-AUDIT.md §2.4）
+Disallow: /manuscript/
+
 Sitemap: https://zephyrw.site/sitemap.xml

@@ -1,5 +1,5 @@
 {
-  "//": "只给阅读器模块做类型检查，不产出任何文件。VS Code 打开即生效；命令行可用 npx tsc -p jsconfig.json --noEmit。",
+  "//": "只做类型检查与编辑器提示，不产出任何文件。include 覆盖 js/ 下全部模块（14 个 + types.d.ts），checkJs 保持 false —— 开它是 46 个既有错误，等于一轮重构（见 docs/REPO-AUDIT.md §5）。命令行：npx -y -p typescript tsc -p jsconfig.json --noEmit。",
   "compilerOptions": {
     "target": "ES2019",
     "lib": [
@@ -15,9 +15,19 @@
   },
   "include": [
     "js/types.d.ts",
+    "js/reader.dom.js",
+    "js/reader.flags.js",
     "js/reader.store.js",
     "js/reader.engine.js",
     "js/reader.ui.js",
-    "js/reader.js"
+    "js/reader.js",
+    "js/chapters.js",
+    "js/announce.js",
+    "js/nav-feedback.js",
+    "js/native-bridge.js",
+    "js/theme.js",
+    "js/transition.js",
+    "js/lightbox.js",
+    "js/characters-data.js"
   ]
 }

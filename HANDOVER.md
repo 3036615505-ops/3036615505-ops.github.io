@@ -8,20 +8,24 @@
 | 项 | 值 |
 |---|---|
 | 线上 | <https://zephyrw.site>（GitHub Pages，push 即发布） |
-| 站点资源版本 | `?v=112`（全站 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
-| SW 缓存名 | `linyuan-v63` |
-| 阅读器模块 | dom 77 行 · flags 87 · store 247 · engine 552 · ui 2719 · 入口 30 |
-| 样式 | `css/style.css` 4450 行（4 套主题令牌） |
+| 站点资源版本 | `?v=120`（全站 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
+| SW 缓存名 | `linyuan-v67` |
+| 阅读器模块 | dom 77 行 · flags 87 · store 247 · engine 552 · ui 2726 · 入口 30 |
+| 样式 | `css/style.css` 4839 行（4 套主题令牌） |
 | 章节 | 7 章（2858 / 2347 / 2029 / 2496 / 2076 / 2269 / 2081 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
 | 人物 | 18 人（新叶 7 / 青枝 4 / 乔木 7）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
-| 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 852KB**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
-| Android 壳 | v1.9.0 / versionCode 17（v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死；v1.8.7 修系统返回键直接退出；**v1.9.0 = A 档收官，壳进入封版状态**：桥接补丁下沉到站点 `js/native-bridge.js`（以后改桥不用发版）、原生分享桥、闪屏叠层淡出、onResume 补更新检查、锁竖屏。详见 `app/BACK-HANDLING.md` 与 `app/WEBVIEW-ROADMAP.md`） |
+| 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 891.5KB（主片 273.1 + 兜底片 618.4）**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
+| Android 壳 | v1.9.0 / versionCode 17（v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死；v1.8.7 修系统返回键直接退出；**v1.9.0 = A 档收官，壳进入封版状态**：桥接补丁下沉到站点 `js/native-bridge.js`（以后改桥不用发版）、原生分享桥、闪屏叠层淡出、onResume 补更新检查、锁竖屏。详见 `app/BACK-HANDLING.md`） |
 | 校验 | 本地 pre-push 5 项 · CI 2 个 job · 端到端 127 项 |
 
 ## 常用命令
 
+下面这些命令都有 `npm run` 入口（`package.json`：零依赖，只有 `scripts`，脚本本身仍是唯一实现；
+直接敲 `npm run` 可列出全部入口）。最常用的三条：`npm run verify`（前四项静态校验）、
+`npm run verify:all`（五项，含楷体）、`npm run e2e`（端到端）。
+
 ```bash
-node tools/e2e.mjs                 # 92 项端到端（真浏览器，约 95 秒）
+node tools/e2e.mjs                 # 127 项端到端（真浏览器，约 155 秒）
 node tools/e2e.mjs --verbose       # 附带每项实测值
 npx -p typescript tsc -p jsconfig.json --noEmit   # 类型检查（零产出）
 node tools/bump-assets.mjs --write # 发版前必做：全站 ?v= 统一 +1
@@ -33,7 +37,7 @@ node tools/check-apk.mjs --write   # 打完新包后重算校验值（APK 与清
 python tools/make-kai-subset.py --check            # 楷体子集是否覆盖正文
 node new-chapter.js <原稿.md>       # 加新章节（会自动写 manuscript/）
 node tools/make-characters.mjs     # 改人物后重新生成同学录与详细页
-python tools/make-portrait-thumbs.py  # 为 17 张立绘生成 128×150 缩略图（列表页用，母版留给详情页/灯箱）
+python tools/make-portrait-thumbs.py  # 为 18 张立绘生成 128×150 缩略图（列表页用，母版留给详情页/灯箱）
 node tools/make-sitemap.mjs        # 重生成 sitemap.xml（章节+人物+固定页，lastmod 取源稿 mtime）
 node tools/make-announce.mjs      # 重生成 announce.json（「第 N 章更新了」横幅的数据源，取章号最大者）
 ```
@@ -137,7 +141,7 @@ git push -u origin wip/mac-键盘
 git config core.hooksPath .githooks   # 没配则本地四项校验不跑，只剩 CI 兜底
 ```
 
-**版本号现状**：`?v=71`（2026-10-26）。谁改谁 bump，`?v=` 与改动一起提交，不要攒——
+**版本号现状**：`?v=120`（2026-10-28）。谁改谁 bump，`?v=` 与改动一起提交，不要攒——
 攒多了中间任何一次 push 都可能带着别人的旧缓存。
 
 ## 两类改动，两种流程
@@ -189,7 +193,7 @@ node new-chapter.js 原稿.md --blurb "目录页一句话" --date "九月十九"
 三道保护：**目标章节页已存在 → 中止**（不覆盖旧章）；**模板漏脚本 → 删掉半成品并报错**；`check-precache.mjs` 里还有一条 CI 检查，拿现有章节页比对模板的脚本引用，模板落后会红。
 
 人工只剩一件：把章末「这一章留下来的」占位文案换成属于这一章的话（脚本会提醒）。
-然后 commit + push，CI 跑五项校验 + 69 项端到端。
+然后 commit + push，CI 跑五项校验 + 127 项端到端。
 
 新增章节**不需要**手动升 `?v=`：章节页是新 URL，导航走网络优先；`CACHE` 由脚本升。
 
@@ -203,8 +207,8 @@ node tools/make-characters.mjs
 那条命令——**光改数据源网站不会变**（页面是预生成的；2026-10-25 就因为只改数据源
 没跑命令，白改了 12 处文案）。它一次做完：
 
-1. 生成 `novel/characters.html`（列表页，含「新叶 / 乔木」分组与「详细 ›」入口）
-2. 生成 `novel/character-<slug>.html` × 17（详细页：立绘/占位、身份徽标、生日、
+1. 生成 `novel/characters.html`（列表页，含「新叶 / 青枝 / 乔木」分组与「详细 ›」入口）
+2. 生成 `novel/character-<slug>.html` × 18（详细页：立绘/占位、身份徽标、生日、
    一句台词、小传、设定标签）
 3. 把新详细页登记进 `sw.js` 的 `PRECACHE` 并把 `CACHE` 名 +1（和 new-chapter.js 同一套逻辑）
 
@@ -338,8 +342,12 @@ serif——观感一致，不是 bug。（18 人全部有立绘后，占位字�
         也删了。留着它，遮罩元素照样在 DOM 里，只是永远不会被激活 ——
         既让「进页零等待」的断言无法成立，又让结构停留在废弃版本；
       - `js/transition.js` 与 `css/style.css` 的 `.page-transition` / `.book-*` **刻意保留**：
-        `novel/chapter-*.html`、`novel/characters.html`、`novel/character-*.html` 等
-        30+ 个生成页的 `<script>` 还引用它，删文件必须重新生成全站，风险与收益不成比例。
+        实测**引用它的只有 9 个页面** —— `index.html`、`novel/index.html`、`novel/chapter-0{1..7}.html`
+        （`grep -rln --include="*.html" "transition\.js" . | wc -l` → 9）；18 个人物页**都不引用**
+        （`tools/make-characters.mjs` 只在注释里提到它）。当初「30+ 个生成页要重新生成」这个成本
+        依据已被实测证伪，保留的理由改成**「重启过渡时的弯路结论需要它这个可执行载体」**，见下文
+        「若将来重启过渡」一节。真要删，改动面是这 9 个页面 + `new-chapter.js:339` 模板 +
+        `check-precache.mjs` 的 `needed` 白名单，并且 `?v=` 与 `CACHE` 各 +1。
         本模块在被 `init()` 调用前不产生任何 DOM、定时器或监听，保留的代价只有一次
         静态请求。文件头已写明「当前已停用 / 如何重新启用」；
       - `js/reader.ui.js` 的 `initChapterSwap()`（捕获阶段接管章节链接）**必须留着**：
@@ -465,8 +473,8 @@ serif——观感一致，不是 bug。（18 人全部有立绘后，占位字�
 
 | 事项 | 建议时机 | 理由 |
 |---|---|---|
-| 老面板（目录/设置/摘句/备份）从 innerHTML 迁到 `el()` | 下次真要加界面时 | 纯内部质量，无用户可见收益；且 114 项断言测行为不测像素，风险兜不住 |
-| `ui.js` 再拆出 `panels.js`（纯移动） | 想拆随时可做 | 风险低，但也没收益；`ui.js` 2552 行目前还能忍 |
+| 老面板（目录/设置/摘句/备份）从 innerHTML 迁到 `el()` | 下次真要加界面时 | 纯内部质量，无用户可见收益；且 127 项断言测行为不测像素，风险兜不住 |
+| `ui.js` 再拆出 `panels.js`（纯移动） | 想拆随时可做 | 风险低，但也没收益；`ui.js` 2726 行目前还能忍 |
 | 选中文字气泡工具条（摘句/复制/搜索） | 想加功能时的首选 | 唯一“既有用户价值、又顺手带出 `el()` 迁移”的一步 |
 | 全书搜索 | 章节多了以后 | 现在只有 7 章，索引成本大于收益 |
 | 章节块回收（超出 ±3 块就移除并留占位高度） | 章节数 > 20 时 | 现在一次最多接 7 块，没有内存/滚动压力；提前做只会引入新的位置漂移 |
@@ -736,3 +744,98 @@ e2e 新增 3 条断言（119 → **122**）。
 
 实测：在新叶中部点顶栏「乔木」→ `scrollY > 500`，乔木标题顶 72、顶栏底 61（不被遮），
 顶栏高亮切到乔木；再点「新叶」回到第一组。e2e 4 条断言，总数 **126**。`CACHE v65 → v66`。
+
+## 2026-10-28 · 仓库工程化整理（入口 / 死重 / 守卫缺陷 / 文档纠偏）
+
+完整依据与逐条证据见 `docs/REPO-AUDIT.md`（只读审计，本次唯一新增的文档）。这里只记**改了什么、
+为什么、以及两处版本号豁免的边界**。
+
+### 一、新增的入口与声明（零运行时影响）
+
+| 文件 | 作用 |
+|---|---|
+| `package.json` | **零依赖**（没有 `dependencies` / `devDependencies` 字段）、`private: true`、`engines.node >=22`。只有 `scripts`，全部是转发，不含逻辑。`npm run verify` = 四项静态校验，`npm run verify:all` = 五项（+ 楷体），`npm run e2e` = 端到端 |
+| `.editorconfig` | 缩进 / 换行 / 末尾换行约定。与 `.gitattributes` 分工：一个管「敲键盘时」，一个管「进仓库时」 |
+| `.gitignore` | 全文替换：补 Windows 噪声（`Thumbs.db`）、`node_modules/`（手滑兜底）、`package-lock.json`、`_source-assets/` `_perf/` `_backup/`（仓库外的工作目录）、`.vscode/` |
+| `.gitattributes` | 追加 `*.py text eol=lf`（`tools/make-kai-subset.py` 第 1 行是 shebang，CRLF 会让 `python3\r` 当解释器名）与 `*.md text eol=lf` |
+| `robots.txt` | 追加 `Disallow: /manuscript/`：源稿与正文 HTML 同内容，只拦索引，不影响任何脚本（也不能阻止直接访问） |
+
+`package.json` 会被 GitHub Pages 当静态文件公开（`/package.json` 可读）——里面没有任何秘密，无害。
+
+### 二、死重清理：11 个 JPG（729.1 KB）
+
+`cover.jpg`、`paper.jpg`、`portrait-{linshu,jiangbuqiu,nanheng}.jpg`、`tree-{bare,s1,s2,s3,s4,s5}.jpg`
+全部被同名 `.webp` 取代、**全仓零引用**（含 `sw.js` PRECACHE、两个生成器模板、`tools/` 全部脚本）。
+**没有 `rm`，而是 `mv` 到仓库外的 `E:/novel-site/_source-assets/assets/`**（本地留一份母版，
+已在 `.gitignore` 的 `_source-assets/` 里）。git 记为 deleted，提交即从仓库移除；
+要取回老版本：`git show <commit>:assets/cover.jpg > cover.jpg`（前提是**永不重写历史**）。
+
+`assets/og-cover.jpg`（41.2 KB）**不在清理范围**：它是 `og:image` 的唯一来源，仍被 30 处引用。
+
+`.git` 的 19 MB 不会因此变小（blob 还在历史里）；想真瘦身只能 `filter-repo` + `--force`，
+那是本仓库明确不做的事。**这次省的只是工作区体积（−11.9%）与「以为它还在用」的歧义。**
+
+### 三、`sw.js` 的两处双逗号（真实缺陷）
+
+```
+'/assets/portrait-shenruoqi-thumb.webp',,   ← 第 130 行
+'/novel/character-shenruoqi.html',,         ← 第 131 行
+```
+
+各多一个逗号 → 数组里各多一个空洞（`undefined`）。当时没炸，只是因为
+`Promise.allSettled(PRECACHE.map(...))` 把非 thenable 的 `undefined` 当「已 settle」咽掉了。
+更糟的是 `tools/check-precache.mjs` 用正则提取字符串、报「77 条」，**所以守卫看不见它** ——
+典型的「守卫与被守卫对象同时失灵」。已修成正常的单个逗号，现在 `grep -n ",," sw.js` 零命中。
+
+### 四、版本号：本次**不升** `?v=`、**不升** `CACHE`（含豁免边界）
+
+**不升 `?v=`（120 保持）**：本次改到的文件里，只有 `css/style.css` 被页面以 `?v=120` 引用，
+而它只**加了一段注释**（分区目录），字节变了、渲染结果零变化；其余（`package.json`、
+`.editorconfig`、`.gitignore`、`.gitattributes`、`robots.txt`、`sw.js`、`jsconfig.json`、各个 `.md`）
+没有任何页面引用。删掉的 11 个 JPG 是零引用文件。
+判断依据是**「字节变化是否改变渲染/行为」**，不是「文件是否被引用」——
+所以「加了注释的 CSS」不 bump 是对的，「改了规则的 CSS」不 bump 就是错的。
+
+**不升 `CACHE`（`linyuan-v67` 保持）**：铁律「改了 `sw.js` 的 PRECACHE 就要 `CACHE` +1」的
+**目的**是「让老用户的 SW 重新 install，从而拿到新增的条目」。本次修的是两条**本来就在数组里**
+的字符串多出来的逗号：PRECACHE 从「77 条字符串 + 2 个空洞」变成「77 条真实字符串」，
+**条目只增不减、一个名字都没变**。老 `linyuan-v67` cache 里这两条**已经是**准确 URL
+（旧 SW 也是按 URL 缓存的），新版 SW 的逐条 add 会命中同名 cache：缺的补上、有的一秒跳过。
+所以读者这里**不存在**「不换 cache 名就拿不到新内容」的问题，而换名会让全体重下 1.4 MB —— 净亏。
+
+**这条豁免什么时候不成立**（别顺手滥用）：
+
+1. **新增或删除**任何 PRECACHE 条目（哪怕只改一条 URL）→ 老 cache 里没有那一条，不换名就永远缺失；
+2. 文件**内容**变了但 URL 没变 → 那是 `?v=` 的事，不是 `CACHE`；
+3. 需要「强制全体重下整个 1.4 MB」（例如某个被缓存的坏响应）→ 只有换 `CACHE` 名能做到。
+
+一句话：**`CACHE` 名管的是「预缓存清单的变化」，不是「`sw.js` 这个文件的字节变化」。**
+
+### 五、文档纠偏（只改数字与步骤名，没碰任何 workflow 逻辑）
+
+| 文件 | 改动 |
+|---|---|
+| `HANDOVER.md` | `?v=112`→**120**（两处：现状表、版本号现状）；`linyuan-v63`→**v67**；`4450 行`→**4839**；楷体 `852KB`→**891.5KB**（主片 273.1 + 兜底片 618.4）；`92 项 / 约 95 秒`→**127 项 / 约 155 秒**；`69 项`→**127 项**；`114 项断言`→**127 项**；阅读器 `ui 2719 / 2552 行`→**2726**；`17 张立绘 / × 17`→**18**；「新叶 / 乔木」→**「新叶 / 青枝 / 乔木」**；删掉悬空的 `app/WEBVIEW-ROADMAP.md`（文件不存在）；**「transition.js 有 30+ 个生成页引用」→ 实测 9 个页面**（并写明保留理由改为「重启过渡时的结论载体」，删文件的真实改动面也写全了） |
+| `README.md` | 「扫描 **6** 个 HTML」→**29**；「**22** 项断言，约 40 秒」→**127 项，约 155 秒**；CI「**27** 项」→**127 项**；「× **17**」→**× 18**；「新叶 / 乔木」→**「新叶 / 青枝 / 乔木」**；pre-push 表补第 5 行（`check-apk.mjs`）；CI 静态校验补 ⑤ 安装包校验；`npx -p typescript`→`npx -y -p typescript`（首次运行会交互式询问，CI/非交互 shell 会卡住）；「改 workflow 需要 token，**当前 PAT 没有**」→ 该说法已过期（2026-10-25 已换带 `repo, workflow` 的 PAT）；文件树补 `package.json` / `.editorconfig` |
+| `PROJECT-OVERVIEW.md` | `?v=70`→**120**、`linyuan-v59`→**v67**；离线预缓存 `74 条 / 1,347KB`→**77 条 / 1,448.1KB**（两处）；「**28** 个静态页面」→**29** |
+| `.github/workflows/verify.yml` | 头部注释「⑥ 阅读器 **61** 项」→「**⑤ 阅读器 127 项**」（编号 ④ 跳 ⑥ 的断裂一并修好）。**逻辑一行未动** |
+
+### 六、结构优化落地（T04 只做了两项零风险的）
+
+- `jsconfig.json` 的 `include` 从 5 个补到 **13 个**：加了 `announce.js`、`lightbox.js`、
+  `nav-feedback.js`、`native-bridge.js`、`chapters.js`、`transition.js`、`theme.js`、`characters-data.js`。
+  `checkJs` 仍是 **false**（开它是 46 个既有错误，等于一轮重构，见审计 §5），所以补 include
+  **不引入任何错误**，只是让编辑器里这 8 个文件也能看见 `LY.*` 的共享类型。
+- `css/style.css` 顶部加**分区目录注释**（带行号）。`style.css` 4,839 行不拆：拆的改动面是
+  29 个页面 + 2 个生成器模板 + PRECACHE，而收益只是单人翻文件方便，且**没有构建步骤**能把它合回去。
+- **不做**：ESLint / Prettier、拆 CSS、合并 JS、重写 git 历史、`checkJs: true`。理由见审计 §5。
+
+### 七、验证
+
+- `npm run verify` 四项全绿；`npm run verify:all`（含楷体 3906 字覆盖）全绿
+- `npm run typecheck` → **0 诊断**
+- `npm run e2e` → **127/127，154.8s**
+- `node tools/check-precache.mjs` → **77 条 / 1,448.1 KB**，`character-shenruoqi` 两项都在列
+- `grep -n ",," sw.js` → **0 命中**
+- `git ls-files --eol tools/make-kai-subset.py` → **`i/lf w/lf`**（重新检出一次后落盘为 LF）
+

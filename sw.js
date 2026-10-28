@@ -127,8 +127,8 @@ var PRECACHE = [
   '/novel/chapter-06.html',
   '/novel/chapter-07.html',
   '/novel/characters.html',
-  '/assets/portrait-shenruoqi-thumb.webp',,
-  '/novel/character-shenruoqi.html',,
+  '/assets/portrait-shenruoqi-thumb.webp',
+  '/novel/character-shenruoqi.html',
   /* 同学录列表页立绘缩略图（128×150，17 张合计约 70KB）。
      列表页 .char-photo 只有 48×56，object-fit: cover + object-position: 50% 28%
      裁切后缩放而成（tools/make-portrait-thumbs.py，与浏览器渲染语义逐像素对齐）。

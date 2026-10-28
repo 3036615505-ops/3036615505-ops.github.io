@@ -23,7 +23,7 @@
 
 | 层 | 是什么 | 在哪 |
 |---|---|---|
-| **站点** | 阅读端主体，28 个静态页面 | `zephyrw.site`（GitHub Pages） |
+| **站点** | 阅读端主体，29 个静态页面 | `zephyrw.site`（GitHub Pages） |
 | **安卓 App** | WebView 壳，加载同一站点，v1.9.0 / code 17 | `app/linyuan-latest.apk` 分发 |
 | **工具链** | 11 个脚本：生成器（章节 / 人物 / sitemap / announce / 缩略图 / 字体子集）+ 校验守卫（预缓存 / 对比度 / 源稿）+ 端到端测试 | `tools/`、`new-chapter.js` |
 
@@ -39,8 +39,8 @@
 | 页面 | 29 个（首页 / 书架 / 7 章 / 18 人物页 / 剪贴本 / 各索引页） |
 | 人物 | 18 人（新叶 7 / 青枝 4 / 乔木 7），**全部有立绘**：128×150 缩略 + 1024 母版（沈若栖那张是 AI 生成、风格对齐） |
 | 字体 | 黑体 / 系统 / 楷体 + 导入自定义；楷体子集 3900 字，拆成主片 260KB + 兜底片 |
-| 离线预缓存 | 74 条 / **1,347KB**（立绘缩略图优化前是 3,204KB） |
-| 站点资源版本 | `?v=70`，SW 缓存名 `linyuan-v59` |
+| 离线预缓存 | 77 条 / **1,448.1KB**（立绘缩略图优化前是 3,204KB） |
+| 站点资源版本 | `?v=120`，SW 缓存名 `linyuan-v67` |
 
 ---
 
@@ -54,7 +54,7 @@
 │   ├── reader.store    状态与迁移
 │   ├── reader.engine   锚点 / 进度 / 页码 / 剩余时间 / 自动滚屏
 │   └── reader.ui       面板、摘句、主题、字号、备份
-├── Service Worker       network-first 导航 + 74 条预缓存，断网可读
+├── Service Worker       network-first 导航 + 77 条预缓存，断网可读
 ├── 生成器链             chapters.js → 章节页 → sitemap → announce.json
 └── Android 壳           Java + WebView，零 AndroidX，minSdk 24 / target 36
 ```

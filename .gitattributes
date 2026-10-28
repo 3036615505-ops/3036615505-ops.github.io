@@ -9,3 +9,9 @@
 *.json text eol=lf
 # workflow 也用 LF：CRLF 虽然不影响 Actions 解析，但会让每次编辑都带一行整文件 diff
 *.yml text eol=lf
+# Python：tools/make-kai-subset.py 第 1 行是 #!/usr/bin/env python3，
+# 本机 core.autocrlf=true 会给它 CRLF → 直接在 Linux/macOS 执行时解释器名变成 "python3\r"。
+# 今天所有调用点都是 `python xxx.py`（不受影响），但别留这个坑。
+*.py text eol=lf
+# Markdown 统一 LF：消除跨机 diff 噪声（索引里本来就是 LF，这条只是让工作区跟上）
+*.md text eol=lf

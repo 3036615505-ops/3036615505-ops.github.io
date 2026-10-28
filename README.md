@@ -24,10 +24,12 @@ js/reader.js          阅读页 · 入口（按顺序装配上面四个模块并
 js/transition.js      页面切换过渡（全站唯一实现）
 js/theme.js           主题 + Service Worker 注册
 js/types.d.ts         共享类型声明（只给 JSDoc / 编辑器用，不产出代码）
-jsconfig.json         类型检查配置（npx tsc -p jsconfig.json --noEmit）
+jsconfig.json         类型检查配置（npx -y -p typescript tsc -p jsconfig.json --noEmit）
+package.json          npm run 入口（零依赖，只是把 tools/ 下的脚本收成一张索引）
+.editorconfig         编辑器格式约定（缩进 / 换行；与 .gitattributes 分工，一个管键盘一个管仓库）
 sw.js                 Service Worker
 tools/                开发/校验脚本（不参与页面运行）
-.github/workflows/    服务端校验（每次 push 跑四项静态校验 + 端到端）
+.github/workflows/    服务端校验（每次 push 跑五项静态校验 + 端到端）
 app/                  安装包与 version.json（SW 不拦截，直连网络）
 ```
 
@@ -36,7 +38,7 @@ app/                  安装包与 version.json（SW 不拦截，直连网络）
 `sw.js` 的 `cacheFirst` 是**命中就返回缓存**。让新 CSS/JS 生效靠的是 URL 里的版本号：
 
 ```bash
-node tools/bump-assets.mjs --write   # 扫描 6 个 HTML，取最大 ?v= +1，全站统一替换
+node tools/bump-assets.mjs --write   # 扫描 29 个 HTML，取最大 ?v= +1，全站统一替换
 ```
 
 漏了这一步，用户最长要吃一天旧缓存（`sw.js` 里 24h 的 TTL 自愈才会兜回来），
@@ -56,6 +58,7 @@ git config core.hooksPath .githooks
 | PRECACHE 条目是否都存在、脚本引用是否齐全 | `node tools/check-precache.mjs` | SW 预缓存里放了一条 404 |
 | 楷体子集是否覆盖正文 | `python tools/make-kai-subset.py --check` | 正文用了子集外的字（GB2312 一级字之外的生僻字）会显示成豆腐块 |
 | 章节正文与源稿是否一致 | `node tools/manuscript-sync.mjs` | 正文被误改而没人发现 |
+| 安装包与 `version.json` 是否一致 | `node tools/check-apk.mjs` | APK 与 size/sha256 清单不同步（App 内更新会装到坏包） |
 
 任一失败会**阻止 push** 并打印修复命令；hook 只做拦截，不改你的文件。
 没装 Node 的环境会打印提示并放行（不会把 push 卡死）。
@@ -114,8 +117,8 @@ node tools/make-characters.mjs     # 改完数据文件后跑这条
 人物信息（姓名、分组、徽标、台词、一句话简介、生日、设定、小传）全在
 `js/characters-data.js`，原稿是作者站外的《人物设定.md》。脚本会：
 
-- 生成 `novel/characters.html`（「新叶 / 乔木」分组 + 每张卡片的「详细 ›」入口）
-- 生成 `novel/character-<slug>.html` × 17（立绘、身份徽标、生日、台词、小传、设定标签）
+- 生成 `novel/characters.html`（「新叶 / 青枝 / 乔木」分组 + 每张卡片的「详细 ›」入口）
+- 生成 `novel/character-<slug>.html` × 18（立绘、身份徽标、生日、台词、小传、设定标签）
 - 把新详细页**和立绘文件**登记进 `sw.js` 的 `PRECACHE` 并把 `CACHE` 名 +1
   （和加章节同一套逻辑；立绘漏登记 = 离线打开同学录新人是破图）。数据里写了
   `portrait` 但 `assets/` 里没这个文件时，脚本直接报错退出
@@ -145,7 +148,7 @@ node tools/make-characters.mjs     # 改完数据文件后跑这条
 在假 DOM 里测没有意义，所以测试直接开无头 Chromium 驱动真页面：
 
 ```bash
-node tools/e2e.mjs            # 22 项断言，约 40 秒；失败退出码 1
+node tools/e2e.mjs            # 127 项断言，约 155 秒；失败退出码 1
 node tools/e2e.mjs --verbose  # 顺带打印每项的实际值
 ```
 
@@ -157,7 +160,7 @@ node tools/e2e.mjs --verbose  # 顺带打印每项的实际值
 类型检查（JSDoc，不产出文件；VS Code 打开即有波浪线）：
 
 ```bash
-npx -p typescript tsc -p jsconfig.json --noEmit
+npx -y -p typescript tsc -p jsconfig.json --noEmit
 ```
 
 ## 服务端校验（GitHub Actions）
@@ -166,15 +169,16 @@ npx -p typescript tsc -p jsconfig.json --noEmit
 
 | job | 内容 |
 |---|---|
-| 静态校验 | ① `?v=` 统一 ② 预缓存条目 ③ 楷体子集覆盖 ④ 正文与源稿一致 |
-| 端到端 | 27 项真浏览器断言（ubuntu 自带 Chrome，`CI=true` 时自动补 `--no-sandbox`） |
+| 静态校验 | ① `?v=` 统一 ② 预缓存条目 ③ 楷体子集覆盖 ④ 正文与源稿一致 ⑤ 安装包与 `version.json` 一致 |
+| 端到端 | 127 项真浏览器断言（ubuntu 自带 Chrome，`CI=true` 时自动补 `--no-sandbox`） |
 
 为什么还要 CI：pre-push 钩子只在**配过 `core.hooksPath` 的那个 clone** 里生效。
 换台机器（比如 Mac 上）改完推上去，一项都不会跑；CI 在服务端跑，谁的机器都一样。
 
 首次运行 28 秒（2026-10-24，run #1 通过）。两点提醒：
 
-- 改这个文件需要带 `workflow` 权限的 token，当前 PAT 没有 —— 要么重签，要么在网页端编辑；
+- 改这个文件需要带 `workflow` 权限的 token。当前 PAT 已带 `repo, workflow`（2026-10-25 换的），
+  可以直接推；哪天换了新 token 又只勾 `repo`，整笔 push 会被拒（不只是这一个文件）；
 - `tools/e2e.mjs` 在 `CI` 环境下找不到浏览器会**直接失败**（本地才跳过），避免"假绿"。
 
 ## 其它工具

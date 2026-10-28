@@ -1,0 +1,50 @@
+{
+  "name": "linyuan-site",
+  "version": "0.0.0",
+  "private": true,
+  "description": "《临渊羡鱼》纯静态站点。零依赖、零构建；此文件只提供 npm run 入口，不含任何依赖。",
+  "//": "约定：scripts 里只有转发，不含逻辑。改行为请改 tools/ 下的脚本，不要写在这里。",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "//1": "— 发版（改 HTML/CSS/JS 后必做）—",
+    "bump": "node tools/bump-assets.mjs --write",
+    "bump:check": "node tools/bump-assets.mjs --check",
+
+    "//2": "— 五项静态守卫（与 pre-push / CI 一一对应）—",
+    "precache": "node tools/check-precache.mjs",
+    "kai:check": "python tools/make-kai-subset.py --check",
+    "manuscript": "node tools/manuscript-sync.mjs",
+    "apk": "node tools/check-apk.mjs",
+
+    "//3": "— 一个入口跑完静态五项（Node 四项 + 字体那项）—",
+    "verify": "npm run bump:check && npm run precache && npm run manuscript && npm run apk",
+    "verify:all": "npm run verify && npm run kai:check",
+
+    "//4": "— 端到端 —",
+    "e2e": "node tools/e2e.mjs",
+    "e2e:verbose": "node tools/e2e.mjs --verbose",
+
+    "//5": "— 生成器（改了数据源才跑）—",
+    "chapter": "node new-chapter.js",
+    "gen:characters": "node tools/make-characters.mjs",
+    "gen:sitemap": "node tools/make-sitemap.mjs",
+    "gen:announce": "node tools/make-announce.mjs",
+    "gen:thumbs": "python tools/make-portrait-thumbs.py",
+    "kai": "python tools/make-kai-subset.py",
+
+    "//6": "— 修数据（有意改动后重算）—",
+    "manuscript:write": "node tools/manuscript-sync.mjs --write",
+    "apk:write": "node tools/check-apk.mjs --write",
+
+    "//7": "— 审计与类型 —",
+    "contrast": "node tools/contrast-audit.mjs",
+    "contrast:dark": "node tools/contrast-audit.mjs --theme dark",
+    "typecheck": "npx -y -p typescript tsc -p jsconfig.json --noEmit",
+
+    "//8": "— 一次性：给本 clone 打开 pre-push 钩子 —",
+    "hooks:install": "git config core.hooksPath .githooks",
+    "hooks:status": "git config --get core.hooksPath"
+  }
+}
