@@ -91,9 +91,26 @@
 
   var PROBE_RATIO = 0.15;   /* 取视口上方 15% 处的段落做锚点，避开固定章节名条 */
 
+  /* 落点比率：搜索跳转要「命中段落停在视口上方约 1/3」，比探测线略低，
+     好让读者看得到这一句的上文。它只是一个**显示**参数，不进存储 ——
+     存储里记的仍是「第 P 段位于 15% 探测线处」这个相对关系。 */
+  var LANDING_RATIO = 1 / 3;
+
   var userScrolled = false; /* 用户自己滚过之后，就不再强行把我们记的位置按回去 */
 
   var restoring = false;    /* 恢复过程中不要写盘：否则会用错位的中间态覆盖好锚点 */
+
+
+  /** 某个章节块里的正文段落（0 基、全量，**不过滤空段**）。
+   *  口径必须与索引构建、（ui 侧）搜索索引完全一致，否则「第 N 段」会错位。
+   *  @param {Element|Document|null} block
+   *  @returns {NodeListOf<Element>|Array} */
+  function paragraphsIn(block) {
+    if (!block) return [];
+    var article = block.querySelector ? block.querySelector('.chapter-content') : null;
+    if (!article) return [];
+    return article.querySelectorAll('p');
+  }
 
 
   function contentParagraphs() {
@@ -129,18 +146,60 @@
   }
 
 
-  /** @param {Anchor|null} anchor @returns {boolean} */
-  function scrollToAnchor(anchor) {
+  /** 把某个块里的第 anchor.i 段放到「视口 lineRatio 处」。ratio 省略即 PROBE_RATIO。
+   *  @param {Element|Document|null} block 章节块（也可传 document —— 旧页面没有 .chapter-block）
+   *  @param {Anchor|null} anchor
+   *  @param {number} [lineRatio]
+   *  @returns {boolean} 是否真的滚了 */
+  function scrollToAnchorIn(block, anchor, lineRatio) {
     if (!anchor || typeof anchor.i !== 'number' || anchor.i < 0) return false;
-    var paras = contentParagraphs();
+    var paras = paragraphsIn(block || document);
     if (!paras.length || !paras[anchor.i]) return false;
     var max = document.documentElement.scrollHeight - window.innerHeight;
     if (max <= 0) return false;
     var r = paras[anchor.i].getBoundingClientRect();
-    var probeY = window.innerHeight * PROBE_RATIO;
-    var target = window.scrollY + r.top + (anchor.o || 0) * r.height - probeY;
+    var ratio = (typeof lineRatio === 'number' && lineRatio >= 0 && lineRatio <= 1) ? lineRatio : PROBE_RATIO;
+    var target = window.scrollY + r.top + (anchor.o || 0) * r.height - window.innerHeight * ratio;
     window.scrollTo({ top: Math.max(0, Math.min(max, target)), behavior: 'auto' });
     return true;
+  }
+
+
+  /* 第二参数是「探测线比率」：不传时行为与旧版逐字等价（默认 PROBE_RATIO）。
+     搜索跳转传 LANDING_RATIO，位置记忆那条路径一个字符都不用改。 */
+  /** @param {Anchor|null} anchor @param {number} [lineRatio] @returns {boolean} */
+  function scrollToAnchor(anchor, lineRatio) {
+    return scrollToAnchorIn(currentBlock() || document, anchor, lineRatio);
+  }
+
+
+  /* ===== 一次性落位指令（landing）=====
+     搜索跳转要用「把命中段落放到视口 1/3」这一套落位时序，但那套时序（120/600ms、
+     fonts.ready、load、ResizeObserver）只存在于 restoreProgress 里，而它同时要
+     「先检查有没有读过」。于是引入一个**一次性指令**：
+
+       setLanding(anchor, ratio) → restoreProgress() 取走并清空 → 走它自己的重试时序
+
+     为什么不让界面直接 scrollToAnchor：换章（swapTo）内部会自己调 restoreProgress，
+     自建 setTimeout 两套时序必定打架（一套落完另一套又把人拉走）。搭同一趟车才是
+     唯一被验证过的做法。 */
+  var landing = null;
+
+  /** @param {Anchor} anchor @param {number} [ratio] @returns {void} */
+  function setLanding(anchor, ratio) {
+    if (!anchor || typeof anchor.i !== 'number' || anchor.i < 0) { landing = null; return; }
+    landing = {
+      anchor: { p: typeof anchor.p === 'number' ? anchor.p : 0, i: anchor.i, o: typeof anchor.o === 'number' ? anchor.o : 0 },
+      ratio: (typeof ratio === 'number' && ratio >= 0 && ratio <= 1) ? ratio : LANDING_RATIO
+    };
+  }
+
+  /** 落位成功即「读者真的停在这里」：把新位置记成阅读进度。
+   *  复用 markUserScroll —— 一旦落位，restoreProgress 后续的定时器与
+   *  ResizeObserver 立刻让位，不会把读者从落点拽回旧位置。 */
+  function commitLanding() {
+    markUserScroll();
+    saveProgress(undefined, true);
   }
 
 
@@ -218,25 +277,38 @@
 
 
   function restoreProgress() {
+    /* 落位指令是一次性的：取走即清。有它时**不受**「没读过就返回」的限制 ——
+       搜索跳过去的章可能一次都没读过（pct === 0），那道闸门会把落点吞掉。 */
+    var wanted = landing;
+    landing = null;
+
     var pct = clampProgress(localStorage.getItem('reader-pos-' + chapterId()));
     /* 锚点这条路出问题时的退路：只按百分比恢复（会偏，但能读） */
-    var anchor = LY.flags.isOn('anchorRestore') ? readAnchor() : null;
+    var anchor = wanted ? wanted.anchor : (LY.flags.isOn('anchorRestore') ? readAnchor() : null);
     refreshProgressControls(pct);
-    if (!(pct > 0 && pct < 95)) return;
+    if (!wanted && !(pct > 0 && pct < 95)) return;
 
     var observer = null;
     var finished = false;
+    var landingApplied = false;
 
     function apply() {
       if (userScrolled) { finish(); return; }
-      if (anchor && scrollToAnchor(anchor)) return;
-      scrollToProgress(pct);
+      if (anchor && scrollToAnchor(anchor, wanted ? wanted.ratio : undefined)) {
+        if (wanted) landingApplied = true;
+        return;
+      }
+      /* 有落位指令时不退回百分比：否则等于把读者送回旧位置 */
+      if (!wanted) scrollToProgress(pct);
     }
     function finish() {
       if (finished) return;
       finished = true;
       if (observer) { observer.disconnect(); observer = null; }
       restoring = false;
+      /* 只在「真的落成了、且读者没有自己动过」时把位置写成进度。
+         两个条件缺一不可，否则会把手动滚到的位置写成落点（见 HANDOVER 坑 2）。 */
+      if (wanted && landingApplied && !userScrolled) commitLanding();
     }
 
     restoring = true;
@@ -247,6 +319,9 @@
       document.fonts.ready.then(function() { apply(); }, function() {});
     }
     window.addEventListener('load', apply, { once: true });
+    /* 搜索落位是「一次明确的目的地」，不需要守到 5 秒：900ms 后收尾并落盘，
+       让进度条 / 状态条立刻跟上（再晚读者会看到页码停在上一个位置）。 */
+    if (wanted) setTimeout(finish, 900);
 
     /* 懒加载图片的坑：视口在章首时，位于恢复点**上方**的图片根本没被加载，
        一跳过去它们才开始下载，每张撑开一点就把人往下推 —— 只靠定时器永远追不上。
@@ -541,12 +616,16 @@
     scrollToProgress: scrollToProgress,
     getCurrentAnchor: getCurrentAnchor,
     scrollToAnchor: scrollToAnchor,
+    scrollToAnchorIn: scrollToAnchorIn,
+    setLanding: setLanding,
+    commitLanding: commitLanding,
     saveProgress: saveProgress,
     restoreProgress: restoreProgress,
     markUserScroll: markUserScroll,
     resetUserScroll: resetUserScroll,
     initReadingProgress: initReadingProgress,
     initReadingTime: initReadingTime,
+    pauseAutoScroll: pauseAutoScroll,
     autoScroll: autoScroll
   };
 })();

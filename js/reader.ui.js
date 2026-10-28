@@ -30,11 +30,14 @@
   function scrollToProgress(p) { return LY.engine.scrollToProgress(p); }
   function saveProgress(p, f) { return LY.engine.saveProgress(p, f); }
   function getCurrentAnchor() { return LY.engine.getCurrentAnchor(); }
-  function scrollToAnchor(a) { return LY.engine.scrollToAnchor(a); }
+  function scrollToAnchor(a, r) { return LY.engine.scrollToAnchor(a, r); }
+  function scrollToAnchorIn(block, a, r) { return LY.engine.scrollToAnchorIn(block, a, r); }
+  function setLanding(a, r) { return LY.engine.setLanding(a, r); }
   function markUserScroll() { return LY.engine.markUserScroll(); }
   function initReadingProgress() { return LY.engine.initReadingProgress(); }
   function initReadingTime() { return LY.engine.initReadingTime(); }
   function restoreProgress() { return LY.engine.restoreProgress(); }
+  function pauseAutoScroll(p) { return LY.engine.pauseAutoScroll(p); }
 
   /* ===== STATE ===== */
 
@@ -166,10 +169,27 @@
     applyFeatureVisibility();
     LY.flags.onChange(applyFeatureVisibility);
     initReadingTime();
+    initHitDisposers();
+
+    /* 整页跳转过来的搜索意图：必须在 restoreProgress() **之前**读并设成 landing，
+       否则那道「没读过就返回」的闸门会把落点吞掉（跳到的章往往一次都没读过）。
+       读完即删：意图只生效一次，读者自己刷新不会再被拽过去。 */
+    var jumpIntent = readJumpIntent();
+    if (jumpIntent) {
+      setLanding({ p: 0, i: jumpIntent.i, o: 0 }, SEARCH_LANDING_RATIO);
+      searchState.pendingHit = {
+        file: jumpIntent.file,
+        i: jumpIntent.i,
+        occ: jumpIntent.occ || 0,
+        terms: jumpIntent.terms || []
+      };
+    }
     restoreProgress();
     initImmersive();
     initReadingAids();
     syncCoda();
+    /* 必须晚于 initReadingAids()：它会用快照重建正文，早于它上高亮等于白上 */
+    flushPendingHighlight();
     ready = true;
   }
 
@@ -1115,7 +1135,7 @@
      链条里没有目标章、且当前只有一个块时用它：取回整章原地替换，无白屏。
      多块时不能用它 —— 替换会把已经接好的链整条毁掉。 */
 
-  function swapTo(file, hash) {
+  function swapTo(file, hash, after) {
     if (!file || swapping) return false;
     if (file === getCurrentFileName()) return false;
 
@@ -1132,7 +1152,13 @@
         saveProgress(undefined, true);
 
         var curContent = document.querySelector('.chapter-content');
+        /* ⚠ 块的 data-file 必须跟着换。engine.syncBlockChapter() 就是靠它判断
+           「探测线进了哪一章」；只换正文不换它，读者滚一下就把 URL 与章节 id
+           退回上一章（正文还是新的），进度也会写到错的那个章名下。
+           目录从第 1 章直接跳第 5 章走的就是这条路径。 */
+        var section = curContent && curContent.closest ? curContent.closest('.chapter-block') : null;
         curContent.parentNode.replaceChild(document.importNode(nextContent, true), curContent);
+        if (section) section.setAttribute('data-file', file);
         var curGlow = document.querySelector('.chapter-afterglow');
         if (curGlow && nextGlow) {
           curGlow.parentNode.replaceChild(document.importNode(nextGlow, true), curGlow);
@@ -1164,6 +1190,9 @@
           if (target) target.scrollIntoView();
         }
         LY.store.recordFootprints();
+        /* 换章完成（含 restoreProgress 的首次落位）之后才回调：搜索要在这一刻
+           才能拿到新块的段落去上高亮。现有调用点只传两个参数，行为不变。 */
+        if (after) after(blockByFile(file));
       })
       .catch(function () {
         /* 兜底：整页跳转。慢一点，但这一章一定能读到 */
@@ -1686,27 +1715,30 @@
   }
 
 
-  function goToChapter(file, hash) {
+  /** 换到某一章。after(block) 在该章真的就位之后回调 —— 搜索要靠它拿到新块去上高亮。
+   *  现有调用点（initChapterSwap 等）只传两个参数，行为一字不变。 */
+  function goToChapter(file, hash, after) {
     if (!file) return false;
     var block = blockByFile(file);
     if (block) {
       var target = hash ? document.getElementById(hash) : null;
       if (target) target.scrollIntoView({ block: 'center' });
       else scrollToBlock(block);
+      if (after) after(block);
       return true;
     }
     /* 正好是链条末尾的下一章：接上并过去，而不是换页 */
     if (flowEnabled() && file === nextFileOf(lastBlockFile())) {
-      appendNext(function (section) { scrollToBlock(section); });
+      appendNext(function (section) { scrollToBlock(section); if (after) after(section); });
       return true;
     }
     /* 正好是链条开头的上一章：插到上方再过去 */
     if (flowEnabled() && file === prevFileOf(firstBlockFile())) {
-      prependPrev(function (section) { scrollToBlock(section); });
+      prependPrev(function (section) { scrollToBlock(section); if (after) after(section); });
       return true;
     }
     /* 不在链条里：单块时用换章不换页（无白屏）；多块时整页跳转，链条重建 */
-    if (document.querySelectorAll('.chapter-block').length <= 1) return swapTo(file, hash);
+    if (document.querySelectorAll('.chapter-block').length <= 1) return swapTo(file, hash, after);
     window.location.href = new URL(file, window.location.href).href + (hash ? '#' + hash : '');
     return true;
   }
@@ -1783,7 +1815,9 @@
       var quotes = document.getElementById('quotesOverlay');
       var dir = document.getElementById('dirOverlay');
       var dataOv = document.getElementById('dataOverlay');
+      var search = document.getElementById('searchOverlay');
       if (dataOv && dataOv.classList.contains('visible')) { closeDataModal(); }
+      else if (search && search.classList.contains('visible')) { closeSearch(); }
       else if (settings && settings.classList.contains('visible')) { closeSettings(); }
       else if (quotes && quotes.classList.contains('visible')) { closeQuotes(); }
       else if (dir && dir.classList.contains('visible')) { closeDirectory(); }
@@ -1798,7 +1832,7 @@
      不拦；面板打开时完全不响应，避免一边看目录一边被翻页。 */
 
   function anyPanelOpen() {
-    var ids = ['settingsOverlay', 'quotesOverlay', 'dirOverlay', 'dataOverlay'];
+    var ids = ['settingsOverlay', 'quotesOverlay', 'dirOverlay', 'dataOverlay', 'searchOverlay'];
     for (var i = 0; i < ids.length; i++) {
       var el = document.getElementById(ids[i]);
       if (el && el.classList.contains('visible')) return true;
@@ -2304,6 +2338,14 @@
     var autoBtn = document.querySelector('button[onclick*="toggleAutoScroll"]');
     if (autoBtn) autoBtn.style.display = LY.flags.isOn('autoscroll') ? '' : 'none';
 
+    /* ⚠ 这一行**必须在下面那个 `if (!ov) return;` 之前**。
+       那个 return 是「设置面板还没建过就先不同步」的早退：搜索按钮长在静态 HTML
+       的工具栏里（不在设置面板里），一旦写到早退之后，面板从未打开过的页面上
+       远程开关对搜索入口就永久无效 —— 而 remote 开关恰恰是这个功能出事时的
+       唯一止血路径。 */
+    var searchBtn = document.querySelector('button[onclick*="openSearch"]');
+    if (searchBtn) searchBtn.style.display = LY.flags.isOn('search') ? '' : 'none';
+
     var ov = document.getElementById('settingsOverlay');
     if (!ov) return;   /* 面板还没建过，等 openSettings 时再同步 */
     var aids = ov.querySelector('[data-group="aids"]');
@@ -2337,6 +2379,743 @@
     var ov = document.getElementById('settingsOverlay');
     if (ov) { ov.classList.remove('visible'); document.body.style.overflow = ''; }
   };
+
+
+  /* ===== 全书搜索 =====
+
+     范围：CHAPTERS 里 7 章的正文段落（人物页、金句、余韵卡、印章都不在内）。
+     索引形态：**不落盘**。第一次打开面板时从章节页现抽，复用 fetchChapterDoc：
+       · 那 7 页本来就在 SW 的 PRECACHE 里 → 离线同样取得到，于是「首次拉取 /
+         失败降级 / 版本比对 / 就绪态」这四条链路一条都不用新写；
+       · 索引就是读者手上那份 HTML，因此不可能出现「搜到了、跳过去没那句话」；
+       · 代价只是首次打开等 7 次 fetch（实测 7.4ms，全部命中 SW 缓存）。
+
+     ⚠ 段落口径（本文件最容易静默出错的地方）：
+       索引收 `.chapter-content` 下**全部** <p>，0 基、按 DOM 顺序、**不过滤空段**。
+       它必须与 engine.contentParagraphs() 完全同口径 —— 落点是把 {i, o} 直接喂给
+       engine.scrollToAnchorIn()，错一段就整体错位，而且页面上不会有任何报错。
+       页面里还存在第二套编号：decorateParagraphs() 的 data-quote-index 是
+       「非空段落」的 1 基编号。今天 405 段一个空段都没有，两套编号数值上恰好
+       只差 1、看着像同一套；一旦有人写进 <p>&nbsp;</p> 它们立刻分家。
+       所以这里禁止任何 .filter()，e2e 另有三条断言把对应关系钉死。
+
+     匹配：1:1 字符折叠（全角→半角、ASCII 小写，**长度守恒**）+ indexOf 子串。
+     不用 Intl.Segmenter：搜索要回答的是「这段字里有没有这串字」，分词会制造
+     「梧桐树 vs 梧桐 + 树」这类歧义，还要多一层「切完再拼回原文」的偏移换算。
+     折叠必须长度守恒 —— 命中的偏移要原样用在**未折叠**的原文上（截上下文、上高亮）。 */
+
+  var SEARCH_DEBOUNCE = 150;        /* 边打边出结果的停顿（PRD 2.2） */
+  var SEARCH_SNIPPET_BEFORE = 13;   /* 命中词前保留的字数（PRD 2.3：前后各 12–15 字） */
+  var SEARCH_SNIPPET_AFTER = 16;
+  var SEARCH_MAX_ITEMS = 30;        /* 列表上限（PRD P1-3） */
+  var SEARCH_MAX_PER_PARA = 2;      /* 同一段最多展开 2 条，其余折叠成一行 */
+  var SEARCH_JUMP_KEY = 'linyuan-search-jump';   /* 整页跳转时的意图（sessionStorage，读完即删） */
+  var SEARCH_JUMP_TTL = 60000;
+
+  var searchState = {
+    index: null,        /* { v, builtAt, chapters: [{file, title, paras: []}] } */
+    building: null,     /* 构建中的 Promise（并发打开只建一次） */
+    failed: false,      /* 构建失败（离线且从没建过）→ 给第三态文案 */
+    items: [],          /* 当前可点的结果（显示顺序，已应用 30 条截断） */
+    active: -1,         /* 键盘 ↑↓ 的当前位置 */
+    composing: false,   /* 输入法组字中：不查 */
+    timer: 0,           /* 防抖 */
+    autoPausedBySearch: false,
+    pendingHit: null,   /* 整页跳转后待上高亮的命中项 */
+    hit: null           /* 已上的高亮：{ onScroll } —— 非空即表示「身上有标记」 */
+  };
+
+
+  /* ---- 折叠：1:1 逐码元映射，长度与入参完全相同 ---- */
+
+  function foldChar(ch) {
+    var c = ch.charCodeAt(0);
+    if (c === 0x3000) return ' ';                    /* 全角空格 */
+    if (c >= 0xFF01 && c <= 0xFF5E) c -= 0xFEE0;      /* 全角 ASCII → 半角 */
+    if (c >= 0x41 && c <= 0x5A) c += 0x20;           /* A-Z → a-z */
+    /* 代理对的单个码元原样返回：长度守恒，emoji 之类不会被拆坏 */
+    return String.fromCharCode(c);
+  }
+
+  /** 1:1 折叠。**长度守恒是硬约束**，不能用 normalize('NFKC')（它会把 ㍿ → 株式会社）。 */
+  function fold(text) {
+    var s = String(text == null ? '' : text);
+    var out = '';
+    for (var i = 0; i < s.length; i++) out += foldChar(s.charAt(i));
+    return out;
+  }
+
+
+  /* ---- 索引 ---- */
+
+  function searchChapterList() {
+    var list = window.CHAPTERS || [];
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+      out.push({ file: list[i].file, title: list[i].title || list[i].file });
+    }
+    return out;
+  }
+
+  /** 从一组已取回的章节页里抽正文。选择器与顺序必须与 engine 完全一致（见段首说明）。 */
+  function extractParas(doc) {
+    var paras = [];
+    var content = doc ? doc.querySelector('.chapter-content') : null;
+    if (!content) return paras;
+    var nodes = content.querySelectorAll('p');
+    for (var i = 0; i < nodes.length; i++) {
+      paras.push(nodes[i].textContent == null ? '' : nodes[i].textContent);
+    }
+    return paras;
+  }
+
+  function buildSearchIndex() {
+    var list = searchChapterList();
+    var jobs = [];
+    for (var i = 0; i < list.length; i++) {
+      jobs.push(function (ch) {
+        return fetchChapterDoc(ch.file).then(function (doc) {
+          return { file: ch.file, title: ch.title, paras: extractParas(doc) };
+        });
+      }(list[i]));
+    }
+    return Promise.all(jobs).then(function (chapters) {
+      return { v: 1, builtAt: Date.now(), chapters: chapters };
+    });
+  }
+
+  /** 取索引：建过就直接用；并发调用共用同一个 Promise；失败重试 1 次。 */
+  function ensureSearchIndex() {
+    if (searchState.index) return Promise.resolve(searchState.index);
+    if (searchState.building) return searchState.building;
+
+    var attempt = 0;
+    function run() {
+      attempt += 1;
+      return buildSearchIndex().then(function (idx) {
+        searchState.index = idx;
+        searchState.failed = false;
+        searchState.building = null;
+        return idx;
+      }, function (err) {
+        if (attempt < 2) return run();
+        searchState.building = null;
+        searchState.failed = true;
+        throw err;
+      });
+    }
+    searchState.building = run();
+    return searchState.building;
+  }
+
+
+  /* ---- 查询 ---- */
+
+  /** 查询词：折叠后 trim，按空白切，AND 语义。返回折叠过的词（用于比对）。 */
+  function queryTerms(raw) {
+    var folded = fold(raw).trim();
+    if (!folded) return [];
+    var parts = folded.split(/\s+/);
+    var out = [];
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i]) out.push(parts[i]);
+    }
+    return out;
+  }
+
+  /** 全表线性扫描（405 段实测 0.016–0.048ms）。
+   *  @returns {{terms: string[], total: number, chapters: number, groups: Array}} */
+  function runQuery(raw) {
+    var terms = queryTerms(raw);
+    var result = { terms: terms, total: 0, chapters: 0, groups: [] };
+    if (!terms.length || !searchState.index) return result;
+
+    var lead = terms[0];
+    var chapters = searchState.index.chapters;
+    for (var c = 0; c < chapters.length; c++) {
+      var ch = chapters[c];
+      var hits = [];
+      for (var p = 0; p < ch.paras.length; p++) {
+        var folded = fold(ch.paras[p]);
+        /* 先判其余词（AND）：不满足就整段跳过，连 lead 都不用扫 */
+        var all = true;
+        for (var t = 1; t < terms.length; t++) {
+          if (folded.indexOf(terms[t]) < 0) { all = false; break; }
+        }
+        if (!all) continue;
+        var from = 0;
+        var occ = 0;
+        var at = folded.indexOf(lead, from);
+        while (at >= 0) {
+          hits.push({ i: p, at: at, occ: occ, text: ch.paras[p] });
+          occ += 1;
+          from = at + Math.max(1, lead.length);
+          at = folded.indexOf(lead, from);
+        }
+      }
+      if (hits.length) {
+        result.groups.push({ file: ch.file, title: ch.title, hits: hits });
+        result.total += hits.length;
+        result.chapters += 1;
+      }
+    }
+    return result;
+  }
+
+
+  /* ---- 片段与高亮记号（列表与正文共用 .search-hit 一套样式） ---- */
+
+  /** 在一段窗口文本里把所有查询词包成 <mark class="search-hit">。
+   *  重叠的区间先合并，避免嵌套 <mark>（嵌套会让高亮叠成两层底色）。 */
+  function markTerms(windowText, terms) {
+    var folded = fold(windowText);
+    var ranges = [];
+    for (var t = 0; t < terms.length; t++) {
+      var from = 0;
+      var at = folded.indexOf(terms[t], from);
+      while (at >= 0) {
+        ranges.push([at, at + terms[t].length]);
+        from = at + Math.max(1, terms[t].length);
+        at = folded.indexOf(terms[t], from);
+      }
+    }
+    if (!ranges.length) return escapeHtml(windowText);
+    ranges.sort(function (a, b) { return a[0] - b[0]; });
+    var merged = [];
+    for (var i = 0; i < ranges.length; i++) {
+      var last = merged[merged.length - 1];
+      if (last && ranges[i][0] <= last[1]) {
+        if (ranges[i][1] > last[1]) last[1] = ranges[i][1];
+      } else {
+        merged.push([ranges[i][0], ranges[i][1]]);
+      }
+    }
+    var html = '';
+    var pos = 0;
+    for (var k = 0; k < merged.length; k++) {
+      var s = merged[k][0];
+      var e = merged[k][1];
+      html += escapeHtml(windowText.slice(pos, s));
+      html += '<mark class="search-hit">' + escapeHtml(windowText.slice(s, e)) + '</mark>';
+      pos = e;
+    }
+    html += escapeHtml(windowText.slice(pos));
+    return html;
+  }
+
+  /** 约 30 字的上下文，命中词前后各留一点。截断处用 … */
+  function snippetHtml(text, at, terms) {
+    var start = Math.max(0, at - SEARCH_SNIPPET_BEFORE);
+    var end = Math.min(text.length, at + terms[0].length + SEARCH_SNIPPET_AFTER);
+    var win = text.slice(start, end);
+    return (start > 0 ? '…' : '') + markTerms(win, terms) + (end < text.length ? '…' : '');
+  }
+
+
+  /* ---- 结果排布：章序 → 章内出现顺序，同段最多 2 条，总量 30 条 ---- */
+
+  function planResults(result) {
+    var plan = [];
+    var shown = 0;
+    var rest = 0;
+    for (var g = 0; g < result.groups.length; g++) {
+      var group = result.groups[g];
+      var perPara = {};
+      for (var h = 0; h < group.hits.length; h++) {
+        var pi = group.hits[h].i;
+        perPara[pi] = (perPara[pi] || 0) + 1;
+      }
+      var seen = {};
+      var ordinal = 0;
+      for (var k = 0; k < group.hits.length; k++) {
+        var hit = group.hits[k];
+        ordinal += 1;
+        if (shown >= SEARCH_MAX_ITEMS) { rest += 1; continue; }
+        seen[hit.i] = seen[hit.i] || 0;
+        if (seen[hit.i] >= SEARCH_MAX_PER_PARA) continue;   /* 折叠行已经代表它了 */
+        seen[hit.i] += 1;
+        plan.push({
+          kind: 'item',
+          file: group.file,
+          title: group.title,
+          ordinal: ordinal,
+          i: hit.i,
+          at: hit.at,
+          occ: hit.occ,
+          text: hit.text,
+          terms: result.terms
+        });
+        shown += 1;
+        if (seen[hit.i] === SEARCH_MAX_PER_PARA && perPara[hit.i] > SEARCH_MAX_PER_PARA) {
+          plan.push({ kind: 'fold', n: perPara[hit.i] - SEARCH_MAX_PER_PARA });
+        }
+      }
+    }
+    if (rest > 0) plan.push({ kind: 'more', n: rest });
+    return plan;
+  }
+
+
+  /* ---- 面板 ---- */
+
+  function searchInputEl() { return document.getElementById('searchInput'); }
+
+  function searchQueryText() {
+    var input = searchInputEl();
+    return input ? String(input.value || '') : '';
+  }
+
+  function offlineNote() {
+    return (navigator.onLine === false)
+      ? '<span class="search-offline">离线 · 正在搜本机缓存的内容</span>'
+      : '';
+  }
+
+  /* 索引还没准备好时的三种说法（第三态是 PRD 没写、设计补的）：
+       · 正在建 → 正在准备全书索引…
+       · 建失败了 + 离线 → 离线 · 全书索引还没准备好，联网后会自动补齐（会自动重试一次）
+       · 建失败了 + 在线 → 全书索引还没准备好，稍后再试
+     一律不写「失败 / 出错」（PRD 2.4 的语气规矩）：内容没问题，只是还没备好。 */
+  function pendingNote() {
+    if (!searchState.failed) {
+      return { cls: 'search-pending', text: '正在准备全书索引…' };
+    }
+    return (navigator.onLine === false)
+      ? { cls: 'search-offline', text: '离线 · 全书索引还没准备好，联网后会自动补齐' }
+      : { cls: 'search-pending', text: '全书索引还没准备好，稍后再试' };
+  }
+
+  /** 把「当前状态 + 当前输入」画成汇总行与结果列表。所有状态都从这里收口，
+   *  所以索引就绪、离线切换、输入变化走的都是同一条渲染路径。 */
+  function refreshSearchPanel() {
+    var listEl = document.getElementById('searchList');
+    var summaryEl = document.getElementById('searchSummary');
+    if (!listEl || !summaryEl) return;
+
+    var total = (window.CHAPTERS || []).length;
+    var q = searchQueryText();
+    var terms = queryTerms(q);
+    var ready = !!searchState.index;
+    var listHtml = '';
+    var summaryHtml = '';
+    var items = [];
+
+    if (!ready) {
+      /* 索引还没好：先给范围说明 + 等待态（不是空列表） */
+      var note = pendingNote();
+      summaryHtml = '搜索 ' + total + ' 章正文' + '<span class="' + note.cls + '">' + note.text + '</span>';
+      if (terms.length) listHtml = '<div class="search-empty">' + note.text + '</div>';
+    } else if (!terms.length) {
+      /* 空输入：只显示范围说明，不显示任何历史/推荐（PRD P0-7） */
+      summaryHtml = '搜索 ' + total + ' 章正文' + offlineNote();
+    } else {
+      var result = runQuery(q);
+      if (!result.total) {
+        summaryHtml = '搜索 ' + total + ' 章正文' + offlineNote();
+        listHtml = '<div class="search-empty">' + total + ' 章里还没有出现过「' +
+          escapeHtml(q.trim()) + '」<br>换个更短的说法试试，比如只搜两个字。</div>';
+      } else {
+        summaryHtml = total + ' 章共 ' + result.total + ' 处 · 涉及 ' + result.chapters + ' 章' + offlineNote();
+        var plan = planResults(result);
+        for (var i = 0; i < plan.length; i++) {
+          var step = plan[i];
+          if (step.kind === 'item') {
+            var idx = items.length;
+            items.push(step);
+            listHtml += '<button type="button" class="search-item' + (idx === searchState.active ? ' is-active' : '') +
+              '" data-idx="' + idx + '">' +
+              '<span class="search-item-meta">' + escapeHtml(step.title) + ' · 第 ' + step.ordinal + ' 处</span>' +
+              '<span class="search-item-text">' + snippetHtml(step.text, step.at, result.terms) + '</span>' +
+              '</button>';
+          } else if (step.kind === 'fold') {
+            listHtml += '<div class="search-more">本段另有 ' + step.n + ' 处</div>';
+          } else if (step.kind === 'more') {
+            listHtml += '<div class="search-more">还有 ' + step.n + ' 处未显示</div>';
+          }
+        }
+      }
+    }
+
+    searchState.items = items;
+    if (searchState.active >= items.length) searchState.active = items.length - 1;
+    summaryEl.innerHTML = summaryHtml;
+    listEl.innerHTML = listHtml;
+  }
+
+  function scheduleSearch(delay) {
+    if (searchState.timer) { clearTimeout(searchState.timer); searchState.timer = 0; }
+    var wait = typeof delay === 'number' ? delay : SEARCH_DEBOUNCE;
+    searchState.timer = setTimeout(function () {
+      searchState.timer = 0;
+      refreshSearchPanel();
+    }, wait);
+  }
+
+  function onSearchInput(e) {
+    /* 输入法未上屏不查：否则打字过程中会闪出一串无关结果（PRD 2.2）。
+       两个判据都要：composing 兜「组字期间连续的 input」，isComposing 兜单次事件。 */
+    if (searchState.composing || (e && e.isComposing)) return;
+    scheduleSearch();
+  }
+
+  function setActiveItem(idx) {
+    var items = searchState.items;
+    if (!items.length) return;
+    if (idx < 0) idx = items.length - 1;
+    if (idx >= items.length) idx = 0;
+    searchState.active = idx;
+    var nodes = document.querySelectorAll('#searchList .search-item');
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].classList.toggle('is-active', i === idx);
+    }
+    if (nodes[idx] && nodes[idx].scrollIntoView) {
+      nodes[idx].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function onSearchKeydown(e) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveItem(searchState.active + 1);
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveItem(searchState.active - 1);
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      var idx = searchState.active >= 0 ? searchState.active : 0;
+      if (searchState.items.length) {
+        setActiveItem(idx);
+        jumpToHit(searchState.items[idx]);
+      }
+      return;
+    }
+    /* Esc 交给 initModalKeys 的统一逐层关闭链，这里不拦 */
+  }
+
+  function initSearchPanel() {
+    if (document.getElementById('searchOverlay')) return;
+    var ov = document.createElement('div');
+    ov.id = 'searchOverlay';
+    ov.className = 'modal-overlay';
+    ov.innerHTML =
+      '<div class="modal-backdrop"></div>' +
+      '<div class="modal-panel search-modal" role="dialog" aria-modal="true" aria-label="全书搜索">' +
+        '<div class="modal-header"><span>搜索</span>' +
+          '<button type="button" class="modal-close" onclick="closeSearch()" aria-label="关闭搜索">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+          '</button>' +
+        '</div>' +
+        '<div class="search-field">' +
+          '<input type="search" id="searchInput" inputmode="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="搜正文里的字或词" aria-label="搜索正文">' +
+        '</div>' +
+        '<div class="search-summary" id="searchSummary"></div>' +
+        '<div class="modal-body search-list" id="searchList"></div>' +
+      '</div>';
+    (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
+    ov.querySelector('.modal-backdrop').addEventListener('click', closeSearch);
+
+    var input = ov.querySelector('#searchInput');
+    input.addEventListener('input', onSearchInput);
+    input.addEventListener('compositionstart', function () { searchState.composing = true; });
+    input.addEventListener('compositionend', function () {
+      searchState.composing = false;
+      scheduleSearch(0);   /* 上屏了立刻查，不再等防抖 */
+    });
+    input.addEventListener('keydown', onSearchKeydown);
+
+    ov.querySelector('#searchList').addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('.search-item') : null;
+      if (!btn) return;
+      var idx = parseInt(btn.getAttribute('data-idx'), 10);
+      if (isNaN(idx)) return;
+      setActiveItem(idx);
+      jumpToHit(searchState.items[idx]);
+    });
+
+    refreshSearchPanel();
+  }
+
+
+  window.openSearch = function(initialQuery) {
+    if (!LY.flags.isOn('search')) { showToast('搜索暂时关闭'); return; }
+    initSearchPanel();
+    var ov = document.getElementById('searchOverlay');
+    if (!ov) return;
+    clearHit();   /* 再开面板 → 上次那次命中的标记一律清掉（PRD 2.6.4） */
+
+    var input = searchInputEl();
+    if (input && typeof initialQuery === 'string' && initialQuery) input.value = initialQuery;
+
+    ov.classList.add('visible');
+    document.body.style.overflow = 'hidden';   /* 与目录/设置/摘句一字不差 */
+    if (state.barsVisible) hideBars();
+
+    /* 面板开着时自动滚屏不该继续往下走；关掉再按原状态恢复（PRD 2.1） */
+    if (LY.engine && LY.engine.autoScroll && LY.engine.autoScroll.active && !LY.engine.autoScroll.paused) {
+      searchState.autoPausedBySearch = true;
+      pauseAutoScroll(true);
+    }
+
+    /* 焦点必须在这个同步栈里给：iOS 只在用户手势的同步栈内认「唤起软键盘」 */
+    if (input) { try { input.focus(); } catch (e) { /* 忽略 */ } }
+
+    refreshSearchPanel();
+    ensureSearchIndex().then(refreshSearchPanel, refreshSearchPanel);
+  };
+
+
+  window.closeSearch = function() {
+    var ov = document.getElementById('searchOverlay');
+    if (ov) { ov.classList.remove('visible'); document.body.style.overflow = ''; }
+    if (searchState.timer) { clearTimeout(searchState.timer); searchState.timer = 0; }
+    if (searchState.autoPausedBySearch) {
+      searchState.autoPausedBySearch = false;
+      if (LY.engine && LY.engine.autoScroll && LY.engine.autoScroll.active) pauseAutoScroll(false);
+    }
+    if (state.barsVisible) startAutoClose();
+  };
+
+
+  /** 摘掉正文里所有命中标记，并把被 splitText 切开的文本节点合回去。
+   *  只管正文（.chapter-content），列表里的 <mark> 不受影响。
+   *  三个时机调用：触碰正文 / 滚开约两屏 / 再开面板（PRD 2.6.4）。 */
+  function clearHit() {
+    var marks = document.querySelectorAll('.chapter-content mark.search-hit');
+    for (var i = 0; i < marks.length; i++) {
+      var mark = marks[i];
+      var parent = mark.parentNode;
+      if (!parent) continue;
+      while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+      parent.removeChild(mark);
+      if (parent.normalize) parent.normalize();
+    }
+    if (searchState.hit && searchState.hit.onScroll) {
+      window.removeEventListener('scroll', searchState.hit.onScroll);
+    }
+    searchState.hit = null;
+  }
+
+
+  /* ===== 落点与高亮 =====
+
+     落点比率与 engine 的默认值同一个数（1/3 视口）—— 命中段落停在视口上方三分之一，
+     读者才看得到这句的上文，而不是把它顶在第一行（PRD 2.6.2）。
+
+     高亮**不用索引里的偏移**去切 DOM：正文可能已经被阅读辅助整段重建过
+     （renderOneContent 会在开「直角引号」时把 “” 换成「」，开「对话高亮」时把
+     引号内容包进 <span class="dlg">）。所以改成「在落地后的真实文本里重找第 k 次」：
+     找得到就上标记，找不到就只落位、不上高亮，安静降级。 */
+
+  var SEARCH_LANDING_RATIO = 1 / 3;
+
+  /** 按 Range 把 [start, end) 包成 <mark>。逐文本节点切开，因此段落被 <span> 切碎时也对。
+   *  @returns {Element[]} 生成的 mark 列表 */
+  function wrapTextRange(root, start, end) {
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    var nodes = [];
+    var node = walker.nextNode();
+    while (node) { nodes.push(node); node = walker.nextNode(); }
+
+    var made = [];
+    var pos = 0;
+    for (var i = 0; i < nodes.length; i++) {
+      var textNode = nodes[i];
+      var len = textNode.nodeValue ? textNode.nodeValue.length : 0;
+      var nodeStart = pos;
+      var nodeEnd = pos + len;
+      pos = nodeEnd;
+      if (nodeEnd <= start || nodeStart >= end) continue;
+
+      var from = Math.max(0, start - nodeStart);
+      var to = Math.min(len, end - nodeStart);
+      if (to <= from) continue;
+
+      var target = textNode;
+      if (from > 0) target = target.splitText(from);
+      if (to - from < (target.nodeValue || '').length) target.splitText(to - from);
+
+      var mark = document.createElement('mark');
+      mark.className = 'search-hit';
+      var parent = target.parentNode;
+      if (!parent) continue;
+      parent.insertBefore(mark, target);
+      mark.appendChild(target);
+      made.push(mark);
+    }
+    return made;
+  }
+
+  /** 把一段文字里所有查询词的位置算成合并后的区间（重叠先并掉，免得 <mark> 套 <mark>）。 */
+  function termRanges(text, terms) {
+    var folded = fold(text);
+    var ranges = [];
+    for (var t = 0; t < terms.length; t++) {
+      var term = terms[t];
+      if (!term) continue;
+      var from = 0;
+      var at = folded.indexOf(term, from);
+      while (at >= 0) {
+        ranges.push([at, at + term.length]);
+        from = at + Math.max(1, term.length);
+        at = folded.indexOf(term, from);
+      }
+    }
+    if (!ranges.length) return [];
+    ranges.sort(function (a, b) { return a[0] - b[0]; });
+    var merged = [];
+    for (var i = 0; i < ranges.length; i++) {
+      var last = merged[merged.length - 1];
+      if (last && ranges[i][0] <= last[1]) {
+        if (ranges[i][1] > last[1]) last[1] = ranges[i][1];
+      } else {
+        merged.push([ranges[i][0], ranges[i][1]]);
+      }
+    }
+    return merged;
+  }
+
+  /** 在落地后的真实段落里重找第 item.occ 次那个词，找到才上标记。
+   *  @returns {boolean} 是否真的标上了 */
+  function markHit(p, item) {
+    if (!p || !item || !item.terms || !item.terms.length) return false;
+    var text = p.textContent || '';
+    var lead = item.terms[0];
+    var want = item.occ || 0;
+
+    /* 这一段里 lead 的各次出现（按顺序）。第 want 个才是读者点的那一处；
+       不存在就说明正文已被改写（例如弯引号换成直角引号），安静降级为只落位。 */
+    var leadRanges = termRanges(text, [lead]);
+    if (!leadRanges.length || !leadRanges[want]) return false;
+
+    /* 多词 AND 时其余词也一起标：让读者一眼看全「这句话里两个词都在哪」 */
+    var all = leadRanges.slice();
+    for (var t = 1; t < item.terms.length; t++) {
+      var extra = termRanges(text, [item.terms[t]]);
+      for (var e = 0; e < extra.length; e++) all.push(extra[e]);
+    }
+    all.sort(function (a, b) { return a[0] - b[0]; });
+    var merged = [];
+    for (var m = 0; m < all.length; m++) {
+      var last = merged[merged.length - 1];
+      if (last && all[m][0] <= last[1]) {
+        if (all[m][1] > last[1]) last[1] = all[m][1];
+      } else {
+        merged.push([all[m][0], all[m][1]]);
+      }
+    }
+
+    var made = 0;
+    for (var r = 0; r < merged.length; r++) {
+      made += wrapTextRange(p, merged[r][0], merged[r][1]).length;
+    }
+    return made > 0;
+  }
+
+  /** 高亮是一次的：触碰正文 / 滚开约两屏 / 再开面板，三处都清。 */
+  function armHitDisposers() {
+    if (searchState.hit && searchState.hit.onScroll) {
+      window.removeEventListener('scroll', searchState.hit.onScroll);
+    }
+    var y0 = window.scrollY;
+    var onScroll = function() {
+      if (Math.abs(window.scrollY - y0) > window.innerHeight * 2) clearHit();
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    searchState.hit = { onScroll: onScroll };
+  }
+
+  /** 轻触正文即消退。用 document 上的 pointerdown（捕获阶段），只挂一次。 */
+  function initHitDisposers() {
+    document.addEventListener('pointerdown', function() {
+      if (searchState.hit) clearHit();
+    }, true);
+  }
+
+
+  /** 落到某一块里的第 i 段，并给命中词上标记。
+   *  @param {Element|null} block 目标章节块
+   *  @param {object} item 命中项 {i, occ, terms, file}
+   *  @param {boolean} keepRestoring true = 正在走 engine 的 landing（不要抢「用户已滚动」标记，
+   *         否则 commitLanding 会被 finish() 跳过，位置记忆就不跟着走了） */
+  function landInBlock(block, item, keepRestoring) {
+    if (!block || !item) return false;
+    clearHit();
+    if (!keepRestoring) markUserScroll();
+    scrollToAnchorIn(block, { p: 0, i: item.i, o: 0 }, SEARCH_LANDING_RATIO);
+    var paras = block.querySelectorAll('.chapter-content p');
+    var target = paras[item.i] || null;
+    if (target && markHit(target, item)) armHitDisposers();
+    return true;
+  }
+
+
+  /** 点一条结果：三分支收敛到同一条落位路径。
+   *  A. 目标块已在滚动链里 → 直接落位
+   *  B. 只有一块、目标不在链上 → 换章不换页，落位交给 engine 的一次性 landing
+   *  C. 链里已挂多章、目标不在链上 → 整页跳转，用一个一次性的会话意图在新页面接上 */
+  function jumpToHit(item) {
+    if (!item || typeof item.i !== 'number') return;
+    var file = item.file;
+    var anchor = { p: 0, i: item.i, o: 0 };
+
+    closeSearch();
+
+    var block = blockByFile(file);
+    if (block) {
+      landInBlock(block, item, false);
+      return;
+    }
+
+    if (document.querySelectorAll('.chapter-block').length <= 1) {
+      setLanding(anchor, SEARCH_LANDING_RATIO);
+      goToChapter(file, '', function() {
+        landInBlock(blockByFile(file), item, true);
+      });
+      return;
+    }
+
+    try {
+      sessionStorage.setItem(SEARCH_JUMP_KEY, JSON.stringify({
+        file: file,
+        i: item.i,
+        occ: item.occ || 0,
+        terms: item.terms || [],
+        q: searchQueryText(),
+        at: Date.now()
+      }));
+    } catch (e) { /* 无痕模式：最坏就是落在章首，不白屏、不丢章 */ }
+    window.location.href = new URL(file, window.location.href).href;
+  }
+
+
+  /** 整页跳转落地后：init() 里读一次意图（读完即删），交给 engine 的 landing 落位，
+   *  并把待上高亮的命中项留在 searchState 里，等 init() 末尾补标记。 */
+  function readJumpIntent() {
+    var raw = '';
+    try { raw = sessionStorage.getItem(SEARCH_JUMP_KEY) || ''; } catch (e) { raw = ''; }
+    if (!raw) return null;
+    try { sessionStorage.removeItem(SEARCH_JUMP_KEY); } catch (e) { /* 忽略 */ }
+    var intent = null;
+    try { intent = JSON.parse(raw); } catch (e) { return null; }
+    if (!intent || typeof intent.i !== 'number' || intent.i < 0) return null;
+    if (Date.now() - (intent.at || 0) > SEARCH_JUMP_TTL) return null;
+    if (intent.file !== getCurrentFileName()) return null;
+    return intent;
+  }
+
+  /** 必须晚于 initReadingAids()：它会用快照重建正文（article.innerHTML = snap.html），
+   *  早于它上标记就等于白上 —— 会被整段冲掉，而且不报错。 */
+  function flushPendingHighlight() {
+    var item = searchState.pendingHit;
+    searchState.pendingHit = null;
+    if (!item) return;
+    var block = blockByFile(item.file) || (LY.engine && LY.engine.currentBlock ? LY.engine.currentBlock() : null);
+    landInBlock(block, item, true);
+  }
 
 
   /* ===== 阅读数据备份 =====
@@ -2721,6 +3500,8 @@
     stopAutoClose: stopAutoClose,
     closeSettings: function() { if (typeof closeSettings === 'function') closeSettings(); },
     isBarsVisible: function() { return !!state.barsVisible; },
+    /* 索引的只读出口：给 e2e 与调试用，页面自身不消费（它只走 refreshSearchPanel） */
+    searchIndex: function() { return searchState.index; },
     state: state
   };
 })();

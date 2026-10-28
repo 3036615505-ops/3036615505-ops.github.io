@@ -1626,6 +1626,510 @@ check('再点「新叶」能回到第一组',
 await evaluate(`window.scrollTo(0, 0); 1`);
 await sleep(300);
 
+section('阅读页 · 全书搜索');
+/* 这一节盯的是「搜得到 + 落得准」。最要紧的是第 11–13 条：索引里的第 i 段必须
+   与页面里的第 i 个 <p> 是同一个节点，否则落点会整体错一段，而且**没有任何报错**。
+   页面里有两套编号（engine 的 0 基全量 / decorateParagraphs 的 1 基非空），
+   今天数值上恰好只差 1，看着像同一套 —— 所以这三条要现算，不许写死。 */
+await goto(BASE + '/novel/chapter-01.html');
+
+const searchEntry = await evaluate(`(() => {
+  const row = document.querySelector('.reader-menu-row');
+  const items = row ? [...row.children] : [];
+  const btn = document.querySelector('button[onclick*="openSearch"]');
+  const labels = items.map(el => (el.textContent || '').trim().split('\\n')[0].trim());
+  const widths = items.map(el => el.getBoundingClientRect().width);
+  return {
+    exists: !!btn,
+    idxSearch: items.indexOf(btn),
+    idxQuote: labels.indexOf('摘句'),
+    labels,
+    minW: widths.length ? Math.round(Math.min(...widths) * 10) / 10 : 0,
+    vw: window.innerWidth
+  };
+})()`);
+check('工具栏有「搜索」入口，且紧跟在「摘句」之后',
+  searchEntry.exists && searchEntry.idxSearch === searchEntry.idxQuote + 1,
+  JSON.stringify(searchEntry));
+check('390px 下工具栏每一项触控宽度 ≥48px（6 项仍不挤）',
+  searchEntry.vw === 390 && searchEntry.minW >= 48 && searchEntry.labels.length === 6,
+  'min=' + searchEntry.minW + 'px · ' + searchEntry.labels.join('/'));
+
+const searchFlag = await evaluate(`(() => {
+  const btn = document.querySelector('button[onclick*="openSearch"]');
+  const builtBefore = !!document.getElementById('searchOverlay');
+  LY.flags.apply({ search: false });
+  const off = btn ? getComputedStyle(btn).display : 'missing';
+  openSearch();
+  const ov = document.getElementById('searchOverlay');
+  const openedWhileOff = !!(ov && ov.classList.contains('visible'));
+  const stillNotBuilt = !!document.getElementById('searchOverlay');
+  const toast = (document.getElementById('readerToast') || {}).textContent || '';
+  LY.flags.apply({ search: true });
+  const on = btn ? getComputedStyle(btn).display : 'missing';
+  return { builtBefore, off, openedWhileOff, stillNotBuilt, toast, on };
+})()`);
+check('远程开关能藏掉搜索入口，关掉时 openSearch 只给一句提示、不建面板',
+  searchFlag.off === 'none' && searchFlag.openedWhileOff === false &&
+  searchFlag.stillNotBuilt === false && /搜索暂时关闭/.test(searchFlag.toast) &&
+  searchFlag.on !== 'none',
+  JSON.stringify(searchFlag));
+
+/* 早退陷阱的现场：设置面板还没建过时，applyFeatureVisibility 里那行
+   `if (!ov) return;` 会提前退出 —— 搜索按钮的显隐必须写在它之前。
+   这里把面板摘掉再切开关，写错位置就必然红。 */
+const searchTrap = await evaluate(`(() => {
+  const ov = document.getElementById('settingsOverlay');
+  if (ov) ov.remove();
+  const gone = !document.getElementById('settingsOverlay');
+  LY.flags.apply({ search: false });
+  const btn = document.querySelector('button[onclick*="openSearch"]');
+  const hidden = btn ? getComputedStyle(btn).display : 'missing';
+  LY.flags.apply({ search: true });
+  const back = btn ? getComputedStyle(btn).display : 'missing';
+  openSettings();
+  const rebuilt = !!document.getElementById('settingsOverlay');
+  closeSettings();
+  return { gone, hidden, back, rebuilt };
+})()`);
+check('设置面板不存在时远程开关对搜索按钮依然生效（早退陷阱）',
+  searchTrap.gone === true && searchTrap.hidden === 'none' &&
+  searchTrap.back !== 'none' && searchTrap.rebuilt === true,
+  JSON.stringify(searchTrap));
+
+const searchOpen = await evaluate(`(() => {
+  openSearch();
+  const ov = document.getElementById('searchOverlay');
+  return {
+    visible: !!ov && ov.classList.contains('visible'),
+    focused: (document.activeElement || {}).id || '',
+    lock: document.body.style.overflow,
+    pending: !!document.querySelector('.search-pending'),
+    summary: (document.getElementById('searchSummary') || {}).textContent || '',
+    listChildren: document.getElementById('searchList').children.length
+  };
+})()`);
+check('openSearch 后遮罩可见、输入框已聚焦、正文滚动被锁',
+  searchOpen.visible === true && searchOpen.focused === 'searchInput' && searchOpen.lock === 'hidden',
+  JSON.stringify(searchOpen));
+check('索引未就绪时先给「正在准备全书索引…」，不是空列表',
+  searchOpen.pending === true, JSON.stringify(searchOpen));
+
+/* 等索引就绪（7 次 fetch，本机约 10–40ms；给足 4 秒兜底） */
+const searchReady = await evaluate(`new Promise((res) => {
+  if (LY.ui.searchIndex()) return res(1);
+  const t = setInterval(() => {
+    if (LY.ui.searchIndex()) { clearInterval(t); res(1); }
+  }, 40);
+  setTimeout(() => { clearInterval(t); res(0); }, 4000);
+})`);
+check('章节页抽索引完成（7 章）', searchReady === 1, 'ready=' + searchReady);
+
+const searchEmpty = await evaluate(`({
+  summary: (document.getElementById('searchSummary') || {}).textContent || '',
+  listChildren: document.getElementById('searchList').children.length,
+  items: document.querySelectorAll('#searchList .search-item').length
+})`);
+check('空输入态只有范围说明（含章数），没有任何历史/推荐项',
+  /搜索 7 章正文/.test(searchEmpty.summary) && searchEmpty.listChildren === 0 && searchEmpty.items === 0,
+  JSON.stringify(searchEmpty));
+
+/* 在页面里装一个输入助手：模拟真实输入（改 value + 派发 input）。
+   整页导航之后 window 上的一切都没了，所以每次 goto 之后要重装一次。 */
+async function installSearchType() {
+  await evaluate(`window.__searchType = function (v) {
+    const el = document.getElementById('searchInput');
+    el.value = v;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }; 1`);
+}
+await installSearchType();
+
+await evaluate(`window.__searchType('梧桐'); 1`);
+await sleep(300);
+const searchHit = await evaluate(`(() => {
+  const first = document.querySelector('#searchList .search-item');
+  const marks = document.querySelectorAll('#searchList .search-item mark.search-hit');
+  const text = document.getElementById('searchList').textContent || '';
+  return {
+    items: document.querySelectorAll('#searchList .search-item').length,
+    summary: (document.getElementById('searchSummary') || {}).textContent || '',
+    firstMeta: first ? (first.querySelector('.search-item-meta') || {}).textContent || '' : '',
+    firstText: first ? (first.querySelector('.search-item-text') || {}).textContent || '' : '',
+    marks: marks.length,
+    ellipsis: text.indexOf('…') >= 0,
+    order: [...document.querySelectorAll('#searchList .search-item-meta')].map(n => n.textContent.trim()).slice(0, 3)
+  };
+})()`);
+check('中文命中「梧桐」：有结果，第一条含章名 + 第 N 处 + 高亮标记',
+  searchHit.items > 0 && /^第一章·临渊羡鱼 · 第 1 处$/.test(searchHit.firstMeta) &&
+  searchHit.marks > 0 && searchHit.firstText.indexOf('梧桐') >= 0,
+  JSON.stringify(searchHit));
+check('有截断时上下文带省略号，且结果按章序排列',
+  searchHit.ellipsis === true && searchHit.order[0].indexOf('第一章') === 0,
+  JSON.stringify(searchHit.order));
+
+await evaluate(`window.__searchType('蝉'); 1`);
+await sleep(300);
+const searchSingle = await evaluate(`({
+  items: document.querySelectorAll('#searchList .search-item').length,
+  summary: (document.getElementById('searchSummary') || {}).textContent || ''
+})`);
+check('单字「蝉」也能命中（一个字就开始查）',
+  searchSingle.items > 0 && /共 \d+ 处/.test(searchSingle.summary), JSON.stringify(searchSingle));
+
+/* 汇总行与列表必须同源：汇总的「共 N 处 / 涉及 M 章」是**全量**命中数，
+   列表只是被 30 条上限截断后的展示。这里在测试侧独立算一遍（自带一份折叠实现，
+   避免和被测代码共用一个 bug）。 */
+await evaluate(`window.__searchType('梧桐'); 1`);
+await sleep(300);
+const searchConsistency = await evaluate(`(() => {
+  const foldChar = (ch) => {
+    let c = ch.charCodeAt(0);
+    if (c === 0x3000) return ' ';
+    if (c >= 0xFF01 && c <= 0xFF5E) c -= 0xFEE0;
+    if (c >= 0x41 && c <= 0x5A) c += 0x20;
+    return String.fromCharCode(c);
+  };
+  const fold = (s) => s.split('').map(foldChar).join('');
+  const idx = LY.ui.searchIndex();
+  const lead = fold('梧桐');
+  let total = 0, chapters = 0;
+  idx.chapters.forEach((ch) => {
+    let hit = 0;
+    ch.paras.forEach((p) => {
+      const f = fold(p);
+      let from = 0, at = f.indexOf(lead, from);
+      while (at >= 0) { hit += 1; from = at + lead.length; at = f.indexOf(lead, from); }
+    });
+    total += hit;
+    if (hit) chapters += 1;
+  });
+  const summary = (document.getElementById('searchSummary') || {}).textContent || '';
+  return {
+    expectedTotal: total,
+    expectedChapters: chapters,
+    summary,
+    gotTotal: parseInt((/共 (\\d+) 处/.exec(summary) || [])[1], 10),
+    gotChapters: parseInt((/涉及 (\\d+) 章/.exec(summary) || [])[1], 10),
+    shown: document.querySelectorAll('#searchList .search-item').length
+  };
+})()`);
+check('汇总行与全量命中一致（共 N 处 / 涉及 M 章）',
+  searchConsistency.gotTotal === searchConsistency.expectedTotal &&
+  searchConsistency.gotChapters === searchConsistency.expectedChapters &&
+  searchConsistency.shown === searchConsistency.expectedTotal,
+  JSON.stringify(searchConsistency));
+
+await evaluate(`window.__searchType('梧桐雨'); 1`);
+await sleep(300);
+const searchMiss = await evaluate(`({
+  items: document.querySelectorAll('#searchList .search-item').length,
+  text: (document.getElementById('searchList').textContent || '').replace(/\\s+/g, ' ').trim(),
+  summary: (document.getElementById('searchSummary') || {}).textContent || ''
+})`);
+check('无结果：列表空 + 非报错口吻的说明（不含「失败/出错/错误」）',
+  searchMiss.items === 0 && searchMiss.text.indexOf('梧桐雨') >= 0 &&
+  !/失败|出错|错误/.test(searchMiss.text) && !/失败|出错|错误/.test(searchMiss.summary),
+  JSON.stringify(searchMiss));
+
+/* 输入法组字中不查：compositionstart 之后到来的 input 一律跳过，
+   compositionend 一到就**立刻**查（不等 150ms 防抖）。 */
+await evaluate(`window.__searchType('梧桐'); 1`);
+await sleep(300);
+const imeBefore = await evaluate(`document.querySelectorAll('#searchList .search-item').length`);
+await evaluate(`(() => {
+  const el = document.getElementById('searchInput');
+  el.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+  el.value = '蝉';
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  return 1;
+})()`);
+await sleep(300);
+const imeDuring = await evaluate(`document.querySelectorAll('#searchList .search-item').length`);
+await evaluate(`(() => {
+  const el = document.getElementById('searchInput');
+  el.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: '蝉' }));
+  return 1;
+})()`);
+await sleep(120);
+const imeAfter = await evaluate(`document.querySelectorAll('#searchList .search-item').length`);
+check('输入法组字中不查，上屏后立刻出结果',
+  imeDuring === imeBefore && imeAfter > 0 && imeAfter !== imeBefore,
+  JSON.stringify({ imeBefore, imeDuring, imeAfter }));
+
+/* ---- 索引 ↔ 页面段落一致性（防错位的核心三条）---- */
+const paraAlign = await evaluate(`(async () => {
+  const idx = LY.ui.searchIndex();
+  const rows = [];
+  for (const ch of idx.chapters) {
+    const html = await fetch('/novel/' + ch.file, { cache: 'reload' }).then(r => r.text());
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const ps = [...doc.querySelectorAll('.chapter-content p')];
+    const picks = [0, Math.floor(ps.length / 2), ps.length - 1];
+    const samples = picks.map((i) => ({
+      i,
+      index: (ch.paras[i] || '').trim().slice(0, 20),
+      page: ps[i] ? (ps[i].textContent || '').trim().slice(0, 20) : null
+    }));
+    rows.push({
+      file: ch.file,
+      indexCount: ch.paras.length,
+      pageCount: ps.length,
+      samplesOk: samples.every(s => s.page !== null && s.index === s.page),
+      samples
+    });
+  }
+  return rows;
+})()`);
+const countBad = paraAlign.filter(r => r.indexCount !== r.pageCount);
+const sampleBad = paraAlign.filter(r => !r.samplesOk);
+check('索引段数 === 页面 <p> 数量（逐章，不过滤空段）',
+  countBad.length === 0 && paraAlign.length === 7,
+  countBad.map(r => r.file + ' ' + r.indexCount + '/' + r.pageCount).join(', ') ||
+  paraAlign.map(r => r.pageCount).join('+'));
+check('逐段对齐：每章首/中/末段前 20 字与页面一致',
+  sampleBad.length === 0,
+  sampleBad.map(r => JSON.stringify(r.samples)).join(' | '));
+
+const quoteIndexCheck = await evaluate(`(() => {
+  const ps = [...document.querySelectorAll('.chapter-content p')];
+  const bad = ps.filter((p) => {
+    if (!(p.textContent || '').trim()) return false;   /* 空段本就没有 quote-index */
+    return Number(p.dataset.quoteIndex) !== ps.indexOf(p) + 1;
+  }).map(p => ({ i: ps.indexOf(p), q: p.dataset.quoteIndex, t: (p.textContent || '').slice(0, 12) }));
+  return { paras: ps.length, quoted: ps.filter(p => p.dataset.quoteIndex).length, bad };
+})()`);
+check('两套编号的换算关系成立：data-quote-index === 0 基序号 + 1（现算，不写死）',
+  quoteIndexCheck.bad.length === 0,
+  JSON.stringify(quoteIndexCheck.bad.slice(0, 3)));
+
+/* ---- 跳转与落地 ----
+   「板报」在第五、六、七章各出现若干次，第 2 处落在第五章中部（实测 top ≈ 33%），
+   适合用来验落点；第 1 处在章首，落点会被文档顶端夹住（ratio ≈ 17%），不拿它做判据。 */
+const pos5Before = await evaluate(`localStorage.getItem('reader-pos--novel-chapter-05-html')`);
+await evaluate(`(() => { window.openSearch(); window.__searchType('板报'); return 1; })()`);
+await sleep(320);
+const crossIdx = await evaluate(`(() => {
+  const items = [...document.querySelectorAll('#searchList .search-item')];
+  return items.findIndex(el => /第五章/.test((el.querySelector('.search-item-meta') || {}).textContent || '') &&
+    /第 2 处/.test((el.querySelector('.search-item-meta') || {}).textContent || ''));
+})()`);
+check('第五章第 2 处能被定位到（跨章用例的前提）', crossIdx >= 0, 'idx=' + crossIdx);
+await evaluate(`(() => { document.querySelectorAll('#searchList .search-item')[${crossIdx}].click(); return 1; })()`);
+await sleep(1600);
+const crossJump = await evaluate(`(() => {
+  const mark = document.querySelector('.chapter-content mark.search-hit');
+  const p = mark ? mark.closest('p') : null;
+  const block = p && p.closest ? p.closest('.chapter-block') : null;
+  const r = p ? p.getBoundingClientRect() : null;
+  const ps = [...document.querySelectorAll('.chapter-content p')];
+  const ov = document.getElementById('searchOverlay');
+  return {
+    path: location.pathname,
+    cur: LY.store.getCurrentFileName(),
+    blockFile: block ? block.getAttribute('data-file') : null,
+    panel: !!(ov && ov.classList.contains('visible')),
+    ratio: r ? Math.round(r.top / window.innerHeight * 1000) / 1000 : null,
+    marks: document.querySelectorAll('.chapter-content mark.search-hit').length,
+    paraIndex: p ? ps.indexOf(p) : null
+  };
+})()`);
+check('跨章跳转：换到第五章、面板收起、命中段停在视口 25%–45%',
+  crossJump.cur === 'chapter-05.html' && crossJump.path.indexOf('chapter-05') >= 0 &&
+  crossJump.blockFile === 'chapter-05.html' && crossJump.panel === false &&
+  crossJump.ratio !== null && crossJump.ratio >= 0.25 && crossJump.ratio <= 0.45,
+  JSON.stringify(crossJump));
+check('落地后命中段里有 <mark class="search-hit">',
+  crossJump.marks > 0 && crossJump.paraIndex !== null, JSON.stringify(crossJump));
+
+const followed = await evaluate(`(() => {
+  const key = 'reader-anchor--novel-chapter-05-html';
+  let a = null;
+  try { a = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { a = null; }
+  return { anchor: a, pos: localStorage.getItem('reader-pos--novel-chapter-05-html') };
+})()`);
+check('落地后位置记忆跟着走（锚点落在命中段附近、进度不是 0）',
+  !!followed.anchor && Math.abs(followed.anchor.i - crossJump.paraIndex) <= 2 &&
+  followed.pos !== null && followed.pos !== '0' && followed.pos !== pos5Before,
+  JSON.stringify({ anchor: followed.anchor, pos: followed.pos, posBefore: pos5Before, paraIndex: crossJump.paraIndex }));
+
+/* 高亮是一次性的：滚开约两屏就清掉 */
+await evaluate(`window.scrollBy(0, window.innerHeight * 2.2); 1`);
+await sleep(500);
+const afterScrollAway = await evaluate(`document.querySelectorAll('.chapter-content mark.search-hit').length`);
+check('滚开约两屏后命中高亮自动消失',
+  afterScrollAway === 0, 'marks=' + afterScrollAway);
+
+/* 同章跳转：这次目标就在同一章（第五条第 3 处，实测 top ≈ 33%） */
+await evaluate(`(() => { window.openSearch(); window.__searchType('板报'); return 1; })()`);
+await sleep(320);
+const sameIdx = await evaluate(`(() => {
+  const items = [...document.querySelectorAll('#searchList .search-item')];
+  return items.findIndex(el => /第五章/.test((el.querySelector('.search-item-meta') || {}).textContent || '') &&
+    /第 3 处/.test((el.querySelector('.search-item-meta') || {}).textContent || ''));
+})()`);
+await evaluate(`(() => { document.querySelectorAll('#searchList .search-item')[${sameIdx}].click(); return 1; })()`);
+await sleep(900);
+const sameJump = await evaluate(`(() => {
+  const mark = document.querySelector('.chapter-content mark.search-hit');
+  const p = mark ? mark.closest('p') : null;
+  const r = p ? p.getBoundingClientRect() : null;
+  const ov = document.getElementById('searchOverlay');
+  return {
+    path: location.pathname,
+    panel: !!(ov && ov.classList.contains('visible')),
+    ratio: r ? Math.round(r.top / window.innerHeight * 1000) / 1000 : null,
+    marks: document.querySelectorAll('.chapter-content mark.search-hit').length
+  };
+})()`);
+check('同章跳转：不换章、面板收起、命中段停在视口 25%–45%',
+  sameJump.path.indexOf('chapter-05') >= 0 && sameJump.panel === false &&
+  sameJump.marks > 0 && sameJump.ratio !== null && sameJump.ratio >= 0.25 && sameJump.ratio <= 0.45,
+  JSON.stringify(sameJump));
+
+/* 轻触正文任意处也清（一次性标记，不写任何持久状态） */
+await evaluate(`document.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); 1`);
+await sleep(150);
+const afterPointerdown = await evaluate(`document.querySelectorAll('.chapter-content mark.search-hit').length`);
+check('轻触正文后命中高亮消失',
+  afterPointerdown === 0, 'marks=' + afterPointerdown);
+
+/* 关闭面板不丢阅读位置 */
+await evaluate(`window.scrollTo(0, (document.documentElement.scrollHeight - window.innerHeight) * 0.5); 1`);
+await sleep(700);
+const posKeep = await evaluate(`(() => {
+  const y0 = Math.round(window.scrollY);
+  window.openSearch();
+  window.__searchType('梧桐');
+  window.closeSearch();
+  return { y0, y1: Math.round(window.scrollY), pos: localStorage.getItem('reader-pos--novel-chapter-05-html') };
+})()`);
+await sleep(400);
+const posKeepAfter = await evaluate(`({ y: Math.round(window.scrollY), pos: localStorage.getItem('reader-pos--novel-chapter-05-html') })`);
+check('开关搜索面板不动阅读位置（scrollY 变化 ≤2px、进度没被写成 0）',
+  Math.abs(posKeepAfter.y - posKeep.y0) <= 2 && posKeepAfter.pos !== '0',
+  JSON.stringify({ y0: posKeep.y0, y: posKeepAfter.y, pos: posKeepAfter.pos }));
+
+/* 面板打开期间自动滚屏暂停，关闭后按原状态恢复 */
+await evaluate(`(() => { window.scrollTo(0, (document.documentElement.scrollHeight - window.innerHeight) * 0.4); return 1; })()`);
+await sleep(600);
+await evaluate(`toggleAutoScroll(); 1`);
+await sleep(400);
+const autoStart = await evaluate(`Math.round(window.scrollY)`);
+await evaluate(`window.openSearch(); 1`);
+await sleep(1100);
+const autoPaused = await evaluate(`Math.round(window.scrollY)`);
+await evaluate(`window.closeSearch(); 1`);
+await sleep(1100);
+const autoResumed = await evaluate(`Math.round(window.scrollY)`);
+await evaluate(`if (LY.engine.autoScroll.active) toggleAutoScroll(); 1`);
+check('搜索面板打开期间自动滚屏暂停，关闭后恢复',
+  autoPaused === autoStart && autoResumed > autoPaused,
+  JSON.stringify({ autoStart, autoPaused, autoResumed }));
+
+await evaluate(`closeSearch(); 1`);
+await sleep(200);
+
+/* ---- 列表上限与同段折叠（PRD P1-3）---- */
+await evaluate(`(() => { window.openSearch(); window.__searchType('的'); return 1; })()`);
+await sleep(400);
+const cap = await evaluate(`(() => {
+  const items = document.querySelectorAll('#searchList .search-item').length;
+  const more = [...document.querySelectorAll('#searchList .search-more')].map(n => n.textContent.trim());
+  const summary = (document.getElementById('searchSummary') || {}).textContent || '';
+  return {
+    items,
+    fold: more.filter(t => /^本段另有 \\d+ 处$/.test(t)).length,
+    tail: more.filter(t => /^还有 \\d+ 处未显示$/.test(t))[0] || '',
+    summary
+  };
+})()`);
+check('命中超过 30 条时只显示前 30 条 + 「还有 N 处未显示」',
+  cap.items === 30 && /^还有 \d+ 处未显示$/.test(cap.tail) && /共 \d+ 处/.test(cap.summary),
+  JSON.stringify(cap));
+check('同一段命中超过 2 条时折叠成「本段另有 N 处」',
+  cap.fold > 0, 'fold lines=' + cap.fold);
+await evaluate(`closeSearch(); 1`);
+
+/* ---- 离线与降级（PRD P0-6 / P1-1）----
+   为了让这条测的是真场景，先整页重载 —— 索引是内存态的，重载后必须重新从
+   （已预缓存的）章节页里抽一遍，这样「离线还能搜」才不是假绿。 */
+await goto(BASE + '/novel/chapter-01.html');
+await sleep(800);
+await installSearchType();
+
+/* 第三态：离线 + 索引还没建过。真实成因是「SW 没装完就断网」，
+   这里用「断网 + 让章节页 fetch 全部失手」把那个组合做出来。 */
+await send('Network.enable');
+await send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+const thirdState = await evaluate(`(async () => {
+  const orig = window.fetch;
+  window.fetch = function (url) {
+    if (String(url).indexOf('chapter-') >= 0) return Promise.reject(new Error('offline'));
+    return orig.apply(window, arguments);
+  };
+  window.openSearch();
+  window.__searchType('梧桐');
+  await new Promise(r => setTimeout(r, 900));
+  const summary = (document.getElementById('searchSummary') || {}).textContent || '';
+  const res = {
+    online: navigator.onLine,
+    summary,
+    pending: !!document.querySelector('.search-pending'),
+    offline: !!document.querySelector('.search-offline'),
+    items: document.querySelectorAll('#searchList .search-item').length,
+    listText: (document.getElementById('searchList').textContent || '').trim()
+  };
+  window.fetch = orig;
+  return res;
+})()`);
+check('离线且索引建不起来时给第三态文案（不写「失败/出错」）',
+  thirdState.online === false && /联网后会自动补齐/.test(thirdState.summary) &&
+  thirdState.offline === true && thirdState.items === 0 &&
+  !/失败|出错|错误/.test(thirdState.summary + thirdState.listText),
+  JSON.stringify(thirdState));
+
+/* 真场景：装过 SW 之后断网，索引从预缓存里抽 —— 离线照样搜得到 */
+await evaluate(`closeSearch(); 1`);
+await goto(BASE + '/novel/chapter-01.html');
+await sleep(900);
+await installSearchType();
+const offlineSearch = await evaluate(`(async () => {
+  window.openSearch();
+  for (let i = 0; i < 80 && !LY.ui.searchIndex(); i++) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+  window.__searchType('梧桐');
+  await new Promise(r => setTimeout(r, 350));
+  return {
+    online: navigator.onLine,
+    indexed: !!LY.ui.searchIndex(),
+    items: document.querySelectorAll('#searchList .search-item').length,
+    summary: (document.getElementById('searchSummary') || {}).textContent || ''
+  };
+})()`);
+check('完全离线仍能搜到（索引来自 SW 预缓存的章节页，不走网络）',
+  offlineSearch.online === false && offlineSearch.indexed === true && offlineSearch.items > 0,
+  JSON.stringify(offlineSearch));
+check('离线时结果区顶部出现一行细字提示',
+  /离线 · 正在搜本机缓存的内容/.test(offlineSearch.summary), offlineSearch.summary);
+
+await send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+await sleep(400);
+const onlineAgain = await evaluate(`(async () => {
+  window.__searchType('梧桐');
+  await new Promise(r => setTimeout(r, 300));
+  const summary = (document.getElementById('searchSummary') || {}).textContent || '';
+  return { online: navigator.onLine, summary, offlineNote: !!document.querySelector('.search-offline') };
+})()`);
+check('恢复在线后不再出现离线提示（默认安静）',
+  onlineAgain.online === true && onlineAgain.offlineNote === false &&
+  /共 \d+ 处/.test(onlineAgain.summary),
+  JSON.stringify(onlineAgain));
+await evaluate(`closeSearch(); 1`);
+await sleep(200);
+
 section('全局');
 check('全程无未捕获异常', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 300));
 

@@ -49,7 +49,8 @@
      章末收束卡（只出现在最后一章） ........................ 4686
      阅读页底色补缝（防「底部断层」） ...................... 4825
      「点击翻页」层的按下反馈 .............................. 4834
-     站内跳转的「正在打开」细线（js/nav-feedback.js） ...... 4844
+     站内跳转的「正在打开」细线（js/nav-feedback.js） ...... 4852
+     全书搜索（js/reader.ui.js） ............................ 4907
 
    原则：本文件不拆。拆分的改动面是 29 个页面 + 2 个生成器模板 + PRECACHE，
    而这个项目没有构建步骤能把它们合回去（见 docs/REPO-AUDIT.md §3.5①）。
@@ -580,6 +581,12 @@
      观感不变 —— 文字比原来略深，装饰分毫未动。 */
   --accent-text: #855a2b;
   --accent-light: rgba(184,134,78,0.08);
+  /* ---- 命中词底色（阅读器内全章搜索）----
+     高亮必须双通道（底色 + 字重），因为小字与夜读主题下只换颜色对比不够。
+     单独一支令牌而不是复用 --accent-light：后者是 8% 的极淡底（给按钮/卡片用），
+     压在绿色阅读主题 #d8e4d3 上几乎看不出来。这里取 30%，四套主题共用；
+     深色主题在下面单独覆盖（深底上 30% 会发灰）。 */
+  --hit-bg: rgba(196, 162, 78, 0.30);
   /* ---- 填充按钮专用底色（白字必须 ≥4.5:1）----
      --accent 是「强调色」，用来做描边、图标、强调文字都没问题，但它太亮：
      白字压 #b8864e 只有 3.20:1、压深色主题的 #d4a050 只有 2.35:1，
@@ -689,6 +696,8 @@
      装饰（边框/图标/渐变）继续用 --accent #d4a050，不受影响。 */
   --accent-text: #e2b268;
   --accent-light: rgba(212,160,80,0.12);
+  /* 深色下的命中底色：深底上 30% 会发灰，压到 22% 才不脏 */
+  --hit-bg: rgba(212, 160, 80, 0.22);
   --border: #332e22;
   --border-light: #2a2519;
   --shadow: 0 1px 3px rgba(0,0,0,0.32);
@@ -4894,3 +4903,136 @@ body.is-reading {
   .nav-opening-bar.is-on { opacity: 0.75; }
   .date-item { transition: none; }
 }
+
+/* ===== 全书搜索（js/reader.ui.js 的「全书搜索」一段）=====
+   面板**完全复用** .modal-overlay / .modal-backdrop / .modal-panel / .modal-close /
+   .modal-body 这套基建（与目录、设置、摘句同一条路径）：遮罩深浅、圆角、阴影、
+   z-index、进出场过渡、Esc 逐层关闭、滚动锁全部继承，这里一行都不重造。
+   本段只加「内容长什么样」：输入行、汇总行、章名、结果项、空态/等待态、折叠行。
+
+   为什么写在文件末尾：顶部分区目录里的行号是「插入本目录之后」的实测值，
+   插在中间会让后面几百条行号一起漂。新增段落一律追加在末尾，再补一行目录。 */
+
+.search-modal {
+  max-height: 76vh;
+}
+
+/* 输入行：不参与滚动（flex-shrink:0），滚动只发生在下面的结果区 */
+.search-field {
+  flex-shrink: 0;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--reader-border);
+}
+
+.search-field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--reader-border);
+  border-radius: 12px;
+  background: var(--reader-surface-soft);
+  color: var(--reading-text);
+  /* 16px 是下限：iOS 上小于 16px 的输入框一聚焦就会把整页放大，弹出键盘后回不去 */
+  font-size: 16px;
+  font-family: inherit;
+  line-height: 1.4;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* 原生的「清空 ×」在深色主题下是黑方块，且移动端位置会顶到圆角上，统一去掉 */
+.search-field input::-webkit-search-cancel-button,
+.search-field input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* 汇总行：一条细字，不抢结果区的注意力 */
+.search-summary {
+  flex-shrink: 0;
+  padding: 8px 16px 4px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  letter-spacing: 0.2px;
+}
+
+/* 离线提示 / 等待态另起一行，比汇总再弱一点（PRD P1-1：在线则完全不出现） */
+.search-offline,
+.search-pending {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-secondary);
+}
+
+/* 结果区（同时是 .modal-body）：左右不留白，靠每一项自己的 padding 撑 */
+.search-list {
+  padding: 2px 0 12px;
+}
+
+.search-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 16px 11px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.search-item.is-active,
+.search-item:active {
+  background: var(--accent-light);
+}
+
+.search-item-meta {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.2px;
+}
+
+.search-item-text {
+  display: block;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--reading-text);
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* 命中词：双通道（底色 + 字重）。列表里与正文里是**同一套**样式 ——
+   读者点进去看到的那一处，和刚才列表里看到的是同一个记号。
+   color 不覆盖（inherit）：高亮不该让字本身变难读。 */
+.search-hit {
+  background: var(--hit-bg);
+  box-shadow: 0 0 0 2px var(--hit-bg);
+  border-radius: 2px;
+  font-weight: 600;
+  color: inherit;
+}
+
+/* 空态 / 等待态：居中细字，语气不写「失败/出错」（PRD 2.4） */
+.search-empty {
+  padding: 22px 18px 26px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.9;
+  color: var(--text-muted);
+}
+
+/* 同段超出 2 条后的折叠行（PRD P1-3 的段落级版本） */
+.search-more {
+  padding: 2px 16px 8px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+

@@ -169,6 +169,7 @@ if (fs.existsSync(TEMPLATE) && fs.existsSync(NOVEL_DIR)) {
      并且把模板也一起比对 —— 模板落后才是根因，章节页只是受害者。 */
   const HOOKS = [
     ['toggleAutoScroll', '工具栏「自动」按钮（自动滚屏唯一入口）'],
+    ['openSearch', '工具栏「搜索」按钮（阅读器内全章搜索唯一入口）'],
     ['autoScrollLabel', '自动滚屏状态文字'],
     ['chapter-seal', '章末印章'],
     ['style.css?v=', '样式表版本号（不带 ?v= 的 URL 会永久吃旧 CSS 缓存）'],

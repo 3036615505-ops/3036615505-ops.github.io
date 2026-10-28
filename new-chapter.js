@@ -318,6 +318,10 @@ ${sealHtml}  </div>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7H5a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1H8z"/><path d="M19 7h-3a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1h-3z" transform="translate(-3 0)"/></svg>
         摘句
       </button>
+      <button onclick="openSearch();return false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="16.4" y1="16.4" x2="21" y2="21"/></svg>
+        搜索
+      </button>
       <button onclick="toggleNightMode()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
         <span id="nightModeLabel">夜读</span>
@@ -367,6 +371,7 @@ fs.writeFileSync(out, tpl);
 //      页面上毫无报错痕迹，只能靠人翻到那一章才发现。所以这里改成按清单比对。
 const REQUIRED_HOOKS = [
   ['toggleAutoScroll', '工具栏「自动」按钮（自动滚屏唯一入口）'],
+  ['openSearch', '工具栏「搜索」按钮（阅读器内全章搜索唯一入口）'],
   ['autoScrollLabel', '自动滚屏状态文字'],
   ['chapter-seal', '章末印章'],
   ['style.css?v=', '样式表版本号（不带的 URL 会永久吃旧 CSS 缓存）'],

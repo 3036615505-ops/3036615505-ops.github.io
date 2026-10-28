@@ -6,6 +6,7 @@
     "readingAids": true,
     "anchorRestore": true,
     "backup": true,
-    "infiniteScroll": true
+    "infiniteScroll": true,
+    "search": true
   }
 }
