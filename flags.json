@@ -1,6 +1,6 @@
 {
   "_readme": "线上功能开关。改这里并 push 即生效，最长约 1 分钟（SW 不缓存本文件），不需要发版、不需要升 ?v=。缺省视为开；写成 false 即关闭该功能。只认 boolean：写成字符串或空值会被忽略。",
-  "updated": "2026-10-24",
+  "updated": "2026-10-28",
   "flags": {
     "autoscroll": true,
     "readingAids": true,
