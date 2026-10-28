@@ -2672,17 +2672,21 @@
   }
 
   /* 索引还没准备好时的三种说法（第三态是 PRD 没写、设计补的）：
-       · 正在建 → 正在准备全书索引…
-       · 建失败了 + 离线 → 离线 · 全书索引还没准备好，联网后会自动补齐（会自动重试一次）
-       · 建失败了 + 在线 → 全书索引还没准备好，稍后再试
-     一律不写「失败 / 出错」（PRD 2.4 的语气规矩）：内容没问题，只是还没备好。 */
+       · 正在建       → 正在准备全书正文…
+       · 建失败了 + 离线 → 离线 · 全书正文还没准备好，联网后会自动补齐（会自动重试一次）
+       · 建失败了 + 在线 → 没能取到正文，关掉面板再开一次试试
+     ⚠ 三句都是**读者可见文案**，一律说「正文」不说「索引」—— 读者不知道索引是什么。
+     改这三句只需要改这里一处（cls 与文案都从本函数出），但**别把这三句钉进 e2e 断言**：
+     文案是最容易被作者改一次的东西，钉进断言后改个字就红一次，最后会变成「不敢改文案」。
+     断言只钉状态（有提示节点 / 结果区是否为空），不钉那串汉字。
+     语气规矩照 PRD 2.4：内容没问题，只是还没备好，一律不写「失败 / 出错」。 */
   function pendingNote() {
     if (!searchState.failed) {
-      return { cls: 'search-pending', text: '正在准备全书索引…' };
+      return { cls: 'search-pending', text: '正在准备全书正文…' };
     }
     return (navigator.onLine === false)
-      ? { cls: 'search-offline', text: '离线 · 全书索引还没准备好，联网后会自动补齐' }
-      : { cls: 'search-pending', text: '全书索引还没准备好，稍后再试' };
+      ? { cls: 'search-offline', text: '离线 · 全书正文还没准备好，联网后会自动补齐' }
+      : { cls: 'search-pending', text: '没能取到正文，关掉面板再开一次试试' };
   }
 
   /** 把「当前状态 + 当前输入」画成汇总行与结果列表。所有状态都从这里收口，
@@ -2722,15 +2726,19 @@
           if (step.kind === 'item') {
             var idx = items.length;
             items.push(step);
+            /* data-para = engine 口径的段序号（0 基全量）：同一段最多展开 2 条这条规矩
+               因此可以被结构性断言（数 DOM），而不是去匹配「本段另有 N 处」那串汉字。 */
             listHtml += '<button type="button" class="search-item' + (idx === searchState.active ? ' is-active' : '') +
-              '" data-idx="' + idx + '">' +
+              '" data-idx="' + idx + '" data-para="' + step.i + '">' +
               '<span class="search-item-meta">' + escapeHtml(step.title) + ' · 第 ' + step.ordinal + ' 处</span>' +
               '<span class="search-item-text">' + snippetHtml(step.text, step.at, result.terms) + '</span>' +
               '</button>';
           } else if (step.kind === 'fold') {
-            listHtml += '<div class="search-more">本段另有 ' + step.n + ' 处</div>';
+            /* 两种「省略行」各带一个语义类名：折叠（同段超出 2 条）与截断（总量超 30 条）。
+               断言按类名数节点，文案怎么改都不会红。 */
+            listHtml += '<div class="search-more search-more-fold">本段另有 ' + step.n + ' 处</div>';
           } else if (step.kind === 'more') {
-            listHtml += '<div class="search-more">还有 ' + step.n + ' 处未显示</div>';
+            listHtml += '<div class="search-more search-more-rest">还有 ' + step.n + ' 处未显示</div>';
           }
         }
       }

@@ -1638,22 +1638,55 @@ const searchEntry = await evaluate(`(() => {
   const items = row ? [...row.children] : [];
   const btn = document.querySelector('button[onclick*="openSearch"]');
   const labels = items.map(el => (el.textContent || '').trim().split('\\n')[0].trim());
-  const widths = items.map(el => el.getBoundingClientRect().width);
   return {
     exists: !!btn,
     idxSearch: items.indexOf(btn),
     idxQuote: labels.indexOf('摘句'),
-    labels,
-    minW: widths.length ? Math.round(Math.min(...widths) * 10) / 10 : 0,
-    vw: window.innerWidth
+    labels
   };
 })()`);
 check('工具栏有「搜索」入口，且紧跟在「摘句」之后',
   searchEntry.exists && searchEntry.idxSearch === searchEntry.idxQuote + 1,
   JSON.stringify(searchEntry));
-check('390px 下工具栏每一项触控宽度 ≥48px（6 项仍不挤）',
-  searchEntry.vw === 390 && searchEntry.minW >= 48 && searchEntry.labels.length === 6,
-  'min=' + searchEntry.minW + 'px · ' + searchEntry.labels.join('/'));
+
+/* 宽度只在两档量，且**只断言阈值 48**：具体读数是 padding / 字号 / DPR 的函数，
+   写进断言就变成第三处会过期的数字（PRD 里那个「约 56px」是 PM 自己拍的、已删）。
+   320px 档能过 48，本身就是「那条 @media (max-width:340px) 还在」的证据 ——
+   补丁前实测 47.0px，会红。 */
+async function measureMenuRow(width, height) {
+  await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 2, mobile: true });
+  await sleep(240);
+  const res = await evaluate(`(() => {
+    const row = document.querySelector('.reader-menu-row');
+    const items = row ? [...row.children] : [];
+    const widths = items.map(el => el.getBoundingClientRect().width);
+    return {
+      vw: window.innerWidth,
+      count: items.length,
+      minW: widths.length ? Math.min(...widths) : 0,
+      autoInRow: !!(row && row.querySelector('button[onclick*="toggleAutoScroll"]'))
+    };
+  })()`);
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await sleep(200);
+  return res;
+}
+const row390 = await measureMenuRow(390, 844);
+const row320 = await measureMenuRow(320, 844);
+check('工具栏仍是 6 项，390px 与 320px 每项触控宽度都 ≥48px',
+  row390.count === 6 && row320.count === 6 &&
+  row390.minW >= 48 && row320.minW >= 48 &&
+  row390.vw === 390 && row320.vw === 320,
+  JSON.stringify({ row390, row320 }));
+const autoScrolledAway = await evaluate(`(() => {
+  const ov = document.getElementById('settingsOverlay');
+  const inSettings = ov ? !!ov.querySelector('[onclick*="toggleAutoScroll"], [data-aid="autoscroll"]') : false;
+  const inRow = !!document.querySelector('.reader-menu-row button[onclick*="toggleAutoScroll"]');
+  return { inRow, inSettings };
+})()`);
+check('「自动滚屏」仍在工具栏，没有被迁进设置面板（工具栏维持 6 项是加搜索、不是搬家）',
+  autoScrolledAway.inRow === true && autoScrolledAway.inSettings === false,
+  JSON.stringify(autoScrolledAway));
 
 const searchFlag = await evaluate(`(() => {
   const btn = document.querySelector('button[onclick*="openSearch"]');
@@ -1705,15 +1738,16 @@ const searchOpen = await evaluate(`(() => {
     focused: (document.activeElement || {}).id || '',
     lock: document.body.style.overflow,
     pending: !!document.querySelector('.search-pending'),
-    summary: (document.getElementById('searchSummary') || {}).textContent || '',
+    items: document.querySelectorAll('#searchList .search-item').length,
     listChildren: document.getElementById('searchList').children.length
   };
 })()`);
 check('openSearch 后遮罩可见、输入框已聚焦、正文滚动被锁',
   searchOpen.visible === true && searchOpen.focused === 'searchInput' && searchOpen.lock === 'hidden',
   JSON.stringify(searchOpen));
-check('索引未就绪时先给「正在准备全书索引…」，不是空列表',
-  searchOpen.pending === true, JSON.stringify(searchOpen));
+/* 钉状态不钉文案：等待态只断言「有等待态节点、结果区不是一行空白结果」。 */
+check('索引未就绪时先出现等待态节点，而不是空列表',
+  searchOpen.pending === true && searchOpen.items === 0, JSON.stringify(searchOpen));
 
 /* 等索引就绪（7 次 fetch，本机约 10–40ms；给足 4 秒兜底） */
 const searchReady = await evaluate(`new Promise((res) => {
@@ -1761,8 +1795,9 @@ const searchHit = await evaluate(`(() => {
     order: [...document.querySelectorAll('#searchList .search-item-meta')].map(n => n.textContent.trim()).slice(0, 3)
   };
 })()`);
-check('中文命中「梧桐」：有结果，第一条含章名 + 第 N 处 + 高亮标记',
-  searchHit.items > 0 && /^第一章·临渊羡鱼 · 第 1 处$/.test(searchHit.firstMeta) &&
+check('中文命中「梧桐」：有结果，第一条同时含章名与「第 N 处」，命中词被标出',
+  searchHit.items > 0 && searchHit.firstMeta.indexOf('第一章') === 0 &&
+  /第\s*\d+\s*处/.test(searchHit.firstMeta) &&
   searchHit.marks > 0 && searchHit.firstText.indexOf('梧桐') >= 0,
   JSON.stringify(searchHit));
 check('有截断时上下文带省略号，且结果按章序排列',
@@ -2031,25 +2066,38 @@ check('搜索面板打开期间自动滚屏暂停，关闭后恢复',
 await evaluate(`closeSearch(); 1`);
 await sleep(200);
 
-/* ---- 列表上限与同段折叠（PRD P1-3）---- */
+/* ---- 列表上限与同段折叠（PRD P1-3）----
+   只断言**结构与数量**：条目数、两种省略行各出现几次、同段最多几条、汇总仍是全量。
+   不去匹配「本段另有 N 处」那串拼接文案 —— 那串字作者想改随时能改。 */
 await evaluate(`(() => { window.openSearch(); window.__searchType('的'); return 1; })()`);
 await sleep(400);
 const cap = await evaluate(`(() => {
-  const items = document.querySelectorAll('#searchList .search-item').length;
-  const more = [...document.querySelectorAll('#searchList .search-more')].map(n => n.textContent.trim());
+  const list = document.getElementById('searchList');
+  const items = [...list.querySelectorAll('.search-item')];
+  const byPara = {};
+  items.forEach((el) => {
+    const k = el.getAttribute('data-para');
+    byPara[k] = (byPara[k] || 0) + 1;
+  });
+  const groups = Object.keys(byPara).map(k => byPara[k]);
   const summary = (document.getElementById('searchSummary') || {}).textContent || '';
   return {
-    items,
-    fold: more.filter(t => /^本段另有 \\d+ 处$/.test(t)).length,
-    tail: more.filter(t => /^还有 \\d+ 处未显示$/.test(t))[0] || '',
-    summary
+    items: items.length,
+    folds: list.querySelectorAll('.search-more-fold').length,
+    rests: list.querySelectorAll('.search-more-rest').length,
+    restIsLast: !!list.lastElementChild && list.lastElementChild.classList.contains('search-more-rest'),
+    maxPerPara: groups.length ? Math.max(...groups) : 0,
+    groups: groups.length,
+    summaryTotal: parseInt((/共 (\\d+) 处/.exec(summary) || [])[1], 10)
   };
 })()`);
-check('命中超过 30 条时只显示前 30 条 + 「还有 N 处未显示」',
-  cap.items === 30 && /^还有 \d+ 处未显示$/.test(cap.tail) && /共 \d+ 处/.test(cap.summary),
+check('命中超过上限时只铺前 30 条，并在末尾留一行「还有 N 处」省略行',
+  cap.items === 30 && cap.rests === 1 && cap.restIsLast === true &&
+  cap.summaryTotal > 30,
   JSON.stringify(cap));
-check('同一段命中超过 2 条时折叠成「本段另有 N 处」',
-  cap.fold > 0, 'fold lines=' + cap.fold);
+check('同一段最多展开 2 条，超出部分折叠（按结构数节点，不匹配文案）',
+  cap.maxPerPara <= 2 && cap.folds > 0 && cap.groups > 0,
+  JSON.stringify(cap));
 await evaluate(`closeSearch(); 1`);
 
 /* ---- 离线与降级（PRD P0-6 / P1-1）----
@@ -2084,10 +2132,9 @@ const thirdState = await evaluate(`(async () => {
   window.fetch = orig;
   return res;
 })()`);
-check('离线且索引建不起来时给第三态文案（不写「失败/出错」）',
-  thirdState.online === false && /联网后会自动补齐/.test(thirdState.summary) &&
-  thirdState.offline === true && thirdState.items === 0 &&
-  !/失败|出错|错误/.test(thirdState.summary + thirdState.listText),
+check('离线且索引建不起来时出现离线提示节点，结果区为空（不钉具体句子）',
+  thirdState.online === false && thirdState.offline === true &&
+  thirdState.pending === false && thirdState.items === 0,
   JSON.stringify(thirdState));
 
 /* 真场景：装过 SW 之后断网，索引从预缓存里抽 —— 离线照样搜得到 */
@@ -2106,14 +2153,15 @@ const offlineSearch = await evaluate(`(async () => {
     online: navigator.onLine,
     indexed: !!LY.ui.searchIndex(),
     items: document.querySelectorAll('#searchList .search-item').length,
+    offlineNote: !!document.querySelector('.search-offline'),
     summary: (document.getElementById('searchSummary') || {}).textContent || ''
   };
 })()`);
 check('完全离线仍能搜到（索引来自 SW 预缓存的章节页，不走网络）',
   offlineSearch.online === false && offlineSearch.indexed === true && offlineSearch.items > 0,
   JSON.stringify(offlineSearch));
-check('离线时结果区顶部出现一行细字提示',
-  /离线 · 正在搜本机缓存的内容/.test(offlineSearch.summary), offlineSearch.summary);
+check('离线时结果区出现离线提示节点（在线则不出现）',
+  offlineSearch.offlineNote === true, JSON.stringify(offlineSearch));
 
 await send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
 await sleep(400);
