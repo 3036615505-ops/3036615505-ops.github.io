@@ -61,6 +61,10 @@
   var smoothTimer = 0;
   var resizeTimer = 0;
   var lastTrigger = null;
+  /* 透明 1×1：换人时先把 <img> 清干净，别让上一个人的位图留在屏幕上 */
+  var BLANK_PX = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  /* 换图令牌：母版解码比读者手快时，上一轮的 swap 不能顶掉下一轮的图 */
+  var swapToken = 0;
   var pinchEndAt = 0;
   /* 两套时间闸，语义不同、互不打架：
      pinchEndAt + PINCH_TAP_GUARD_MS(400ms)：捏合结束后忽略「单击」，防止松手
@@ -223,7 +227,16 @@
     clickGuardUntil = Date.now() + 350;
     if (nameEl) nameEl.textContent = name || '';
     image.alt = name || '';
-    image.src = src;
+
+    /* 换人时**不能**直接把 img.src 换成新母版：<img> 会继续显示上一张已解码的位图，
+       读者先看到上一个人的立绘、等新图解码完才跳变（2026-10-28 线上反馈）。
+       所以先摆「同一个人的缩略图」（卡片上那张，已解码、同人同比例），没有就用透明像素，
+       母版解码完成后再原地换上 —— 那个瞬间位图已经在内存里，看不出接缝。 */
+    var cardImg = trigger && trigger.querySelector ? trigger.querySelector('img') : null;
+    var thumb = cardImg ? (cardImg.currentSrc || cardImg.src || '') : '';
+    var hasThumb = !!thumb && thumb !== src;
+    image.src = hasThumb ? thumb : BLANK_PX;
+
     /* 先锁滚动再度量：桌面 Chrome 的经典滚动条会占掉布局视口宽度，
        锁掉之后视口才变到最终尺寸（安卓 WebView 是 overlay 滚动条，无此差异，
        但顺序对了两边都不会错）。度量必须发生在锁定之后。 */
@@ -233,17 +246,44 @@
     measure(hint);
     resetZoom(false);
     if (closeBtn && closeBtn.focus) closeBtn.focus({ preventScroll: true });
-    /* 缓存命中时 src 是同步解码的，loaded 事件不会再触发，这里补一次度量 */
+    /* 缓存命中时占位图是同步解码的，loaded 事件不会再触发，这里补一次度量 */
     if (image.complete && image.naturalWidth) {
       measure();
       clampTranslation();
       applyTransform(false);
     }
+
+    swapToFull(src);
+  }
+
+  /** 预解码母版后再换上去；期间屏幕上一直是「同一个人」的缩略图或透明像素。
+   *  母版在缓存里时 pre.decode() 是微任务级，读者看到的切换是「瞬间」的。 */
+  function swapToFull(fullSrc) {
+    var token = ++swapToken;
+    var apply = function () {
+      if (token !== swapToken || !state.open) return;
+      image.src = fullSrc;
+      if (image.complete && image.naturalWidth) {
+        measure();
+        clampTranslation();
+        applyTransform(false);
+      }
+    };
+    var pre = new Image();
+    pre.decoding = 'async';
+    pre.onerror = apply;            /* 母版挂了就停在占位图上，至少人是对的 */
+    pre.onload = function () {
+      if (pre.decode) pre.decode().then(apply, apply);
+      else apply();
+    };
+    pre.src = fullSrc;
+    if (pre.complete && pre.naturalWidth) apply();   /* 缓存命中：立即换 */
   }
 
   function close() {
     if (!state.open) return;
     state.open = false;
+    swapToken++;      /* 关掉后到达的母版解码结果一律作废 */
     /* 去掉 .visible：CSS 过渡负责 0.25s 淡出，JS 不等它 */
     overlay.classList.remove('visible');
     overlay.setAttribute('aria-hidden', 'true');

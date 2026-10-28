@@ -1504,6 +1504,49 @@ check('滑动（按下→位移→cancel）不会误亮细线',
 check('细线不拦点击（pointer-events: none）',
   navBar.pe === 'none' && navBar.hitIsBar === false, JSON.stringify(navBar));
 
+section('同学录 · 换人看立绘不串图');
+/* 2026-10-28 反馈：先点一个人、再点第二个人，会先闪出第一个人的立绘再换成第二个。
+   根因是直接改 img.src，<img> 在新图解码前仍显示上一张位图。现在先摆「同一个人的
+   缩略图」，母版解码完再换。下面三条把这个行为钉住。 */
+await goto(BASE + '/novel/characters.html', 1800);
+const lbFirst = await evaluate(`(() => {
+  document.querySelectorAll('[data-lightbox-src]')[0].click();
+  const img = document.querySelector('.lightbox-image');
+  return {
+    name: (document.querySelector('.lightbox-name') || {}).textContent || '',
+    src: img.getAttribute('src') || '',
+    open: !!document.querySelector('.lightbox-overlay.visible')
+  };
+})()`);
+check('点第一个人：灯箱打开且显示的是这个人',
+  lbFirst.open === true && lbFirst.name === '林纾' && lbFirst.src.indexOf('linshu') >= 0,
+  JSON.stringify(lbFirst));
+
+await evaluate(`document.querySelector('.lightbox-close').click(); 1`);
+await sleep(300);
+/* 关键一步：点第二个人，**同步**读 src —— 此刻绝不能还挂着第一个人的图 */
+const lbSecond = await evaluate(`(() => {
+  document.querySelectorAll('[data-lightbox-src]')[1].click();
+  const img = document.querySelector('.lightbox-image');
+  return {
+    name: (document.querySelector('.lightbox-name') || {}).textContent || '',
+    src: img.getAttribute('src') || ''
+  };
+})()`);
+check('接着点第二个人：第一帧就不是上一个人的图',
+  lbSecond.name === '叶南衡' && lbSecond.src.indexOf('nanheng') >= 0 && lbSecond.src.indexOf('linshu') < 0,
+  JSON.stringify(lbSecond));
+
+await sleep(900);
+const lbMaster = await evaluate(`(() => {
+  const img = document.querySelector('.lightbox-image');
+  return { src: img.getAttribute('src') || '', w: img.naturalWidth };
+})()`);
+check('母版解码后换上 1024 母版',
+  lbMaster.src.indexOf('portrait-nanheng-1024.webp') >= 0 && lbMaster.w === 1024,
+  JSON.stringify(lbMaster));
+await evaluate(`document.querySelector('.lightbox-close').click(); 1`);
+
 section('全局');
 check('全程无未捕获异常', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 300));
 
