@@ -24,6 +24,37 @@
 
 **审计结论：仓库是健康的。** 没有死配置、没有互相矛盾的生成器、没有退化的守卫。本报告要处理的不是「修烂摊子」，而是三件更小的事：**删掉 729 KB 死重、修 2 个真实缺陷、把 11 条命令收进一个入口**。
 
+> **基线口径**：以上数字是 HEAD `3169339` 的**快照**。落地提交 `45a171e` / `bde4425` 之后部分数字已变：PRECACHE **条目数仍 77 条**，但合计因 CSS 顶部目录增至 **1,451.8 KB**（+3.6 KB，见 §3.5①）；CSS 行数 4,839 → **4,896**；`jsconfig.json` 的 include 5 → **15 条**；工作区文件数 153 → **142**。读本文时请把 §0 当作「审计当时的事实」，不是「当前状态」。
+
+### 0.1 勘误（v2）：本报告自身的两处错误
+
+审计报告也是要接受审计的。工程师落地时用实测纠正了两处，两处**都是我的错**，记录在此以免下次再犯：
+
+| 位置 | 初版写的 | 实测 | 错因 |
+|---|---|---|---|
+| §3.5② / §4-T04 | 「`js/` **11 个**模块」「include 缺 **8 个**」 | `ls js/*.js \| wc -l` → **14 个**；include 缺 **10 个**（漏了 `reader.dom.js`、`reader.flags.js`） | 沿用了任务书里的「js 11 个文件」，**没有自己数**。而这两个漏掉的恰恰是 `LY.dom.*` / `LY.flags.*` 的类型来源 |
+| §4-T03 | 「`PROJECT-OVERVIEW.md` 有『**17 人**』过期数字」 | 全文 `grep "17"` 只命中「code 17」与「JDK17」；该文件人物一直写的是 **18 人**，是对的 | 把 `README.md` 的「× 17」（人物页数量）**串到了 OVERVIEW** 上——两个文件都有「17/18」这类数字，没逐文件核对 |
+
+真正的 `PROJECT-OVERVIEW.md` 过期项是另外三条（工程师已按实测改掉）：`28 个静态页面`→29（§二，且与同文件 §三 的 29 自相矛盾）、`74 条 / 1,347KB`**两处**→77 / 1,448.1、`?v=70` / `linyuan-v59`→120 / v67。
+
+这两处错误本身**不改变任何结论**（不拆 CSS/不合并 JS/不引 ESLint 的论证都不依赖 js 文件数），但它们是同一类失误：**凭上游转述的数字下判断，而没有亲自量一遍**。本报告最贵的一课是「报绿的假检查比没有更糟」——在文档里，它的等价物就是「抄来的数字比没有数字更糟」。
+
+**由此得到一条通用规则（比修任何一处数字都值钱）**：
+> 面向人的提示文案里，**不要写会变的数量**。`pre-push` 的「扫描 **6** 个 HTML」被工程师改成「扫描**全站** HTML」（`bde4425`）而不是改成 29——这是比修数字高一个层次的修法：描述行为，不描述此刻的统计量。同理，`HANDOVER.md` 里「92 项断言」这类数字，正确的长期解是**让它指向命令**（"跑 `node tools/e2e.mjs` 看当前项数"），而不是每次发版追着改。本报告里出现的数量都已标注基线 commit，就是为了防止它们自己也变成下一批漂移源。
+
+### 0.2 执行状态（截至 `bde4425`，本地 ahead 2，**未 push**）
+
+| 工作包 | 状态 | 说明 |
+|---|---|---|
+| T01 元数据与工具链补齐 | **已落地**（`45a171e`） | `package.json` / `.editorconfig` / `.gitignore` / `.gitattributes` / `robots.txt` 全部按草案；运行时不涉及，`?v=`/`CACHE` 未动 ✓ |
+| T02 删 11 个孤儿 JPG + 修 `sw.js` 双逗号 | **已落地**（`45a171e`） | 11 个 jpg 全删（−729 KB）；`grep -n ",," sw.js` → 0；`check-precache` 仍报 77 条、`character-shenruoqi` 两项在列 ✓；`CACHE` 按论证保持 `linyuan-v67` ✓ |
+| T03 文档纠偏 | **已落地**（`45a171e` + `bde4425`，含我的两处勘误）——**`verify.yml` 已改（1 行注释）；push 无阻塞，当前 PAT 已带 `workflow` scope** | `bde4425` 另外修了 `pre-push` 提示、`style.css` 字体体积、`README` 的 `transition.js` 停用标注 |
+| T04 结构决策 | **部分**（`45a171e`） | `jsconfig.json` include 5→15 ✓、`style.css` 顶部 57 行带行号目录 ✓（行数 4,839 → 4,896）；`transition.js` 去留、`checkJs` 两项**仍待作者拍板**（§6-Q1/Q2） |
+| §6-Q2（JPG 母版去哪） | **待拍板** | 文件已从 git 删除，本地副本处置需作者确认 |
+
+**push 前无需额外动作**：`45a171e` 里改了 `.github/workflows/verify.yml`（1 行注释），而当前 PAT **已带 `repo, workflow`**（2026-10-25 更换，见 `HANDOVER.md:267`；`26106d2`、`3169339` 两笔 workflow 内容改动都已在 `origin/main`，证明这个凭据推得上去）。**结论：保留该行改动，不必撤。** 唯一要记住的是：换新 token 时别只勾 `repo`，否则 GitHub 拒绝的是**整笔 push**、报错却只提 workflow 文件，很容易误判成别的问题（本报告初版就是被这句过期文本带偏的，见 §0.1）。
+
+
 ---
 
 ## 1. TL;DR
@@ -59,7 +90,7 @@
 | `assets/tree-s5.jpg` | 54.9 | **无** | 删除 | 同上 |
 | `assets/paper.jpg` | 53.7 | **无** | 删除 | 线上纹理用 `paper.webp`（PRECACHE 第 7 条） |
 
-**合计 729.1 KB → 工作区 6,106 KB 降到约 5,377 KB（−11.9%），`assets/` 4,868 KB 降到约 4,139 KB。**
+**合计 729.1 KB → 工作区 6,106 KB 降到约 5,377 KB（−11.9%），`assets/` 4,868 KB 降到约 4,139 KB。** ✅ 已在 `45a171e` 执行（`sw.js` 的 PRECACHE 未含其中任何一条，故 77 条不变，`CACHE` 保持 `linyuan-v67`）。
 
 三条必须一起记住的限定：
 
@@ -110,7 +141,7 @@
 
 - **删 `-rest` 的后果**：生僻字回落到系统 serif，观感断层（不是乱码，但一眼看得出）。**这是行为回归，不是省空间。**
 - **三片都不在 PRECACHE，唯 `zcool` 在**——这是对的：`zcool` 决定首屏标题，另两片是「选了才付」。
-- 唯一的真实成本是**文档漂移**：`HANDOVER.md:17` 说「3900 字 / 852KB」，实测 **891.5 KB**（273.1 + 618.4）；`make-kai-subset.py` 注释里写「253KB / 638KB」也偏小。文件本身没问题，是数字过期（见 §3.4）。
+- 唯一的真实成本是**文档漂移**：`HANDOVER.md:17` 说「3900 字 / 852KB」，实测 **891.5 KB**（273.1 + 618.4）；`make-kai-subset.py`「现在的做法」一节写「253KB / 638KB」，实测 **273.1 / 618.4**（注意方向相反：主片**变大**、兜底片**变小**——7 章新增的字从兜底片迁到了主片，两片合计 3906 字不变）。文件本身没问题，是数字过期（见 §3.4）；该注释已在紧随 `bde4425` 的那笔 docs 提交里一并纠正（只动 24/25/28 三行，13–15 行的历史实验记录保留）。
 - `?f=8` / `?f=1` 是**字体缓存键**，两片各自独立。换哪一片就 +1 哪一片的 `f`，不要一起改（改了没换的那片会让读者白下一遍）。
 
 ### 2.4 专题：`manuscript/` 随站点公开，能接受吗？
@@ -322,12 +353,17 @@ _backup/
 
 **替代方案（零风险，真有收益）**：在 `css/style.css` 顶部加一份**分区目录注释**（`/* 1. 字体 2. 令牌 3. 布局 4. 首页 5. 书架 6. 章节页 7. 人物页 8. 弹层 9. 主题 … 行号 */`）。40 行注释解决 80% 的「翻文件」痛苦，改动面 1 个文件、1 处，且注释不影响任何 selector。
 
-#### ② `js/` 11 个模块要不要合并/重分层？——**不合并**
+> **落地的代价，我该给出数字**：`css/style.css` **在 PRECACHE 里**，所以给它加注释 = 每个读者的安装体积 +同样的量。实测 57 行目录让该文件 120.0 → **123.6 KB（+3.6 KB）**，PRECACHE 合计 1,448.1 → 1,451.8 KB。**这个量级可接受**（0.25%），但它划出一条线：目录控制在 **≤60 行**，不要膨胀成一张「全文索引」——那样就是拿每个读者的流量换作者一个人的方便。
+>
+> 另外，带行号的目录**必然漂移**（这正是 §0.1 那条通用规则要防的东西）。工程师的缓解办法是对的：目录头部写了「行号为插入本目录之后的实测值；增删区块后重核对：`grep -n \"^/\* =====\" css/style.css`」。我实测该命令有 **43 个锚点**（多于目录的 35 条，是超集），**所以这条自维护指令是真的能用的**，不是装饰。任何带行号的索引都必须配这样一条可执行的重算命令，否则 57 行会一起变成谎言。
+
+#### ② `js/` 14 个 `.js` 文件要不要合并/重分层？——**不合并**
 
 - 现有分层（`reader.js → ui → engine → store`，`dom`/`flags` 横切）**已经是文档化并由 e2e 守护的结构**，`HANDOVER.md` §架构 明确写了「跨层调用不改调用点，而是在文件头声明同名 shim」。
 - 合并 = 把刚拆开的边界重新糊上，同时**让所有 127 条断言的调试粒度变粗**（现在报错能定位到层）。
 - 改动面同样是 29 个页面 + 2 个模板 + PRECACHE 11 条。
-- **唯一真实的小问题**：`jsconfig.json` 的 `include` 只覆盖 **5 个文件**（`types.d.ts` + `reader.store/engine/ui/reader.js`），`announce.js` / `lightbox.js` / `nav-feedback.js` / `native-bridge.js` / `chapters.js` / `transition.js` / `theme.js` / `characters-data.js` 这 **8 个**在编辑器里拿不到共享类型。补 `include` 是纯配置改动、零运行时影响（`jsconfig.json` 不参与页面加载）。**这是本项里唯一的「该做」。**
+- **唯一真实的小问题**：`jsconfig.json` 的 `include` 只覆盖 **5 个文件**（`types.d.ts` + `reader.store/engine/ui/reader.js`）。`js/` 下共 **14 个 `.js` + 1 个 `.d.ts`**，也就是说 **10 个**拿不到共享类型：`reader.dom.js`、`reader.flags.js`、`announce.js`、`lightbox.js`、`nav-feedback.js`、`native-bridge.js`、`chapters.js`、`transition.js`、`theme.js`、`characters-data.js`。其中 **`reader.dom.js` 与 `reader.flags.js` 最容易漏**——它们不在「业务模块」清单里，但恰恰是 `LY.dom.*` / `LY.flags.*` 的类型来源。补 `include` 是纯配置改动、零运行时影响（`jsconfig.json` 不参与页面加载）。**这是本项里唯一的「该做」。**
+  > ⚠ 勘误（v2）：本节初版写「11 个模块 / 缺 8 个」，漏了上面这两个。由工程师在落地时实测纠正（`ls js/*.js | wc -l` → 14）。
 
 #### ③ PRECACHE 还能不能降？——**能，但只有一项干净**
 
@@ -392,18 +428,19 @@ _backup/
 
 | 项 | 内容 |
 |---|---|
-| **改什么** | `HANDOVER.md`（`?v=112`→120、`linyuan-v63`→v67、`4450 行`→4839、「852KB」→891.5KB（273.1+618.4）、`92 项`→127、悬空的 `app/WEBVIEW-ROADMAP.md` 引用）；`README.md`（「6 个 HTML」→29、「22 项」→127、「27 项」→127、「17」→18、「新叶 / 乔木」→新叶/青枝/乔木）；`.github/workflows/verify.yml`（头部「61 项」→127、编号 ④⑥ 断裂）；`PROJECT-OVERVIEW.md`（`?v=70`/`v59`/「17 人」）；`docs/REPO-AUDIT.md` 追加一行「本文基线」的指针 |
+| **改什么** | **①** `HANDOVER.md`：`?v=112`→120、`linyuan-v63`→v67、`4450 行`→4839、「852KB」→891.5KB（273.1+618.4）、`92 项`→127、悬空的 `app/WEBVIEW-ROADMAP.md` 引用（该文件不存在）。<br>**②** `README.md`：「6 个 HTML」→29、「22 项」→127、「27 项」→127、人物「× 17」→18、「新叶 / 乔木」→新叶/青枝/乔木、`transition.js` 那行补「（已停用）」标注。<br>**③** `PROJECT-OVERVIEW.md`：「28 个静态页面」→29（§二 与 §三 自相矛盾）、「74 条 / 1,347KB」→77 条 / 1,451.8KB（**两处**：内容规模表 + §四 架构图；**注意不是本报告基线的 1,448.1** —— `45a171e` 加的 57 行目录注释本身进了线上 CSS，+3.7KB 即 1,451.8，`HANDOVER` 本次记录里已写清差额来源）、「`?v=70` / `linyuan-v59`」→120 / v67、「楷体子集…主片 260KB + 兜底片」→273.1 + 618.4。<br>**④** `.githooks/pre-push` 第 91 行失败提示「扫描 **6** 个 HTML」→ **去掉数字**（改为「扫描全站 HTML」）。**不要改成 29**：硬编码计数必然再次漂移，而「扫描全站」描述的是行为、不会过期。这是本次唯一一条「修法本身被改进过」的项（工程师在 `bde4425` 里做对了，我的原建议「→29」是次优解，见 §0.1）。<br>**⑤** `css/style.css` 字体注释「约 260KB / 约 630KB」→273.1 / 618.4；`tools/make-kai-subset.py` 同理，但**只改 24/25/28 三行**（「现在的做法」一节，描述当前产物）→ `主片 1316 字 / 273.1KB`、`兜底片 2590 字 / 618.4KB`、`正常阅读只付 273.1KB`。**第 13–15 行不能动**：那是「实测（2026-10，6 章正文）」的 A/B 实验记录（853KB 单文件 / 253KB 仅已用字 / 分片更差），是**历史基线**，改了等于篡改当初的决策依据；已在旁边加一句说明「那节是 6 章时的实验记录，数字不同是正常的」。<br>**⑥** `.github/workflows/verify.yml` 头部注释「61 项」+ 编号 ④→⑥ 断裂（**push 无阻塞，见下方说明**）。<br>**⑦** `docs/REPO-AUDIT.md` 追加勘误与执行状态。 |
+| **workflow 的 push 前提（已核实：无阻塞）** | **`.github/workflows/verify.yml` 是唯一一个「可能因为 token 权限而整笔 push 被拒」的文件。** 规则仍然成立：改 workflow 需要带 `workflow` scope 的 token，缺了它 GitHub 拒绝的是**整笔 push**，而报错只提该文件（`refusing to allow a Personal Access Token to create or update workflow`），极易误判成别的问题。**但「当前 PAT 没有 scope」这个前提是错的**（本报告初版抄了 `README.md` 的过期表述）：`HANDOVER.md:267` 写明当前 PAT 已带 `repo, workflow`（2026-10-25 更换，起因正是 2026-10-27 那次被拒后重签）；硬证据是 `26106d2`（CI timeout-minutes，2026-10-27 20:23）与 `3169339` 两笔 workflow **内容**改动都已在 `origin/main`。**结论：保留该行注释改动，不必撤。** 唯一要记住的：换新 token 时别只勾 `repo`。 |
 | **为什么** | 这些数字全部**主动误导**下一个人。本项目最贵的教训就是「报绿的假检查比没有更糟」；文档报错数字是同一类风险的软版本。特别是 `HANDOVER.md` 里「`transition.js` 有 30+ 生成页引用」这句**已被实测证伪（实际 9 页）**，它正在支撑一个可能不必要的决策（见 §5-1） |
-| **文件数** | 5 |
-| **验证** | 无代码影响。跑 `npm run verify` 确认没手滑碰到代码；逐条 `grep` 复核新数字（例如 `grep -c "<loc>" sitemap.xml` = 29、`wc -l css/style.css` = 4839） |
-| **回滚** | `git checkout HEAD -- HANDOVER.md README.md PROJECT-OVERVIEW.md .github/workflows/verify.yml` |
-| **不升版本** | 纯文档 → **不升 `?v=`、不升 `CACHE`**。⚠ 但**不要**在本包顺手改 `verify.yml` 的步骤名以外的逻辑——改 workflow 需要带 `workflow` scope 的 token，HANDOVER 记过这条坑 |
+| **文件数** | 8（含 `css/style.css`、`.githooks/pre-push` 两个新增项；`tools/make-kai-subset.py` 的注释可归入同一提交） |
+| **验证** | 无代码影响。跑 `npm run verify` 确认没手滑碰到代码；逐条 `grep` 复核新数字（例如 `grep -c "<loc>" sitemap.xml` = 29、`wc -l css/style.css` = 4839、`ls js/*.js \| wc -l` = 14、`ls -l assets/fonts/*.woff2` 见 273.1/618.4） |
+| **回滚** | `git checkout HEAD -- HANDOVER.md README.md PROJECT-OVERVIEW.md .githooks/pre-push css/style.css tools/make-kai-subset.py .github/workflows/verify.yml`<br>（`verify.yml` 也可单独撤：`git checkout HEAD -- .github/workflows/verify.yml` —— 但**没有必要**，push 不会因它被拒） |
+| **不升版本** | 纯文档/注释 → **不升 `?v=`、不升 `CACHE`**。`css/style.css` 只加顶部注释，注释不改变任何规则，也不需要 bump（但若与 §3.5① 的 TOC 一起做，**只在确实改了 CSS 规则时才 bump**） |
 
 ### T04 · 结构决策落地（P2，需作者拍板）
 
 | 项 | 内容 |
 |---|---|
-| **改什么** | ① `jsconfig.json` 的 `include` 补齐 8 个 js（零风险，**建议无论如何都做**）；② `css/style.css` 顶部加分区目录注释（零风险）；③ **`js/transition.js` 去留**（需拍板，见 §6-Q1）；④ **`checkJs` 是否开启**（需拍板，见 §6-Q2，实测 46 个既有错误） |
+| **改什么** | ① `jsconfig.json` 的 `include` 补齐 **10 个** js（`reader.dom` / `reader.flags` / `announce` / `lightbox` / `nav-feedback` / `native-bridge` / `chapters` / `transition` / `theme` / `characters-data`；include 5 → 15 条，零风险，**建议无论如何都做**）；② `css/style.css` 顶部加分区目录注释（零风险）；③ **`js/transition.js` 去留**（需拍板，见 §6-Q1）；④ **`checkJs` 是否开启**（需拍板，见 §6-Q2，实测 46 个既有错误） |
 | **为什么** | ①② 是「不拆文件也能提升可读性」的唯一正确解；③④ 是本次审计里唯二「文档给的依据已过期、需要重新决策」的地方 |
 | **文件数** | 3~4 |
 | **验证** | ① `npm run typecheck`（仍应 0 诊断——`checkJs:false` 时补 include 不引入错误，只让编辑器有类型）<br>② 纯注释，`npm run bump:check` + `npm run contrast`（应 0 未达标）+ 任意页面人工看一眼<br>③ 若删 `transition.js`：`npm run precache` + `npm run e2e`（HANDOVER 明确有反向断言「页面切换 · 过渡已停用」，它会立刻抓到漏改） |
@@ -420,7 +457,7 @@ _backup/
 |---|---|
 | **不引 ESLint / Prettier** | 决定性证据：把 `jsconfig.json` 的 `checkJs` 临时改成 `true` 跑一遍（未改动仓库，用 `/tmp` 下的等价配置），**实测 46 个既有错误**——大量是 `Cannot find name 'closeSettings'`（跨层 shim，运行时才存在）、`Property 'value' does not exist on type 'HTMLElement'`、`EventTarget.tagName`。要让 lint 全绿，得动 `reader.ui.js`（2,719 行，是全仓 e2e 断言最密集的文件）。**这不是「补个配置」，是一轮重构**——而重构的收益是「零用户可见变化」。Prettier 更糟：它会让 4,839 行 CSS 和 29 个生成页一次性全量 diff，把 `git blame` 彻底废掉。**维持现状：`tsc --noEmit` 当语法闸（诚实说明：`checkJs:false` 下它基本只验「能不能解析」，但它是零成本护栏，留着）** |
 | **不拆 `css/style.css`（4,839 行）** | 改动面 29 个页面 + 2 个生成器模板 + PRECACHE；无构建步骤 → 拆了永远是多个请求；收益仅为单人阅读体验。**替代：顶部加分区目录注释**（见 §3.5①） |
-| **不合并/重分层 `js/`（11 个模块）** | 五层单向依赖是文档化 + 被 e2e 守护的结构；合并让 127 条断言的调试粒度变粗；改动面同样 29 页 + 2 模板 + 11 条 PRECACHE。**替代：补 `jsconfig.json` 的 `include`**（见 §3.5②） |
+| **不合并/重分层 `js/`（14 个文件）** | 五层单向依赖是文档化 + 被 e2e 守护的结构；合并让 127 条断言的调试粒度变粗；改动面同样 29 页 + 2 模板 + 11 条 PRECACHE。**替代：补 `jsconfig.json` 的 `include`**（见 §3.5②） |
 | **不开启 `checkJs: true`** | 46 个既有错误。开 = 要么修 46 处（高风险重构），要么加 46 条 `// @ts-ignore`（把护栏变成装饰）。**两个都比现状差** |
 | **不重写 git 历史瘦身** | 11 个 jpg 删掉后 `.git` 仍是 19 MB。要真瘦身得 `filter-repo` + `force push`——在一个**公开仓库 + 多机协作 + 已发布站点**上重写历史，风险量级远超省下的 4 MB。**明确不做** |
 | **不把 `manuscript/` 移出仓库** | 会拆掉 CI 里唯一能跨机生效的正文一致性守卫（见 §2.4 方案 B） |
