@@ -2059,8 +2059,13 @@ await evaluate(`window.closeSearch(); 1`);
 await sleep(1100);
 const autoResumed = await evaluate(`Math.round(window.scrollY)`);
 await evaluate(`if (LY.engine.autoScroll.active) toggleAutoScroll(); 1`);
+/* 容差 2px：autoStart 是用一条独立的 CDP 往返采的，而 openSearch() 是下一条往返
+   才发出去的 —— 这段时间自动滚屏还能再走一帧（实测约 1px），严格相等会偶发红
+   （QA 变异测试时抓到过 {"autoStart":3302,"autoPaused":3303}）。
+   别再放宽到 5 以上：自动滚屏速度档位下「暂停失效」的位移量是几十像素量级，
+   容差放到 5 以上就会把真正的失效盖成绿。 */
 check('搜索面板打开期间自动滚屏暂停，关闭后恢复',
-  autoPaused === autoStart && autoResumed > autoPaused,
+  Math.abs(autoPaused - autoStart) <= 2 && autoResumed > autoPaused,
   JSON.stringify({ autoStart, autoPaused, autoResumed }));
 
 await evaluate(`closeSearch(); 1`);
@@ -2177,6 +2182,233 @@ check('恢复在线后不再出现离线提示（默认安静）',
   JSON.stringify(onlineAgain));
 await evaluate(`closeSearch(); 1`);
 await sleep(200);
+
+section('阅读页 · 面板改底部抽屉');
+/* 五个面板（目录 / 摘句簿 / 设置 / 搜索 / 阅读数据）共用一套壳，形态从「居中弹窗」
+   改成「从下往上滑出的底部抽屉」。这一节盯四件事：
+     ① 几何：面板底边 = 视口底边、左右占满（桌面 420px 居中）、上圆角 22px 下圆角 0；
+     ② 动效的两端：打开后 transform 归零，关闭后回到 translateY(100%)；
+     ③ 下拉关闭的三个分支：拖够 → 关 / 拖不够 → 回弹且仍开着 /
+        **内容滚到中间时拖拽不接管**（读者要能在面板里往上翻内容）；
+     ④ 既有行为没被手势吞掉：点遮罩关、Esc 关、输入框照常出结果。
+   断言只钉状态与几何，不钉动画中间帧（无头浏览器里 rAF 时机不稳）。 */
+await goto(BASE + '/novel/chapter-01.html');
+await sleep(1200);
+
+const SHEETS = [
+  { id: 'dirOverlay', name: '目录', open: 'openDirectory()', close: 'closeDirectory()' },
+  { id: 'quotesOverlay', name: '摘句簿', open: 'openQuotes()', close: 'closeQuotes()' },
+  { id: 'settingsOverlay', name: '设置', open: 'openSettings()', close: 'closeSettings()' },
+  { id: 'searchOverlay', name: '搜索', open: 'openSearch()', close: 'closeSearch()' },
+  { id: 'dataOverlay', name: '阅读数据', open: "openDataModal('export')", close: 'closeDataModal()' }
+];
+
+/* 量一个面板：几何 + 当前 transform 的 Y 位移（矩阵 f 分量）+ 把手节点 */
+async function measureSheet(id) {
+  return evaluate(`(() => {
+    const ov = document.getElementById('${id}');
+    if (!ov) return null;
+    const panel = ov.querySelector('.modal-panel');
+    if (!panel) return null;
+    const r = panel.getBoundingClientRect();
+    const cs = getComputedStyle(panel);
+    const m = new DOMMatrixReadOnly(cs.transform === 'none' ? '' : cs.transform);
+    return {
+      visible: ov.classList.contains('visible'),
+      bottomGap: Math.round((innerHeight - r.bottom) * 10) / 10,
+      left: Math.round(r.left), right: Math.round(r.right),
+      width: Math.round(r.width), h: Math.round(r.height),
+      vw: innerWidth,
+      ty: Math.round(m.f),
+      radius: cs.borderTopLeftRadius + '/' + cs.borderBottomLeftRadius,
+      grabber: !!ov.querySelector('.modal-grabber'),
+      bodyOverflow: document.body.style.overflow
+    };
+  })()`);
+}
+
+for (const s of SHEETS) {
+  await evaluate(`${s.open}; 1`);
+  await sleep(420);   /* 等 .3s 的滑入走完 */
+  const o = await measureSheet(s.id);
+  check(`抽屉 · ${s.name}：贴底（差 ≤2px）、左右占满、上圆角 22 / 下圆角 0、打开后 transform 归零、顶部有把手`,
+    !!o && o.visible === true && Math.abs(o.bottomGap) <= 2 &&
+    o.left <= 1 && (o.vw - o.right) <= 1 &&
+    o.radius === '22px/0px' && o.ty === 0 && o.grabber === true &&
+    o.bodyOverflow === 'hidden',
+    JSON.stringify(o));
+
+  await evaluate(`${s.close}; 1`);
+  await sleep(420);
+  const c = await measureSheet(s.id);
+  check(`抽屉 · ${s.name}：关闭后回到 translateY(100%)，滚动锁已放开`,
+    !!c && c.visible === false && Math.abs(c.ty - c.h) <= 2 && c.bodyOverflow !== 'hidden',
+    JSON.stringify(c));
+}
+
+/* 收起的面板整体在视口下方 100%，若没有 .modal-overlay 的 overflow:hidden，
+   它会撑出页面的可滚动区域（滚到底多一片空白 —— 「底部断层」那类症状）。
+   口径：把面板整个 display:none 掉，页高应该一个像素都不变。 */
+const overflowProbe = await evaluate(`(() => {
+  const ov = document.getElementById('settingsOverlay');
+  const before = document.documentElement.scrollHeight;
+  ov.style.display = 'none';
+  const without = document.documentElement.scrollHeight;
+  ov.style.display = '';
+  return { before, without };
+})()`);
+check('收起的抽屉不撑出滚动区（页高与移除面板时一致）',
+  overflowProbe.before === overflowProbe.without, JSON.stringify(overflowProbe));
+
+/* 桌面端：抽屉要 420px 居中（与 .reading-wrapper 同一条中线），不是铺满 1280 */
+await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
+await sleep(300);
+await evaluate(`openSettings(); 1`);
+await sleep(420);
+const desk = await measureSheet('settingsOverlay');
+check('抽屉 · 桌面端：宽度 420px、水平居中（left+right=视口宽）、仍然贴底',
+  !!desk && Math.abs(desk.width - 420) <= 1 &&
+  Math.abs(desk.left + desk.right - desk.vw) <= 2 && Math.abs(desk.bottomGap) <= 2,
+  JSON.stringify(desk));
+await evaluate(`closeSettings(); 1`);
+await sleep(400);
+await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+await sleep(300);
+
+/* 下拉手势：派发 pointerdown → pointermove ×N → pointerup。
+   slow=true 时每步停 40ms，把速度压到 0.5px/ms 以下（用来测「拖不够 → 回弹」；
+   拖够 96px 那条只看位移，速度不参与判定）。 */
+async function dragSheetDown(id, dy, steps, slow) {
+  return evaluate(`(async () => {
+    const ov = document.getElementById('${id}');
+    const panel = ov.querySelector('.modal-panel');
+    const r = panel.getBoundingClientRect();
+    const x = Math.round(r.left + r.width / 2);
+    const y0 = Math.round(r.top + 20);
+    const fire = (type, y) => panel.dispatchEvent(new PointerEvent(type, {
+      bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch',
+      isPrimary: true, button: 0, buttons: 1, clientX: x, clientY: y
+    }));
+    const wait = ms => new Promise(res => setTimeout(res, ms));
+    const readTy = () => {
+      const cs = getComputedStyle(panel);
+      return Math.round(new DOMMatrixReadOnly(cs.transform === 'none' ? '' : cs.transform).f);
+    };
+
+    fire('pointerdown', y0);
+    for (let i = 1; i <= ${steps}; i++) {
+      fire('pointermove', y0 + ${dy} * i / ${steps});
+      if (${slow ? 'true' : 'false'}) await wait(40);
+      else await new Promise(res => requestAnimationFrame(res));
+    }
+    const followTy = readTy();          /* 松手前：跟手位移 */
+    fire('pointerup', y0 + ${dy});
+    await wait(320);                    /* 等回弹/滑出走完（220~240ms） */
+    return {
+      followTy: followTy,
+      ty: readTy(),
+      visible: ov.classList.contains('visible'),
+      bodyOverflow: document.body.style.overflow,
+      scrollTop: (ov.querySelector('.modal-body') || {}).scrollTop || 0
+    };
+  })()`);
+}
+
+/* ① 拖够 150px（> 96px）→ 关闭 */
+await evaluate(`openDirectory(); 1`);
+await sleep(420);
+const dragClose = await dragSheetDown('dirOverlay', 150, 5, false);
+check('下拉 150px：拖动期间跟手（位移一致），松手后面板关闭并放开滚动锁',
+  Math.abs(dragClose.followTy - 150) <= 2 &&
+  dragClose.visible === false && dragClose.bodyOverflow !== 'hidden',
+  JSON.stringify(dragClose));
+
+/* ② 拖 40px（慢）→ 回弹，仍然开着 */
+await evaluate(`openDirectory(); 1`);
+await sleep(420);
+const dragStay = await dragSheetDown('dirOverlay', 40, 4, true);
+check('下拉 40px（慢）：面板仍然开着，transform 回弹到 0',
+  dragStay.visible === true && dragStay.ty === 0 && Math.abs(dragStay.followTy - 40) <= 2,
+  JSON.stringify(dragStay));
+await evaluate(`closeDirectory(); 1`);
+await sleep(380);
+
+/* ③ 内容滚到中间时拖拽不接管 —— 本页最要紧的一条：
+      不满足它，读者在设置里想往上翻内容会被当成「往下拉关掉面板」。 */
+await evaluate(`openSettings(); 1`);
+await sleep(420);
+const scrolledTop = await evaluate(`(() => {
+  const b = document.querySelector('#settingsOverlay .modal-body');
+  b.scrollTop = 100;
+  return Math.round(b.scrollTop);
+})()`);
+const dragScrolled = await dragSheetDown('settingsOverlay', 150, 5, false);
+check('内容滚到中间（scrollTop=100）时向下拖 150px：手势不接管，面板仍开着、内容没被拽走',
+  scrolledTop > 0 && dragScrolled.visible === true &&
+  dragScrolled.ty === 0 && dragScrolled.scrollTop > 0,
+  JSON.stringify({ scrolledTop, dragScrolled }));
+await evaluate(`closeSettings(); 1`);
+await sleep(380);
+
+/* ④ 点遮罩仍关闭：抽屉贴底，视口上方 40px 处命中的必须是遮罩 */
+await evaluate(`openSettings(); 1`);
+await sleep(420);
+const backdropHit = await evaluate(`(() => {
+  const x = Math.round(innerWidth / 2), y = 40;
+  const el = document.elementFromPoint(x, y);
+  if (!el) return { cls: 'null' };
+  el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: x, clientY: y, view: window }));
+  return { cls: String(el.className || el.tagName) };
+})()`);
+await sleep(380);
+const afterBackdrop = await evaluate(`(() => {
+  const ov = document.getElementById('settingsOverlay');
+  return { visible: ov.classList.contains('visible'), bodyOverflow: document.body.style.overflow };
+})()`);
+check('点遮罩仍能关闭（上方 40px 处命中的就是 .modal-backdrop）',
+  /modal-backdrop/.test(backdropHit.cls) &&
+  afterBackdrop.visible === false && afterBackdrop.bodyOverflow !== 'hidden',
+  JSON.stringify({ backdropHit, afterBackdrop }));
+
+/* ⑤ Esc 仍逐层关闭（initModalKeys 那条链不许被手势改坏） */
+await evaluate(`openQuotes(); 1`);
+await sleep(420);
+const escClose = await evaluate(`(() => {
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+  const ov = document.getElementById('quotesOverlay');
+  return { visible: ov.classList.contains('visible'), bodyOverflow: document.body.style.overflow };
+})()`);
+check('Esc 仍能关闭面板，并放开滚动锁',
+  escClose.visible === false && escClose.bodyOverflow !== 'hidden', JSON.stringify(escClose));
+
+/* ⑥ 搜索抽屉里的输入没被手势吞掉（焦点、input 事件、结果都照常） */
+await evaluate(`openSearch(); 1`);
+await sleep(500);
+await installSearchType();
+const typeInSheet = await evaluate(`(async () => {
+  window.__searchType('梧桐');
+  await new Promise(r => setTimeout(r, 400));
+  return {
+    visible: document.getElementById('searchOverlay').classList.contains('visible'),
+    value: document.getElementById('searchInput').value,
+    items: document.querySelectorAll('#searchList .search-item').length
+  };
+})()`);
+check('搜索抽屉打开后输入框仍能输入并出结果（手势没吞掉点击/输入）',
+  typeInSheet.visible === true && typeInSheet.value === '梧桐' && typeInSheet.items > 0,
+  JSON.stringify(typeInSheet));
+await evaluate(`closeSearch(); 1`);
+await sleep(380);
+
+/* 收尾：不许有面板卡在半空（那会连带把 body 滚动锁一起留着） */
+const allSheetsClosed = await evaluate(`(() => ({
+  anyVisible: ['dirOverlay','quotesOverlay','settingsOverlay','searchOverlay','dataOverlay']
+    .some(id => { const el = document.getElementById(id); return !!el && el.classList.contains('visible'); }),
+  bodyOverflow: document.body.style.overflow
+}))()`);
+check('一节跑完：五个抽屉全部收起，body 滚动锁已释放',
+  allSheetsClosed.anyVisible === false && allSheetsClosed.bodyOverflow === '',
+  JSON.stringify(allSheetsClosed));
 
 section('全局');
 check('全程无未捕获异常', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 300));

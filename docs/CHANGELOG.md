@@ -10,6 +10,26 @@
 >
 > 历史条目是原样搬过来的（内容逐字未改，只在块之间统一成一个空行）。
 
+## 2026-10-29 · 五个面板从「居中弹窗」改成「底部抽屉」（`?v=` 121→122 · `CACHE` linyuan-v68→v69）
+
+| 项 | 内容 |
+|---|---|
+| 动因 | 读者要的是番茄小说那种手感：从下往上滑出、按住往下一拉就关。原来的居中弹窗（`align-items:center` + `translateY(18px) scale(.98)`）在手机上离拇指远、且「关」只能去够右上角的 × |
+| 范围 | 5 个面板全部改：目录 / 摘句簿 / 设置 / 搜索 / 阅读数据。它们本来就共用一套壳（`.modal-overlay / .modal-backdrop / .modal-panel`），所以改的是壳 + 每块面板里多一个把手节点 |
+| 几何 | 贴住视口底边、左右占满（桌面 `max-width: 420px` 居中，与 `.reading-wrapper` 同一条中线）、**上圆角 22px 下圆角 0**，`max-height: 70vh → 82vh`；`border-bottom: none`，阴影由「下投」改成「上投」；`padding-bottom: env(safe-area-inset-bottom)` 给全面屏底部手势条让位 |
+| 动效 | 进场 `translateY(100%) → translateY(0)`，`0.3s cubic-bezier(.32,.72,0,1)`，遮罩 `opacity` 淡入淡出（0.25s 原样保留）。**退场是同一条 transition 反向走**，不是另写一套 |
+| 拖动把手 | 新增 `.modal-grabber`（面板第一个子元素，18px 高的一条槽，里面 36×4 圆角横条 = `--text-muted` 32% 透明度）。纯装饰，不绑事件——手势挂在整块面板上 |
+| 下拉关闭 | `initSheetDrag()`：位移 > **96px** 或速度 > **0.5px/ms** → 关，否则 0.22s 回弹。拖动期间 `transition:none` 跟手、**遮罩保持不动**（只写 `panel.style.transform`，全程不碰 overlay / backdrop 的 opacity —— 规格里没有「遮罩随位移变淡」，初版这行写成「随位移变淡」，QA 实测证伪后改正）；松手滑出**走面板自己的 close 函数**（滚动锁、搜索防抖定时器、自动滚屏恢复一个都不能漏） |
+| 最容易做错的一条 | **只有内容滚到顶（`scrollTop <= 0`）且手指向下拖才接管**。三道关：`atSheetTop()` / 位移向下过 6px / 竖直方向占优（横向归左右轻扫换章）。输入框与 textarea 上一律不接管（备份面板要能长按拖选）。已写成 HANDOVER 第 18 条坑 |
+| 减弱动态效果 | `prefers-reduced-motion: reduce` 下**保留手势、去掉动画**：不跟手、不滑出/回弹，够阈值就直接关。理由写在 `initSheetDrag()` 的头注释里（这批读者要的是「别晃」，不是「别能用」）；CSS 侧那条全局 `transition-duration: .01ms !important` 顺手就把显隐也变成瞬时的 |
+| 顺手修掉的隐患 | `.modal-overlay` 加 `overflow: hidden`：收起来时面板整体在视口下方 100%，不裁剪它会撑出页面的可滚动区域（「滚到底多一片空白」＝ HANDOVER 第 10 条「底部断层」的同类症状）。e2e 用「把面板 `display:none` 掉，页高应该一像素都不变」钉住 |
+| 顺手清掉的死代码 | `.settings-modal .modal-panel { width: min(92vw,380px); border-radius:24px }` 与 `.data-modal` 的同款覆盖：改成抽屉后会露出左右两条缝，删掉让几何回归 `.modal-panel` 一处 |
+| 新增代码落点 | **零个新文件**。`css/style.css` 的「弹窗通用」一段改写成「面板通用：底部抽屉」+ 文末未动；`js/reader.ui.js` 新增 `/* ===== 面板 = 底部抽屉 ===== */` 一段（`openSheet/closeSheet/initSheetDrag` + 三个常量），五个面板的 `innerHTML` 各加一行把手、开合各换成 `openSheet()/closeSheet()`。`reader.engine.js` / `reader.store.js` **一行未改** |
+| 未改的逻辑 | 点遮罩关闭、`Esc` 逐层关闭（`initModalKeys`）、`anyPanelOpen()` 语义（仍看 `.visible`）、面板内容滚动、`body.overflow` 锁与释放时机 —— 语义全部不变，e2e 旧断言一条没删 |
+| 发版 | `?v=` 全站 **121 → 122**（`npm run bump`，29 个文件 217 处）；`CACHE` **linyuan-v68 → v69**。⚠ 开发时先判成「不升」，理由是「面板是 JS 动态建的，HTML 走网络优先」——**这个判断是错的**：`?v=` +1 会改到 7 个 `novel/chapter-0N.html` 里的 `style.css?v=` / `*.js?v=` 引用，而那 7 页就在 `PRECACHE` 里，**预缓存的内容变了**。「HTML 网络优先」只保证在线读者；不升的话预缓存那份 HTML 仍指着 `?v=121`，那些键要等 TTL 自愈才换，**离线读者会长期停在「旧 HTML + 新 JS」且不会自愈**。`npm run precache` 绿、`npm run stale` 也绿 —— 但 `stale` 只比**带缓存键的资源**，看不出「预缓存 HTML 的字节变了」这一层，所以它不能当这道关的凭据（已写进 HANDOVER 的「两类改动」与坑第 4 条） |
+| 验证 | `npm run typecheck` 0 诊断 · `npm run precache` 绿 · `npm run stale` 绿 · `node tools/e2e.mjs` **179/179**（160 → +19：「面板改底部抽屉」小节。逐面板量几何与两端 transform 10 条、滚动区不撑大 1、桌面 420px 居中 1、下拉 150px 关、下拉 40px 回弹仍在、内容滚到中间不接管、点遮罩关、Esc 关、搜索框仍能输入、收尾无残留各 1）。断言只钉几何（≤2px）与状态（`visible` / transform 矩阵 f 分量 / `body.overflow`），**不钉动画中间帧**——无头浏览器里 rAF 时机不稳 |
+| 与规格的偏差 | ① 桌面端 `max-width` 恒为 420px，**没有跟着「宽屏阅读」（760px）变宽**：宽屏下抽屉比正文窄一截，视觉上仍成立（弹层本就该窄）。评审裁决「有意」，已写进 HANDOVER 的抽屉规则那段，免得下一个人当成 bug 来修。② 回弹与滑出用 0.22s（比进场的 0.3s 略快），手感上「关」比「开」干脆一点；评审裁决「接受」。 |
+
 ## 2026-10-28 · 阅读器内全章搜索（`?v=` 120→121 · `CACHE` linyuan-v67→v68）
 
 | 项 | 内容 |

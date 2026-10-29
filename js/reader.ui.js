@@ -1841,6 +1841,249 @@
   }
 
 
+  /* ===== 面板 = 底部抽屉：开合与下拉关闭 =====
+
+     五个面板（目录 / 摘句簿 / 设置 / 搜索 / 阅读数据）共用同一套壳：几何与动效在
+     css/style.css 的「面板通用：底部抽屉」一段，这里只管两件事 ——
+       ① openSheet / closeSheet：开与合，并且把拖动留下的内联样式清干净；
+       ② initSheetDrag：下拉关闭的手势。
+
+     ⚠ 这个手势最容易做错的一条：**只有当面板内容滚到顶部（scrollTop <= 0）、
+       且手指往下拖时才接管**。不满足这条，读者在设置里想往上翻内容，会被当成
+       「往下拉关掉面板」。三道关全在 move() 里写着：内容到顶 / 位移向下超过
+       SHEET_LOCK_PX / 竖直方向占优（横着划归左右轻扫换章，不许抢）。
+
+     ⚠ 输入框里不许接管：备份面板的 textarea 要能长按拖选文字（搜索框同理）。
+
+     ⚠ 减弱动态效果（prefers-reduced-motion: reduce）：**保留手势、去掉动画** ——
+       不跟手（拖动期间面板不位移）、不做滑出/回弹（位移或速度够就直接关）。
+       理由：这批读者要的是「别晃」，不是「别能用」；而 CSS 里那条全局
+       `transition-duration: .01ms !important` 已经让显隐本身变成瞬间的。 */
+
+  var SHEET_CLOSE_PX = 96;          /* 松手时位移超过 96px → 关 */
+  var SHEET_CLOSE_VELOCITY = 0.5;   /* 或者速度超过 0.5px/ms（甩一下）→ 关 */
+  var SHEET_LOCK_PX = 6;            /* 起手最小位移：小于它不算拖，click 照常派发 */
+  var SHEET_OUT_MS = 220;           /* 松手后滑出去这一段（比 CSS 的 .3s 略快） */
+  var SHEET_VELOCITY_IDLE_MS = 120; /* 抬手前手指停住超过这个时长，速度按 0 算 */
+  var sheetSettleToken = 0;         /* 打断上一条回弹/滑出的延时清理 */
+
+  function sheetReducedMotion() {
+    try {
+      return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (e) {
+      return false;
+    }
+  }
+
+
+  function sheetPanelOf(ov) {
+    return ov ? ov.querySelector('.modal-panel') : null;
+  }
+
+
+  /* 清掉拖动/回弹留下的内联 transition 与 transform：不清的话下次打开会带着
+     上一手的位移（这是「第二次打开面板时位置不对」的唯一成因） */
+  function clearSheetStyles(ov) {
+    var panel = sheetPanelOf(ov);
+    if (!panel) return;
+    panel.style.transition = '';
+    panel.style.transform = '';
+  }
+
+
+  function openSheet(ov) {
+    if (!ov) return;
+    clearSheetStyles(ov);
+    ov.classList.add('visible');
+    document.body.style.overflow = 'hidden';
+  }
+
+
+  /* ⚠ 顺序不能反：先摘 visible 再清内联 transform。反过来的话，清内联的那一帧
+     `.modal-overlay.visible .modal-panel { transform: translateY(0) }` 会先生效 ——
+     已经滑到 100% 的面板会闪回原位、再滑下去一次。 */
+  function closeSheet(ov) {
+    if (!ov) return;
+    ov.classList.remove('visible');
+    clearSheetStyles(ov);
+    document.body.style.overflow = '';
+  }
+
+
+  /* 没拖过阈值 → 回弹到位（带一段短 transition，落位后把内联样式还给 CSS） */
+  function sheetSnapBack(ov) {
+    var panel = sheetPanelOf(ov);
+    if (!panel) return;
+    if (sheetReducedMotion()) { clearSheetStyles(ov); return; }
+    panel.style.transition = 'transform 0.22s cubic-bezier(.32,.72,0,1)';
+    panel.style.transform = 'translateY(0px)';
+    var token = ++sheetSettleToken;
+    setTimeout(function() {
+      if (token === sheetSettleToken) clearSheetStyles(ov);
+    }, 240);
+  }
+
+
+  /* 拖过阈值 → 顺着手指滑出去，滑完再走面板自己的 close 函数。
+     一定要走原 close 函数：它的收尾一个都不能漏 —— body 滚动锁、搜索的防抖
+     定时器、自动滚屏的恢复、状态条的自动收起，全都长在那儿。 */
+  function sheetSlideOut(ov, closer) {
+    var panel = sheetPanelOf(ov);
+    var finish = function() {
+      sheetSettleToken++;
+      if (typeof closer === 'function') closer();
+      else closeSheet(ov);
+    };
+    if (!panel || sheetReducedMotion()) { finish(); return; }
+    var h = panel.offsetHeight || 1;
+    panel.style.transition = 'transform ' + (SHEET_OUT_MS / 1000) + 's cubic-bezier(.32,.72,0,1)';
+    panel.style.transform = 'translateY(' + h + 'px)';
+    setTimeout(finish, SHEET_OUT_MS + 20);
+  }
+
+
+  /* 下拉关闭。closer 传该面板自己的 close 函数（见上面 sheetSlideOut 的说明）。 */
+  function initSheetDrag(ov, closer) {
+    if (!ov || ov.__sheetGesture) return;
+    var panel = sheetPanelOf(ov);
+    if (!panel) return;
+    ov.__sheetGesture = true;
+
+    var start = null;   /* {source, id, x, y, t, atTop} —— 按下时的账 */
+    var drag = null;    /* {dy, lastY, lastT, velocity} —— 接管之后才有 */
+
+    function scrollBodyOf() { return ov.querySelector('.modal-body'); }
+
+    /* 内容滚到顶了吗？五个面板各只有一个滚动容器 .modal-body（搜索面板上面那条
+       输入行与汇总行都是 flex-shrink:0，不参与滚动），所以口径取它即可。
+       判据用 <= 0 而不是 === 0：iOS 的顶部回弹会把 scrollTop 变成负数。 */
+    function atSheetTop() {
+      var body = scrollBodyOf();
+      if (!body) return true;
+      return body.scrollTop <= 0;
+    }
+
+    /* 输入框 / 文本框里起手的手势一律放过：那里要能长按拖选文字 */
+    function inEditable(target) {
+      return !!(target && target.closest &&
+        target.closest('input, textarea, select, [contenteditable="true"]'));
+    }
+
+    function begin(source, id, x, y) {
+      if (!ov.classList.contains('visible')) return;
+      if (start) return;   /* 第二根手指：不参与，不抢第一根的状态 */
+      start = { source: source, id: id, x: x, y: y, t: Date.now(), atTop: atSheetTop() };
+      drag = null;
+    }
+
+    /* 返回值 = 这次移动是否已被手势接管（调用方据此决定要不要 preventDefault） */
+    function move(x, y) {
+      if (!start) return false;
+      var dy = y - start.y;
+      var dx = x - start.x;
+
+      if (!drag) {
+        /* ---- 接管前的三道关，缺一条都别抢 ----
+           ① 内容必须在顶部：列表滚到中间时要能正常往下翻；
+           ② 必须是往下拖、且超过起手阈值：否则是点按抖动或往上翻内容；
+           ③ 竖直方向占优：横着划属于「左右轻扫换章」（initSwipe 那条链），不抢 */
+        if (!start.atTop) return false;
+        if (dy <= SHEET_LOCK_PX) return false;
+        if (Math.abs(dx) > dy) return false;
+
+        drag = { dy: 0, lastY: y, lastT: Date.now(), velocity: 0 };
+        sheetSettleToken++;                  /* 打断上一条回弹的延时清理 */
+        panel.style.transition = 'none';     /* 跟手：这一段绝对不能有 transition */
+      }
+
+      var now = Date.now();
+      var dt = now - drag.lastT;
+      drag.velocity = (y - drag.lastY) / (dt > 0 ? dt : 1);
+      drag.lastY = y;
+      drag.lastT = now;
+      /* 只往下：手指拖回起点上方时，不能把面板顶到视口外面去 */
+      drag.dy = Math.max(0, dy);
+
+      if (!sheetReducedMotion()) {
+        panel.style.transform = 'translateY(' + drag.dy + 'px)';
+      }
+      return true;
+    }
+
+    /* 返回值 = 这次抬手是否结束了一次真实的拖拽 */
+    function end() {
+      if (!start) return false;
+      var moved = drag;
+      start = null;
+      drag = null;
+      if (!moved) return false;   /* 只是点了一下：什么都没接管，click 照常派发 */
+
+      var idle = Date.now() - moved.lastT;
+      var velocity = idle > SHEET_VELOCITY_IDLE_MS ? 0 : moved.velocity;
+      if (moved.dy > SHEET_CLOSE_PX || velocity > SHEET_CLOSE_VELOCITY) {
+        sheetSlideOut(ov, closer);
+      } else {
+        sheetSnapBack(ov);
+      }
+      return true;
+    }
+
+    /* ---- Pointer Events：主判定路径（老 WebView 没有它，退到下面的 touch） ---- */
+    panel.addEventListener('pointerdown', function(e) {
+      if (e.button > 0) return;            /* 只认主键 / 单指 */
+      if (inEditable(e.target)) return;
+      begin('pointer', e.pointerId, e.clientX, e.clientY);
+    });
+
+    panel.addEventListener('pointermove', function(e) {
+      if (!start || start.source !== 'pointer' || e.pointerId !== start.id) return;
+      if (move(e.clientX, e.clientY) && e.cancelable) e.preventDefault();
+    }, { passive: false });
+
+    panel.addEventListener('pointerup', function(e) {
+      if (!start || start.source !== 'pointer' || e.pointerId !== start.id) return;
+      end();
+    });
+
+    panel.addEventListener('pointercancel', function(e) {
+      if (!start || start.source !== 'pointer' || e.pointerId !== start.id) return;
+      /* 被系统手势/来电打断：已拖出去的部分按当前位移结账，不留在半空 */
+      end();
+    });
+
+    /* ---- touch 事件：两个用途 ----
+       ① 没有 PointerEvent 的老 WebView 上做兜底判定；
+       ② touchmove 是**唯一**能拦住浏览器自己滚动/回弹/下拉刷新的通道，而且必须
+          非 passive。触摸时 pointerdown 先到，所以这里的 touchstart 只在还没有
+          start 时才起手，不会和上面重复记一笔。 */
+    panel.addEventListener('touchstart', function(e) {
+      if (inEditable(e.target)) return;
+      var t = e.touches && e.touches[0];
+      if (!t) return;
+      begin('touch', t.identifier, t.clientX, t.clientY);
+    }, { passive: true });
+
+    panel.addEventListener('touchmove', function(e) {
+      var t = e.touches && e.touches[0];
+      if (!t) return;
+      var taken = (start && start.source === 'touch')
+        ? move(t.clientX, t.clientY)
+        : (!!drag || false);
+      if ((taken || drag) && e.cancelable) e.preventDefault();
+    }, { passive: false });
+
+    /* 抬手：pointerup 正常会先到；万一没到（个别 WebView），这里补一刀，
+       否则面板会卡在半空 */
+    panel.addEventListener('touchend', function() {
+      if (drag) end();
+    });
+
+    panel.addEventListener('touchcancel', function() {
+      if (drag) end();
+    });
+  }
+
+
   /* 键盘与轻扫走同一条链路：能换代就换代，换不了才整页跳转，边界给一句提示 */
   function goChapter(dir) {
     navigateToChapter(dir);
@@ -1898,6 +2141,7 @@
     ov.innerHTML =
       '<div class="modal-backdrop"></div>' +
       '<div class="modal-panel dir-modal" role="dialog" aria-modal="true" aria-label="目录">' +
+        '<div class="modal-grabber" aria-hidden="true"></div>' +
         '<div class="modal-header"><div class="modal-header-left"><span>目录</span><a href="characters.html" class="dir-char-link" onclick="closeDirectory()">人物簿</a></div>' +
           '<button class="modal-close" onclick="closeDirectory()">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
@@ -1907,6 +2151,7 @@
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
     ov.querySelector('.modal-backdrop').addEventListener('click', closeDirectory);
+    initSheetDrag(ov, function() { closeDirectory(); });
     populateDirectory();
   }
 
@@ -1954,15 +2199,13 @@
 
   window.openDirectory = function() {
     populateDirectory();
-    var ov = document.getElementById('dirOverlay');
-    if (ov) { ov.classList.add('visible'); document.body.style.overflow = 'hidden'; }
+    openSheet(document.getElementById('dirOverlay'));
     if (state.barsVisible) hideBars();
   };
 
 
   window.closeDirectory = function() {
-    var ov = document.getElementById('dirOverlay');
-    if (ov) { ov.classList.remove('visible'); document.body.style.overflow = ''; }
+    closeSheet(document.getElementById('dirOverlay'));
   };
 
 
@@ -2029,6 +2272,7 @@
     ov.innerHTML =
       '<div class="modal-backdrop"></div>' +
       '<div class="modal-panel quotes-modal" role="dialog" aria-modal="true" aria-label="摘句簿">' +
+        '<div class="modal-grabber" aria-hidden="true"></div>' +
         '<div class="modal-header"><span>摘句簿</span>' +
           '<button type="button" class="modal-export" onclick="exportQuotes()">导出</button>' +
           '<button class="modal-close" onclick="closeQuotes()">' +
@@ -2039,20 +2283,19 @@
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
     ov.querySelector('.modal-backdrop').addEventListener('click', closeQuotes);
+    initSheetDrag(ov, function() { closeQuotes(); });
   }
 
 
   window.openQuotes = function() {
     renderQuotesPanel();
-    var ov = document.getElementById('quotesOverlay');
-    if (ov) { ov.classList.add('visible'); document.body.style.overflow = 'hidden'; }
+    openSheet(document.getElementById('quotesOverlay'));
     if (state.barsVisible) hideBars();
   };
 
 
   window.closeQuotes = function() {
-    var ov = document.getElementById('quotesOverlay');
-    if (ov) { ov.classList.remove('visible'); document.body.style.overflow = ''; }
+    closeSheet(document.getElementById('quotesOverlay'));
   };
 
 
@@ -2258,6 +2501,7 @@
     ov.innerHTML =
       '<div class="modal-backdrop"></div>' +
       '<div class="modal-panel settings-modal" role="dialog" aria-modal="true" aria-label="设置">' +
+        '<div class="modal-grabber" aria-hidden="true"></div>' +
         '<div class="modal-header"><span>设置</span>' +
           '<button class="modal-close" onclick="closeSettings()">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
@@ -2325,6 +2569,7 @@
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
     ov.querySelector('.modal-backdrop').addEventListener('click', closeSettings);
+    initSheetDrag(ov, function() { closeSettings(); });
     var fileInput = ov.querySelector('#fontFileInput');
     if (fileInput) fileInput.addEventListener('change', onFontFileChosen);
     refreshImportRow();
@@ -2370,14 +2615,13 @@
     var rw = document.getElementById('readWidthLabel');
     if (rw) rw.textContent = state.readWidth === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关';
     applyFeatureVisibility();
-    if (ov) { ov.classList.add('visible'); document.body.style.overflow = 'hidden'; }
+    openSheet(ov);
     if (state.barsVisible) { stopAutoClose(); startAutoClose(); }
   };
 
 
   window.closeSettings = function() {
-    var ov = document.getElementById('settingsOverlay');
-    if (ov) { ov.classList.remove('visible'); document.body.style.overflow = ''; }
+    closeSheet(document.getElementById('settingsOverlay'));
   };
 
 
@@ -2812,6 +3056,7 @@
     ov.innerHTML =
       '<div class="modal-backdrop"></div>' +
       '<div class="modal-panel search-modal" role="dialog" aria-modal="true" aria-label="全书搜索">' +
+        '<div class="modal-grabber" aria-hidden="true"></div>' +
         '<div class="modal-header"><span>搜索</span>' +
           '<button type="button" class="modal-close" onclick="closeSearch()" aria-label="关闭搜索">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
@@ -2825,6 +3070,7 @@
       '</div>';
     (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
     ov.querySelector('.modal-backdrop').addEventListener('click', closeSearch);
+    initSheetDrag(ov, function() { closeSearch(); });
 
     var input = ov.querySelector('#searchInput');
     input.addEventListener('input', onSearchInput);
@@ -2858,8 +3104,7 @@
     var input = searchInputEl();
     if (input && typeof initialQuery === 'string' && initialQuery) input.value = initialQuery;
 
-    ov.classList.add('visible');
-    document.body.style.overflow = 'hidden';   /* 与目录/设置/摘句一字不差 */
+    openSheet(ov);   /* 与目录/设置/摘句同一套：清掉上一手拖动留下的内联位移 */
     if (state.barsVisible) hideBars();
 
     /* 面板开着时自动滚屏不该继续往下走；关掉再按原状态恢复（PRD 2.1） */
@@ -2878,7 +3123,7 @@
 
   window.closeSearch = function() {
     var ov = document.getElementById('searchOverlay');
-    if (ov) { ov.classList.remove('visible'); document.body.style.overflow = ''; }
+    if (ov) closeSheet(ov);
     if (searchState.timer) { clearTimeout(searchState.timer); searchState.timer = 0; }
     if (searchState.autoPausedBySearch) {
       searchState.autoPausedBySearch = false;
@@ -3160,6 +3405,7 @@
       ov.innerHTML =
         '<div class="modal-backdrop"></div>' +
         '<div class="modal-panel data-modal" role="dialog" aria-modal="true" aria-label="阅读数据">' +
+          '<div class="modal-grabber" aria-hidden="true"></div>' +
           '<div class="modal-header"><span id="dataTitle">阅读数据</span>' +
             '<button class="modal-close" onclick="closeDataModal()">' +
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
@@ -3176,6 +3422,7 @@
         '</div>';
       (document.querySelector('.reading-wrapper') || document.body).appendChild(ov);
       ov.querySelector('.modal-backdrop').addEventListener('click', closeDataModal);
+      initSheetDrag(ov, function() { closeDataModal(); });
     }
 
     dataMode = mode;
@@ -3206,8 +3453,7 @@
       dl.style.display = 'none';
     }
 
-    ov.classList.add('visible');
-    document.body.style.overflow = 'hidden';
+    openSheet(ov);
     if (state.barsVisible) { stopAutoClose(); }
     if (mode === 'import') setTimeout(function() { ta.focus(); }, 220);
   }
@@ -3219,8 +3465,7 @@
   window.closeDataModal = function() {
     var ov = document.getElementById('dataOverlay');
     if (!ov) return;
-    ov.classList.remove('visible');
-    document.body.style.overflow = '';
+    closeSheet(ov);
     if (state.barsVisible) startAutoClose();
   };
 
