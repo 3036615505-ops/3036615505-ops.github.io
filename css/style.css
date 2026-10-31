@@ -76,14 +76,14 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('../assets/fonts/linyuan-kai-subset.woff2?f=8') format('woff2');
+  src: url('../assets/fonts/linyuan-kai-subset.woff2?f=9') format('woff2');
 }
 @font-face {
   font-family: 'LinyuanKaiRest';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('../assets/fonts/linyuan-kai-rest.woff2?f=1') format('woff2');
+  src: url('../assets/fonts/linyuan-kai-rest.woff2?f=2') format('woff2');
 }
 /* 正文 serif 走系统字体栈：Noto Serif SC（部分安卓/Linux）→ Songti SC（macOS）→ SimSun（Windows） */
 
