@@ -4,6 +4,10 @@
 # 站点源码统一 LF，避免 Windows 上 checkout 后整文件 diff
 *.js text eol=lf
 *.mjs text eol=lf
+# *.cjs 也要管：tools/chapter-template.cjs 是章节页唯一模板（CJS 是为了让
+# new-chapter.js 能 require 它）。本机 core.autocrlf=true，不写这条的话
+# 下次 checkout 会变成 CRLF，之后每次编辑都带一行整文件 diff。
+*.cjs text eol=lf
 *.css text eol=lf
 *.html text eol=lf
 *.json text eol=lf
