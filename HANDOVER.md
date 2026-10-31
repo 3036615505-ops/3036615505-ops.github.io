@@ -16,7 +16,7 @@
 | SW 缓存名 | `linyuan-v69` |
 | 阅读器模块 | dom 77 行 · flags 88 · store 247 · engine 631 · ui 3760 · 入口 30 |
 | 样式 | `css/style.css` 5082 行（4 套主题令牌） |
-| 章节 | 7 章（2858 / 2347 / 2029 / 2496 / 2076 / 2269 / 2081 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
+| 章节 | 7 章（2860 / 2347 / 2029 / 2496 / 2076 / 2269 / 2081 字），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
 | 人物 | 18 人（新叶 7 / 青枝 4 / 乔木 7）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
 | 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 891.5KB（主片 273.1 + 兜底片 618.4）**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
 | Android 壳 | v1.9.0 / versionCode 17（v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死；v1.8.7 修系统返回键直接退出；**v1.9.0 = A 档收官，壳进入封版状态**：桥接补丁下沉到站点 `js/native-bridge.js`（以后改桥不用发版）、原生分享桥、闪屏叠层淡出、onResume 补更新检查、锁竖屏。详见 `app/BACK-HANDLING.md`） |
@@ -438,6 +438,21 @@ serif——观感一致，不是 bug。（18 人全部有立绘后，占位字�
     `tools/e2e.mjs` 的「面板改底部抽屉」小节把三个分支都钉住了：拖 150px 关 /
     拖 40px 回弹且仍开着 / 内容 `scrollTop=100` 时拖 150px **不接管**。
 
+19. **`new-chapter.js` 是「加新章节」，不是「重新生成章节」**。2026-10-31 改第一章正文时
+    误用过一次：`node new-chapter.js manuscript/chapter-01.md` —— 它把这份稿当成**新稿**，
+    按 `CHAPTERS.length + 1` 生成了 `novel/chapter-08.html`，并连带改了 `js/chapters.js`
+    （追加第 8 章条目）/ `announce.json` / `sitemap.xml` / `novel/chapter-07.html`（"下一章"
+    指向 08）/ `sw.js`（`PRECACHE` 加一条 + `CACHE` 自动 +1）。全部 `git restore` + 删掉
+    `chapter-08.html` / `chapter-08.md` 才恢复干净。它「目标文件存在即中止」的守卫**只对
+    章号 1 有效**，从 02 起传任何一份稿进去都会生成新的一章。
+    根因：这个项目**没有**「md → 重新渲染已有章节页」的工具。改已有正文目前只有两条路：
+      - **① 改 html + 反写快照**：直接改 `novel/chapter-0N.html` 的 `<p>`，再
+        `node tools/manuscript-sync.mjs --write --only chapter-0N` 生成 md 快照。
+        ⚠ `--write` 是 **HTML → md**，会覆盖 `manuscript/`，方向与「md 是源」相反。
+      - **② 按段替换**（2026-10-31 走的这条）：拿旧 md 与新 md 逐段 diff，只在 html 里替换
+        变动过的那些段（替换前逐段验「旧文本唯一、新文本此前不存在」），md 手动同步。
+    两条都不是生成器路径。**绝对不要**把已有章节的 md 传给 `new-chapter.js`。
+
 ## 远程开关（出问题时先关功能，别回滚整站）
 
 `flags.json`，不缓存，改完 push 一分钟生效，**不用发版也不用升 `?v=`**：
@@ -540,6 +555,7 @@ serif——观感一致，不是 bug。（18 人全部有立绘后，占位字�
 
 | 事项 | 建议时机 | 理由 |
 |---|---|---|
+| 「md → 重新渲染已有章节页」的生成器（改稿专用） | 下次改稿前，优先做 | 现在改已有正文只有两条手工路径（见坑第 19 条），而 `new-chapter.js` 只加新章节、传已有章节的 md 进去会生成新的一章。做起来不难：把 `new-chapter.js` 里「md → 段落 HTML」那段抽成 `tools/render-chapter.mjs`，按 `js/chapters.js` 的章号定位目标页、只替换 `.chapter-content` 里的 `<p>` 序列（保留 `data-quote-index` 装饰），跑完接 `npm run manuscript` 自校验 |
 | 老面板（目录/设置/摘句/备份）从 innerHTML 迁到 `el()` | 下次真要加界面时 | 纯内部质量，无用户可见收益；且 179 项断言测行为不测像素，风险兜不住 |
 | `ui.js` 再拆出 `panels.js`（纯移动） | 想拆随时可做 | 风险低，但也没收益；`ui.js` 3515 行目前还能忍 |
 | 选中文字气泡工具条（摘句/复制/搜索） | 想加功能时的首选 | 唯一“既有用户价值、又顺手带出 `el()` 迁移”的一步 |
