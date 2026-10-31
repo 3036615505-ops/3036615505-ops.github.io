@@ -10,6 +10,17 @@
 >
 > 历史条目是原样搬过来的（内容逐字未改，只在块之间统一成一个空行）。
 
+## 2026-10-31 · `render-chapter.mjs` 补 `CACHE` 提示（QA P2 · 无发版影响）
+
+| 项 | 内容 |
+|---|---|
+| 动因 | QA 回归发现：工具全文没有任何 `CACHE` 版本提示。而 `sw.js` 的 `PRECACHE` 里就有那 7 个章节页，「正文改了但没升 `CACHE`」会让离线读者长期停在旧页面且**不会自愈** —— 2026-10-29（底部抽屉那次）就是这么漏的。工具本来就知道 `changed`，补一行是最划算的堵法 |
+| 做法 | 真改了页面且真落盘时，在「注意事项」块**第一条**打印：`⚠ N 个章节页内容已变 → sw.js 的 CACHE 名要 +1（linyuan-v70 → linyuan-v71）` + 判据（「PRECACHE 里的字节变没变」）+ 为什么 `npm run stale` 看不出这一层（它只比带 `?v=` 的资源） |
+| 两个刻意的边界 | ① **只在 `changed === true` 且非 `--dry-run` 时响** —— `--dry-run` 与「无变化」天天叫就没人看了 ② **不自动改 `sw.js`**：自动升会把「这次到底该不该发版」的判断一起吞掉（`new-chapter.js` / `make-characters.mjs` 自动升是另一种场景：那两次一定有新资源进 `PRECACHE`） |
+| 版本号来源 | 从 `sw.js` 现读 `var CACHE = '<name>-v<n>'` 再 +1；读不到就只提示「手动看一眼当前值再 +1」，不猜数字（硬编码的 v70 迟早点骗人）。`PRECACHE` 里章节页的条数也是数出来的，不写死 |
+| 验证 | 改 `chapter-07` 一个字 → 实跑打印 `linyuan-v70 → linyuan-v71`，且 `git status --short sw.js` 为空（没自动改）· `--all` 无变化 → 0 次提及 `CACHE` · `--dry-run`（有变化）→ 0 次提及 · `git restore` 复原后再 `--all` → `git status` 空 · `precache`/`manuscript`/`bump:check`/`stale` 绿 · `typecheck` 0 诊断 · `node tools/e2e.mjs` **179/179（192.7s，默认端口 8765）** |
+| 顺带 | QA 遇到的 `EADDRINUSE 8765` 是我这边**并发跑的另一个 e2e 占用**造成的（我为了取证据连着跑了几次后台 e2e），不是工具问题；现在 `netstat` 里 8765 无监听，默认端口一次跑通 179/179。另外 QA 纠正了我一处措辞：`check-precache.mjs` 的模板路径指错时会**假红**（报 11 个脚本缺失，安全的那一侧），真正会「假绿」的只有路径指向不存在的文件、被 `existsSync` 守卫跳过那种情况 |
+
 ## 2026-10-31 · 补两处：`new-chapter.js` 的误用守卫 + 人物数据注释指向飞书（无发版影响）
 
 | 项 | 内容 |

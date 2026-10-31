@@ -23,6 +23,10 @@
  * 理由：md 描述不了那些东西，重新生成它们等于用模板覆盖掉人工写的内容。
  * 结果就是「对当前 md 跑两次，git status 必须为空」（幂等）。
  *
+ * 真改了页面时，结尾会提醒 **`sw.js` 的 `CACHE` 名 +1**（章节页在 `PRECACHE` 里，
+ * 正文一变预缓存字节就变；不升名，离线读者会长期停在旧页面且不会自愈）。
+ * 只提醒、不自动改 —— 自动升会把「这次到底该不该发版」的判断一起吞掉。
+ *
  * 段落怎么变 <p>、日期行怎么缩进，用的是 tools/chapter-template.cjs 里那份
  * 唯一模板（和 new-chapter.js 同一份实现，见那个文件的头注释）。
  *
@@ -123,6 +127,25 @@ function diffLines(oldLines, newLines) {
 /** 比对口径与 tools/manuscript-sync.mjs 一致：去掉所有空白后逐字比。 */
 function norm(text) {
   return String(text).replace(/\s+/g, '');
+}
+
+/**
+ * 读 sw.js 当前的 `CACHE` 名与 `PRECACHE` 里的章节页条数。
+ *
+ * 为什么要读而不是写死：`CACHE` 的名字每个月都在变，提示里硬编码一个
+ * 「linyuan-v70」迟早会骗人；读不到就只提示、不猜数字。
+ *
+ * @returns {{name: string, version: number, chapterEntries: number}|null} 读不到返回 null
+ */
+function readServiceWorkerCache() {
+  const swPath = path.join(ROOT, 'sw.js');
+  if (!fs.existsSync(swPath)) return null;
+  const src = fs.readFileSync(swPath, 'utf8');
+  const m = /var\s+CACHE\s*=\s*'([A-Za-z0-9-]+)-v(\d+)'/.exec(src);
+  if (!m) return null;
+  const pre = /var\s+PRECACHE\s*=\s*\[([\s\S]*?)\];/.exec(src);
+  const chapterEntries = pre ? (pre[1].match(/\/novel\/chapter-\d+\.html/g) || []).length : 0;
+  return { name: m[1], version: parseInt(m[2], 10), chapterEntries };
 }
 
 /* ---------- 解析已有章节页 ---------- */
@@ -443,15 +466,40 @@ console.log('重新渲染 ' + targets.length + ' 章' + (dryRun ? '（dry-run，
 
 let failures = 0;
 const allWarnings = [];
+const results = [];
 targets.forEach((entry) => {
   try {
     const r = renderChapter(entry, { dryRun, assetVersion });
+    results.push(r);
     allWarnings.push(...r.warnings);
   } catch (err) {
     failures += 1;
     console.error('✗ ' + (err && err.message ? err.message : String(err)));
   }
 });
+
+/* CACHE 提示：**只**在「真的改了页面」且「真的落盘」时出现。
+   --dry-run 不响（还没改任何东西）、无变化不响（天天叫就没人看了）。
+   为什么必须提示：7 个章节页都在 sw.js 的 PRECACHE 里，正文一变预缓存字节就变了；
+   不升 CACHE 名，老用户的 SW 不会重新 install，离线读者会长期停在旧页面且**不会自愈**
+   （2026-10-29 底部抽屉那次就是这么漏的）。`npm run stale` 看不出这一层 ——
+   它只比对带缓存键（?v=）的资源，而章节页的 CACHE 是靠 PRECACHE 字节判的。
+   这里**只提示、不自动改**：自动升会把「这次到底该不该发版」这个判断也一起吞掉。 */
+const changedCount = results.filter((r) => r.changed).length;
+if (!dryRun && changedCount > 0) {
+  const cache = readServiceWorkerCache();
+  const why = '\n    判据是「PRECACHE 里的字节变没变」，不是「改的是哪个文件」。' +
+    (cache && cache.chapterEntries
+      ? cache.chapterEntries + ' 个章节页都在 PRECACHE 里，'
+      : '章节页在 PRECACHE 里，') +
+    '不升的话离线读者会长期停在旧页面且不会自愈。' +
+    '\n    `npm run stale` 看不出这一层 —— 它只比带缓存键（?v=）的资源，不看 PRECACHE。';
+  allWarnings.unshift(cache
+    ? '⚠ ' + changedCount + ' 个章节页内容已变 → sw.js 的 CACHE 名要 +1（' +
+      cache.name + '-v' + cache.version + ' → ' + cache.name + '-v' + (cache.version + 1) + '）' + why
+    : '⚠ ' + changedCount + ' 个章节页内容已变 → sw.js 的 CACHE 名要 +1' +
+      '（没读到 sw.js 里的 `var CACHE = \'…-vN\'`，请手动看一眼当前值再 +1）' + why);
+}
 
 if (allWarnings.length) {
   console.log('\n' + '='.repeat(64));
