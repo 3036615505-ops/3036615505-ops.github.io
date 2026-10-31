@@ -117,6 +117,26 @@ const num = maxNum + 1;
 const file = 'chapter-' + String(num).padStart(2, '0') + '.html';
 const prev = entries.length ? entries[entries.length - 1] : null;
 
+// 保护（误用即拒）：这个脚本只**加**新章节，不是「重新生成已有章节」。
+// 2026-10-31 实测过后果：把 manuscript/chapter-01.md 传进来，它按 CHAPTERS.length+1
+// 长出了 chapter-08.html，还连带改了 js/chapters.js / announce.json / sitemap.xml /
+// sw.js（脚本自己会 CACHE+1）和上一章的「下一章」，全部得手工 git restore 回滚。
+// 判据：**源稿自己写的 `# 标题`（或 --title 给的标题）已经在 CHAPTERS 的 title 里**。
+// 已有章节的标题都带「第N章·」，重名几乎必然就是「想重渲染已有章」；真要做同名新章，
+// 换个标题即可（比静默毁掉一章好得多）。
+// 两种都查：传了 --title 又拿旧 md 来「加新章」时，只有 heading 能暴露误用。
+const clashTitles = [parsed.heading, title].filter(function (t) { return t; });
+const clash = entries.filter(function (e) { return clashTitles.indexOf(e.title) >= 0; })[0];
+if (clash) {
+  const clashName = clash.file.replace(/\.html$/, '');
+  console.error('✗ 《' + clash.title + '》已经在 CHAPTERS 里（第 ' + clash.num + ' 章：novel/' + clash.file + '）。');
+  console.error('  这个脚本只加**新**章节，会按 CHAPTERS.length+1 = ' + num + ' 生成 chapter-' + String(num).padStart(2, '0') + '.html。');
+  console.error('  给已有章节改稿请用：');
+  console.error('    node tools/render-chapter.mjs ' + clashName);
+  console.error('  已中止，未写入任何文件（chapter-' + String(num).padStart(2, '0') + '.html、chapters.js、announce.json、sitemap.xml、sw.js 一个都没动）。');
+  process.exit(1);
+}
+
 // 保护：绝不允许覆盖已有章节页（宁可停下，也不要静默毁掉一章）
 const targetPath = path.join(NOVEL_DIR, file);
 if (fs.existsSync(targetPath)) {

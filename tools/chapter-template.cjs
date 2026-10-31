@@ -151,7 +151,10 @@ function cnYearStr(y) {
  *
  * @param {string} md Markdown 原文
  * @param {{title?: string}} [opts] 标题覆盖（命令行 --title）
- * @returns {{title: string, tokens: Array<Object>, words: number}}
+ * @returns {{title: string, heading: string, tokens: Array<Object>, words: number}}
+ *   `title` 是最终采用的标题（--title 优先）；`heading` 是**源稿自己写的**那个
+ *   `# 标题`（没有就是空串）。两者分开是因为「传了 --title 又拿旧章节的 md 来加
+ *   新章」时，只有 heading 能暴露误用（new-chapter.js 的守卫靠它）。
  */
 function parseManuscript(md, opts) {
   const options = opts || {};
@@ -159,6 +162,7 @@ function parseManuscript(md, opts) {
   const blocks = text.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
 
   let title = options.title || '';
+  let headingText = '';
   const tokens = [];
   for (const block of blocks) {
     /* md 里的标题行永远不进正文。
@@ -167,6 +171,7 @@ function parseManuscript(md, opts) {
        「# 第四章·身位」，而源稿同步校验还得人工去猜哪里多了字。 */
     const heading = block.match(/^#\s+(.+)$/m);
     if (heading) {
+      if (!headingText) headingText = heading[1].trim();
       if (!title) title = heading[1].trim();
       continue;
     }
@@ -177,7 +182,7 @@ function parseManuscript(md, opts) {
     tokens.push({ type: 'p', text: block.replace(/\n/g, '') });
   }
   if (!title) throw new Error('未找到标题：Markdown 首行用 "# 标题"，或用 --title 指定');
-  return { title, tokens, words: countWords(text) };
+  return { title, heading: headingText, tokens, words: countWords(text) };
 }
 
 /**

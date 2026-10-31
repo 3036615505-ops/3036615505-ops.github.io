@@ -6,8 +6,17 @@
  *   novel/characters.html        同学录列表页
  *   novel/character-<slug>.html  每个人的详细页
  *
- * 改人物信息只改这里，然后跑：node tools/make-characters.mjs
- * （原稿在站外，作者手里的《人物设定.md》；这份是它的站点版）
+ * 改人物信息：**改飞书文档，不要改这里**。
+ *   文档     《临渊羡鱼 · 人物设定》
+ *   doc id   REiQd3RhZoXFGqxoZcRclL1NnWe
+ *   同步     node tools/sync-characters.mjs --doc REiQd3RhZoXFGqxoZcRclL1NnWe --write
+ *            （或 npm run sync:characters -- --write；默认 dry-run，先打印人话 diff）
+ *   然后     node tools/make-characters.mjs
+ *
+ * 所以**这份文件现在也是产物**（由飞书文档生成，格式固定：2 空格缩进 / 单引号 /
+ * 下面注释里的字段顺序）。手改的内容下次同步会被文档覆盖。唯一例外是 `portrait`
+ * 与 `initial` —— 它们不在文档里，同步时按 slug 从本文件**原样保留**，所以只能在这里改
+ * （改了不会被覆盖；换立绘也是改这两行，不是改文档）。
  *
  * 字段说明：
  *   slug      详细页文件名（novel/character-<slug>.html），只用小写字母与连字符

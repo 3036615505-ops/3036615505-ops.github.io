@@ -135,16 +135,22 @@ node tools/manuscript-sync.mjs --write --only chapter-02   # 有意改文后重�
 为什么要有它：上周有一段正文被误改（「找我自己」那句），git 只能证明文件变了，
 证明不了原文是什么。有了源稿，这类改动才有据可查。
 
-## 人物录：数据在 js/characters-data.js
+## 人物录：创作源是飞书文档，数据落在 js/characters-data.js
 
 同学录列表页和每个人的详细页都是**生成**的，别手改 HTML：
 
 ```bash
-node tools/make-characters.mjs     # 改完数据文件后跑这条
+node tools/sync-characters.mjs --doc REiQd3RhZoXFGqxoZcRclL1NnWe --write   # 文档 → 数据文件
+node tools/make-characters.mjs                                            # 数据文件 → 页面
 ```
 
-人物信息（姓名、分组、徽标、台词、一句话简介、生日、设定、小传）全在
-`js/characters-data.js`，原稿是作者站外的《人物设定.md》。脚本会：
+人物信息（姓名、分组、徽标、台词、一句话简介、生日、设定、小传）的**创作源是飞书
+文档《临渊羡鱼 · 人物设定》**（`document_id` `REiQd3RhZoXFGqxoZcRclL1NnWe`）；
+`js/characters-data.js` 是它落盘后的站点版，**也是产物** —— 手改会被下次同步覆盖。
+`sync-characters.mjs` 默认 dry-run（打印「谁新增 / 谁删除 / 哪个字段 旧 → 新」），
+`--write` 才落盘，`--write --gen` 连生成页面一起跑。同步不会动的只有 `portrait`
+（立绘文件名）与 `initial`（占位字）：这两项不在文档里，按 slug 从现有数据原样保留。
+`make-characters.mjs` 会：
 
 - 生成 `novel/characters.html`（「新叶 / 青枝 / 乔木」分组 + 每张卡片的「详细 ›」入口）
 - 生成 `novel/character-<slug>.html` × 18（立绘、身份徽标、生日、台词、小传、设定标签）

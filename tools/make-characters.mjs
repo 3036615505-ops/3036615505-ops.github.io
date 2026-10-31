@@ -14,7 +14,12 @@
  *   - 把 sw.js 的 CACHE 名 +1（不升 = 老用户的 SW 不会重新 install）
  *
  * 用法：node tools/make-characters.mjs
- * 改人物信息请改 js/characters-data.js，不要改生成出来的 HTML。
+ * 改人物信息请改**飞书文档**《临渊羡鱼 · 人物设定》
+ * （document_id REiQd3RhZoXFGqxoZcRclL1NnWe），先跑
+ * `node tools/sync-characters.mjs --doc REiQd3RhZoXFGqxoZcRclL1NnWe --write` 落到
+ * js/characters-data.js，再跑本脚本；不要改生成出来的 HTML。
+ * （js/characters-data.js 现在也是产物；只有 portrait / initial 要在这里改 —— 这两项
+ *   不在文档里，同步时按 slug 原样保留。）
  */
 import fs from 'node:fs';
 import path from 'node:path';

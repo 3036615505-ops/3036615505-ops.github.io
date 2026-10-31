@@ -10,6 +10,18 @@
 >
 > 历史条目是原样搬过来的（内容逐字未改，只在块之间统一成一个空行）。
 
+## 2026-10-31 · 补两处：`new-chapter.js` 的误用守卫 + 人物数据注释指向飞书（无发版影响）
+
+| 项 | 内容 |
+|---|---|
+| 动因 | 上一批工具落地后，「误用 `new-chapter.js` 重新生成已有章节」这个口子反而更容易踩：两条命令名字相近（`new-chapter.js` / `render-chapter.mjs`），而以前只有一条路、人不会走错 |
+| 守卫 | 判据 = **源稿自己写的 `# 标题`（或 `--title` 给的）已出现在 `CHAPTERS` 的 title 里** → 报错退出、给出 `node tools/render-chapter.mjs chapter-0N`，`--dry-run` 也拦（预检时最该被拦住）。两种标题都查，是因为「传了 `--title` 又拿旧章节 md 来加新章」时只有 `heading` 能暴露误用 → `parseManuscript()` 的返回值多了 `heading` 字段（纯增量，不影响任何输出） |
+| 守卫的边界 | 已有章标题都带「第N章·」，重名几乎必然是想重渲染；**真要做同名新章必须先换标题** —— 这是刻意选的严格侧：宁可多敲一次，也不要再静默长出 `chapter-08.html` 并连带改 `chapters.js`/`announce.json`/`sitemap.xml`/`sw.js` |
+| 新建路径未变 | 用 `git show HEAD~2:new-chapter.js` 当旧版对拍五种参数组合（纯 `--dry-run` / `--date --seal --afterglow --blurb` / `--dates` 三日两组分隔 / `--nodate` / `--title 覆盖 --year 二〇二三`）→ **全部逐字节相同**，含 `--dry-run` |
+| 注释指向飞书 | `js/characters-data.js` 头注释里「原稿在站外，作者手里的《人物设定.md》」指向的文件已不存在 → 改成指向飞书文档（标题 + `document_id` + 同步命令），并明说**这份文件现在也是产物、不要手改**；例外是 `portrait` / `initial`（不在文档里，同步时按 slug 原样保留，只能在这里改）。同一句话在 `tools/make-characters.mjs` 头部与 `README.md` 也有一份，一并改 |
+| 发版 | **`?v=` / `CACHE` 都不用动**：先确认过 `js/characters-data.js` **没有任何页面的 `<script>` 引用它**、也不在 `sw.js` 的 `PRECACHE` 里 → 改它不影响任何缓存键（`npm run bump:check` 与 `npm run stale` 都绿，可复核） |
+| 验证 | 误用实测：`node new-chapter.js manuscript/chapter-01.md`（含 `--dry-run`）exit=1、报错原文给出正确命令、`git status` 空 · `node tools/render-chapter.mjs --all` 后 `git status` 仍空 · `sync-characters --write` 仍报「完全一致」（注释在头部，序列化原样保留）· `precache` / `manuscript` / `bump:check` / `stale` 绿 · `typecheck` 0 诊断 · `node tools/e2e.mjs` **179/179**（192.5s） |
+
 ## 2026-10-31 · 补上改稿缺的两条工具：重渲染已有章节 + 人物设定从飞书同步（`?v=` 不变 122 · `CACHE` 不变 v70）
 
 | 项 | 内容 |
