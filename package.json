@@ -30,6 +30,8 @@
 
     "//5": "— 生成器（改了数据源才跑）—",
     "chapter": "node new-chapter.js",
+    "render:chapter": "node tools/render-chapter.mjs",
+    "sync:characters": "node tools/sync-characters.mjs",
     "gen:characters": "node tools/make-characters.mjs",
     "gen:sitemap": "node tools/make-sitemap.mjs",
     "gen:announce": "node tools/make-announce.mjs",

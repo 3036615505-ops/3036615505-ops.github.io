@@ -14,26 +14,24 @@
  *   第一行 "# 标题"（或 --title 指定）；空行分段；单独一行 --- / *** 视为场景分隔
  *
  * --dry-run：只输出到 novel/_dryrun-chapter.html，不改 chapters.js、不动其他章节（用于验证模板）
+ *
+ * 模板在哪：**不在这个文件里**。整页 HTML 模板、md→正文渲染、`?v=` 探测、章节数组
+ * 求值全部在 tools/chapter-template.cjs —— 因为 tools/render-chapter.mjs（重新渲染
+ * 已有章节）也要用它们。两份模板必然「改一处漏一处」（本站为这类漂移付过两次代价），
+ * 所以模板只有一份，本文件只是它的调用方。要改章节页长什么样，去改那个文件。
  */
 const fs = require('fs');
 const path = require('path');
-
-const vm = require('vm');
 const { spawnSync } = require('child_process');
+const tpl = require('./tools/chapter-template.cjs');
 
-/** 把 chapters.js 里的 CHAPTERS 数组当代码求值，拿真实对象（比正则可靠） */
-function readChapters(src) {
-  const start = src.indexOf('var CHAPTERS = [');
-  if (start < 0) throw new Error('chapters.js 里找不到 CHAPTERS 数组');
-  const open = src.indexOf('[', start);
-  const end = src.indexOf('\n];', open);
-  if (end < 0) throw new Error('CHAPTERS 数组没有正常结束');
-  const literal = src.slice(open, end + 2);
-  const sandbox = {};
-  vm.createContext(sandbox);
-  vm.runInContext('result = ' + literal, sandbox);
-  return Array.isArray(sandbox.result) ? sandbox.result : [];
-}
+const readChapters = tpl.readChapters;
+const detectAssetVersion = tpl.detectAssetVersion;
+const parseManuscript = tpl.parseManuscript;
+const applyDates = tpl.applyDates;
+const renderArticleInner = tpl.renderArticleInner;
+const renderChapterPage = tpl.renderChapterPage;
+const sealTextFrom = tpl.sealTextFrom;
 
 /** 序列化条目：固定字段在前，未知字段追加在后 —— 加字段不会再把老字段吃掉 */
 const KEY_ORDER = ['num', 'title', 'file', 'words', 'blurb', 'year', 'date', 'dates', 'seal', 'leaf', 'volume'];
@@ -93,46 +91,20 @@ if (!mdPath) {
   process.exit(1);
 }
 
-// ===== 字数统计（与线上口径一致：CJK 汉字 + 中文标点，含标题行） =====
-function countWords(text) {
-  const m = text.match(/[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]/g);
-  return m ? m.length : 0;
-}
-
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
-
-// 正文文本节点：引号无需转义（与原章节源码风格一致，渲染无差别）
-function escapeText(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
 // ===== 读取 Markdown 并转正文 HTML =====
+// 切块规则、「标题行不进正文」、「场景分隔怎么记」都在共用模块的 parseManuscript 里，
+// 和 tools/render-chapter.mjs 走的是同一份实现。
 const md = fs.readFileSync(mdPath, 'utf-8').replace(/\r\n/g, '\n');
-const blocks = md.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
-
-let title = opts.title || '';
-let contentHtml = '';
-for (const block of blocks) {
-  /* md 里的标题行永远不进正文。
-     曾经写成 `if (heading && !title)` —— 一旦命令行也传了 --title，title 已有值，
-     这个判断就落空，标题行被当成普通段落写进 <p>，页面上出现一句孤零零的
-     「# 第四章·身位」，而源稿同步校验还得人工去猜哪里多了字。 */
-  const heading = block.match(/^#\s+(.+)$/m);
-  if (heading) {
-    if (!title) title = heading[1].trim();
-    continue;
-  }
-  if (/^(---|\*\*\*|\* \* \*)$/.test(block)) { contentHtml += '<div class="scene-break"></div>\n'; continue; }
-  const text = block.replace(/\n/g, '');
-  contentHtml += '<p>' + escapeText(text) + '</p>\n';
+let parsed;
+try {
+  parsed = parseManuscript(md, { title: opts.title });
+} catch (err) {
+  console.error(err && err.message ? err.message : String(err));
+  process.exit(1);
 }
-if (!title) { console.error('未找到标题：Markdown 首行用 "# 标题"，或用 --title 指定'); process.exit(1); }
-
-const words = countWords(md);
+let title = parsed.title;
+const tokens = parsed.tokens;
+const words = parsed.words;
 
 // ===== 读取现有章节，推算编号 =====
 // 这里曾经用正则逐条匹配 CHAPTERS 的文本。后来条目多了 date/seal/leaf 三个字段，
@@ -157,204 +129,53 @@ if (fs.existsSync(targetPath)) {
 // ===== 资源版本号 =====
 // 模板里的 ?v= 曾经是手写的，改版后会过期 —— 更糟的是模块拆分后这里还停留在
 // 「只引一个 reader.js」，生成出来的新章会是个没有交互的空壳。
-// 所以每次都从现有页面里取当前版本，并保证脚本引用齐全。
-const ASSET_SCRIPTS = [
-  'chapters.js', 'transition.js',
-  'reader.flags.js', 'reader.dom.js', 'reader.store.js', 'reader.engine.js', 'reader.ui.js',
-  'reader.js'
-];
-function detectAssetVersion() {
-  var max = 0;
-  var dirs = [NOVEL_DIR, ROOT];
-  dirs.forEach(function (dir) {
-    if (!fs.existsSync(dir)) return;
-    fs.readdirSync(dir).filter(function (f) { return /\.html$/.test(f); }).forEach(function (f) {
-      var html = fs.readFileSync(path.join(dir, f), 'utf-8');
-      var re = /\?v=(\d+)/g;
-      var m;
-      while ((m = re.exec(html)) !== null) max = Math.max(max, parseInt(m[1], 10));
-    });
-  });
-  return max || 1;
-}
+// 所以每次都从现有页面里取当前版本（detectAssetVersion 在共用模块里）。
 const ASSET_V = detectAssetVersion();
 
 // 章节页的日期行：顶部写开头那天，章末写收束那天（一章写多天时两处都有）。
 // 年份取 --year，缺省沿用上一章；没年份或没日期就不输出这一行。
-const CN_YEAR_CHARS = '〇一二三四五六七八九';
-function cnYearStr(y) {
-  return String(y).replace(/\d/g, function (d) { return CN_YEAR_CHARS.charAt(Number(d)); });
-}
 const pageYear = toYearValue(opts.year) || (prev && prev.year) || '';
 const pageDates = opts.dates
   ? String(opts.dates).split(/[,，]/).map(function (x) { return x.trim(); }).filter(Boolean)
   : (opts.date ? [String(opts.date).trim()] : []);
-const showDateLine = !opts.nodate && pageYear && pageDates.length > 0;
-const dateLineTop = showDateLine
-  ? '    <div class="chapter-date">' + cnYearStr(pageYear) + ' · ' + pageDates[0] + '</div>\n'
-  : '';
 
 // 章内日期落点：日期是跟着「时间变化」走的，所以第 2 个及以后的日子
 // 要贴在场景切换（--- → <div class="scene-break">）后面、下一段之前，
 // 而不是塞在章末 —— 挂在末尾等于说这一章写到那天为止，位置是错的。
 //   --dates "九月一日,九月十七" + 正文一处 ---  →  顶上一个九月一日，切换点后一个九月十七
 //   切换点不够用（日期比切换点多）→ 剩下的退回章末，宁可位置差也别丢日期
-const midDates = showDateLine ? pageDates.slice(1) : [];
-if (pageYear && midDates.length) {
-  const MARK = '<div class="scene-break"></div>\n';
-  const parts = contentHtml.split(MARK);
-  let merged = parts[0];
-  for (let i = 1; i < parts.length; i++) {
-    merged += MARK;
-    if (i - 1 < midDates.length) {
-      merged += '    <div class="chapter-date">' + cnYearStr(pageYear) + ' · ' + midDates[i - 1] + '</div>\n';
-    }
-    merged += parts[i];
-  }
-  contentHtml = merged;
-  midDates.slice(parts.length - 1).forEach(function (d) {
-    contentHtml += '    <div class="chapter-date chapter-date-end">' + cnYearStr(pageYear) + ' · ' + d + '</div>\n';
-  });
-}
+// 具体实现见共用模块的 applyDates（token 版，与 render-chapter.mjs 同一套）。
+const datedTokens = applyDates(tokens, { year: pageYear, dates: pageDates, nodate: opts.nodate });
+const dateLineTop = datedTokens.dateTop;
+const contentTokens = datedTokens.tokens;
 
-// ===== 章节页模板 =====
-// 正文流里不再有「上一章 / 下一章」那一对：章末的「一章一句」就是接缝，
-// 往下滚会接上下一章（见 js/reader.ui.js 的 initFlow / docs/INFINITE-SCROLL.md）。
-// 底部工具栏里的 .prev-ch / .next-ch 保留，那是隐藏的显式导航。
-const prevCh = prev ? '<a href="' + prev.file + '" class="prev-ch">上一章</a>' : '<a href="#" class="prev-ch">上一章</a>';
+// ===== 章节页内容 =====
+// 整页模板本身在 tools/chapter-template.cjs（唯一副本）。这里只准备模板变量。
+const prevChFile = prev ? prev.file : '';
 const afterglow = opts.afterglow || '翻过这一页，故事还在继续。（这一句写在 chapter-afterglow 里，换一句属于这一章的话吧）';
 
 // 章末印章：两字，取 --seal，或直接取标题「第三章·课上」里 · 后面那半截。
-const sealText = opts.seal || (String(title).indexOf('·') >= 0 ? String(title).split('·').pop().trim() : '');
-const sealHtml = sealText ? '    <div class="chapter-seal"><span>' + escapeHtml(sealText) + '</span></div>\n' : '';
+const sealText = sealTextFrom(title, opts.seal);
 
-const tpl = `<!DOCTYPE html>
-<html lang="zh-CN" data-fontsize="large" data-theme="wheat">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f5efe0">
-  <meta name="description" content="${escapeHtml(title)} - 临渊羡鱼">
-  <link rel="icon" href="../favicon.png" type="image/png">
-  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
-  <title>${escapeHtml(title)}</title>
-  <meta property="og:title" content="${escapeHtml(title)}">
-  <meta property="og:description" content="临渊羡鱼 —— 南城的梧桐枝繁未歇">
-  <meta property="og:image" content="https://zephyrw.site/assets/og-cover.jpg">
-  <meta property="og:type" content="article">
-  <link rel="manifest" href="../manifest.json">
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "Chapter",
-    "position": ${num},
-    "name": "${escapeHtml(title)}",
-    "isPartOf": { "@type": "Book", "name": "临渊羡鱼", "inLanguage": "zh-CN" },
-    "inLanguage": "zh-CN"
-  }
-  </script>
-  <link rel="stylesheet" href="../css/style.css?v=${ASSET_V}">
-  <!-- 原生壳能力补丁（剪贴板 / 原生分享 / blob 导出）。章节页没有 theme.js，
-       所以紧跟样式表；它必须早于正文末尾的 reader.* 模块执行 —— 那些模块
-       会直接使用 navigator.clipboard 与 navigator.share。 -->
-  <script src="../js/native-bridge.js?v=${ASSET_V}"></script>
-  <!-- 站内「新章节更新了」横幅（取 announce.json 与 localStorage 比对，每会话一次）。
-       defer：它只读 DOM 与 localStorage、往 body 补一条横幅，不参与首绘；
-       留在 head 里同步加载会让正文白等一个网络往返（4G 实测首绘 +150~300ms）。 -->
-  <script src="../js/announce.js?v=${ASSET_V}" defer></script>
-  <!-- 点击即反馈：按下就在顶部点亮一条细线，盖住「跳转前的空窗期」。 -->
-  <script src="../js/nav-feedback.js?v=${ASSET_V}" defer></script>
-</head>
-<body class="reading-page">
-  <div class="reading-wrapper">
-
-  <div class="reading-progress-line"></div>
-
-  <div class="reader-topbar" id="readerTopbar">
-    <a href="index.html" class="back-btn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="15 18 9 12 15 6"></polyline>
-      </svg>
-    </a>
-    <span class="chapter-name">${escapeHtml(title)}</span>
-  </div>
-
-  <div class="reader-tap-area" id="readerTapArea"></div>
-
-  <!-- 阅读流：一章一个 section，往下滚会接上下一章（首章由页面自带，其余按需追加） -->
-  <div id="readingFlow" class="reading-flow">
-  <section class="chapter-block" data-file="${file}">
-  <article class="chapter-content">
-    <h1>${escapeHtml(title)}</h1>
-${dateLineTop}${contentHtml}  </article>
-
-  <div class="chapter-afterglow">
-    <!-- 卡头固定写「《章节标题》」，不要再写成「这一章的XX」——
-         这是站点的文案约定（见 HANDOVER「文案规则」），生成的每一章都要遵守。 -->
-    <div class="afterglow-kicker">《${escapeHtml(title)}》</div>
-    <p>${escapeHtml(afterglow)}</p>
-    <button type="button" class="afterglow-share" onclick="shareChapter(this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-      分享这一章
-    </button>
-${sealHtml}  </div>
-</section>
-</div>
-
-  <div class="reader-bottombar" id="readerBottombar">
-    <div class="reader-progress-area">
-      ${prevCh}
-      <div class="reader-progress-bar">
-        <div class="fill" id="progressFill" style="width:0%"></div>
-      </div>
-      <a href="#" class="next-ch">下一章</a>
-    </div>
-    <div class="reader-menu-row">
-      <a href="#" onclick="openDirectory();return false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
-        目录
-      </a>
-      <button onclick="openQuotes();return false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7H5a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1H8z"/><path d="M19 7h-3a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1h-3z" transform="translate(-3 0)"/></svg>
-        摘句
-      </button>
-      <button onclick="openSearch();return false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="16.4" y1="16.4" x2="21" y2="21"/></svg>
-        搜索
-      </button>
-      <button onclick="toggleNightMode()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-        <span id="nightModeLabel">夜读</span>
-      </button>
-      <button onclick="toggleAutoScroll();return false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12"/><path d="M8 12l4 4 4-4"/><path d="M6 20h12"/></svg>
-        <span id="autoScrollLabel">自动</span>
-      </button>
-      <button onclick="openSettings()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-        设置
-      </button>
-    </div>
-  </div>
-
-  </div>
-
-  <script src="../js/chapters.js?v=${ASSET_V}"></script>
-  <script src="../js/transition.js?v=${ASSET_V}"></script>
-  <script src="../js/reader.flags.js?v=${ASSET_V}"></script>
-  <script src="../js/reader.dom.js?v=${ASSET_V}"></script>
-  <script src="../js/reader.store.js?v=${ASSET_V}"></script>
-  <script src="../js/reader.engine.js?v=${ASSET_V}"></script>
-  <script src="../js/reader.ui.js?v=${ASSET_V}"></script>
-  <script src="../js/reader.js?v=${ASSET_V}"></script>
-</body>
-</html>
-`;
+// 整页模板来自共用模块（tools/chapter-template.cjs 里唯一的那一份）。
+// 只替换 <article> 里的正文区时（tools/render-chapter.mjs）走的也是同一个
+// renderArticleInner —— 段落怎么变 <p>、日期行缩进多少，全站一处定义。
+const articleInner = renderArticleInner({ title: title, dateTop: dateLineTop, tokens: contentTokens });
+const page = renderChapterPage({
+  title: title,
+  num: num,
+  file: file,
+  articleInner: articleInner,
+  prevFile: prevChFile,
+  afterglow: afterglow,
+  sealText: sealText,
+  assetVersion: ASSET_V
+});
 
 // ===== 输出 =====
 if (opts.dryRun) {
   const out = path.join(NOVEL_DIR, '_dryrun-chapter.html');
-  fs.writeFileSync(out, tpl);
+  fs.writeFileSync(out, page);
   console.log('✅ [dry-run] 章节页已生成: ' + out);
   console.log('   标题: ' + title + ' | 编号: ' + num + ' | 字数: ' + words);
   console.log('   dry-run 未修改 chapters.js，未改动其他章节');
@@ -363,34 +184,20 @@ if (opts.dryRun) {
 
 // 1) 写章节页
 const out = path.join(NOVEL_DIR, file);
-fs.writeFileSync(out, tpl);
+fs.writeFileSync(out, page);
 
 // 1.2) 自检：模板必须把当前所有阅读器模块都引上，关键 UI 挂点也一个不能少。
 //      模块拆分那次就是这里漏了 —— 新章只有入口脚本，页面没有交互，而且不报错。
 //      第三章又漏了一次：工具栏少一个「自动」按钮，自动滚屏整个功能直接消失，
 //      页面上毫无报错痕迹，只能靠人翻到那一章才发现。所以这里改成按清单比对。
-const REQUIRED_HOOKS = [
-  ['toggleAutoScroll', '工具栏「自动」按钮（自动滚屏唯一入口）'],
-  ['openSearch', '工具栏「搜索」按钮（阅读器内全章搜索唯一入口）'],
-  ['autoScrollLabel', '自动滚屏状态文字'],
-  ['chapter-seal', '章末印章'],
-  ['style.css?v=', '样式表版本号（不带的 URL 会永久吃旧 CSS 缓存）'],
-  ['favicon.png', '站点图标（favicon.svg 这个文件根本不存在）'],
-  ['apple-touch-icon', 'iOS 加主屏图标（漏了 = 苹果用户拿整页截图当图标）']
-];
+//      清单本身住在共用模块里（tools/check-precache.mjs 也读同一份模板核对）。
 const written = fs.readFileSync(out, 'utf-8');
-const missing = ASSET_SCRIPTS.filter(function (name) {
-  return written.indexOf('js/' + name) === -1;
-}).map(function (name) { return 'js/' + name; });
-const missingHooks = REQUIRED_HOOKS.filter(function (h) {
-  return written.indexOf(h[0]) === -1;
-}).map(function (h) { return h[0] + ' —— ' + h[1]; });
-const problems = missing.concat(missingHooks);
+const problems = tpl.missingAssetScripts(written).concat(tpl.missingHooks(written));
 if (problems.length) {
   fs.unlinkSync(out);
   console.error('✗ 模板缺少必要内容：');
   problems.forEach(function (p) { console.error('   · ' + p); });
-  console.error('  已删除刚生成的章节页，未改动 chapters.js。请先更新 new-chapter.js 的模板。');
+  console.error('  已删除刚生成的章节页，未改动 chapters.js。请先更新 tools/chapter-template.cjs 的模板。');
   process.exit(1);
 }
 

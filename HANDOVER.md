@@ -43,6 +43,9 @@ node tools/check-apk.mjs           # 安装包与 version.json 的 size/sha256 �
 node tools/check-apk.mjs --write   # 打完新包后重算校验值（APK 与清单同一次提交）
 python tools/make-kai-subset.py --check            # 楷体子集是否覆盖正文
 node new-chapter.js <原稿.md>       # 加新章节（会自动写 manuscript/）
+node tools/render-chapter.mjs chapter-01   # **重新渲染已有章节**（md → 章节页，改稿用这个）
+node tools/render-chapter.mjs --all --dry-run  # 只比对不写；不带 --dry-run 才落盘
+node tools/sync-characters.mjs     # 拉飞书《人物设定》→ js/characters-data.js（默认 dry-run）
 node tools/make-characters.mjs     # 改人物后重新生成同学录与详细页
 python tools/make-portrait-thumbs.py  # 为 18 张立绘生成 128×150 缩略图（列表页用，母版留给详情页/灯箱）
 node tools/make-sitemap.mjs        # 重生成 sitemap.xml（章节+人物+固定页，lastmod 取源稿 mtime）
@@ -212,11 +215,61 @@ node new-chapter.js 原稿.md --blurb "目录页一句话" --date "九月十九"
 
 新增章节**不需要**手动升 `?v=`：章节页是新 URL，导航走网络优先；`CACHE` 由脚本升。
 
+## 改已有正文（一条命令，改稿专用）
+
+```bash
+# 飞书改完稿 → 落到 manuscript/chapter-0N.md → 再重渲染页面
+node tools/render-chapter.mjs chapter-01          # 只重渲染这一章的正文
+node tools/render-chapter.mjs chapter-01 --dry-run # 先看 diff
+node tools/render-chapter.mjs --all                # 全部 7 章
+```
+
+方向是 **md 是源、html 是生成物**（和 `new-chapter.js` 同一套模板：整页模板与
+md→段落渲染都在 `tools/chapter-template.cjs`，**只有一份**）。它只重写
+`<article class="chapter-content">` 里的正文（h1 + 段落 + 场景分隔 + 章内日期），
+页面上其余字节全部原样保留 —— head、顶栏、**章末余韵卡那句属于这一章的话**、
+印章、工具栏 7 个挂点、prev/next、所有 `?v=`。所以对当前 md 连跑两次
+`git status` 必须是空的（幂等）。
+
+两条它**故意不做**的事：
+
+- **不动 `?v=`**：改正文不改资源版本。但章节页在 `PRECACHE` 里，正文变了预缓存
+  字节就变了 → **`CACHE` 必须 +1**（判据见「两类改动」那段）。
+- **不动 `js/chapters.js` 的 `words`**：字数、`updated` 这些人工判断的字段自己改。
+
+⚠ **段数变化会醒目告警但不阻止**。这是唯一会静默出错的地方：搜索落点
+（`data-quote-index`）与阅读进度锚点（`reader-anchor-<id>` 的 `{p,i,o}`）全靠段序号，
+段数一变，读者已存的锚点全体偏移，而页面看着完全正常。看到告警先确认这是有意的增删。
+
+跑完接 `npm run manuscript` 自校验（它逐字比对正文与源稿）。章节页里
+`<div class="scene-break">` 与 `.chapter-date` 在 `manuscript/` 里没有对应标记
+（`manuscript-sync.mjs` 只记段落），所以这两类结构是**从现有页面读回来**的；
+日期行一律沿用页面 —— 三、四、六章是 `--nodate` 生成的（`chapters.js` 里有 `date`
+但页面刻意不显示），重算会凭空多出一行，把作者当初的决定推翻。
+
 ## 人物录（一条命令，其余全自动）
 
 ```bash
+node tools/sync-characters.mjs --write --gen   # 飞书《人物设定》→ 数据源 → 生成页面
 node tools/make-characters.mjs
 ```
+
+人物信息的**创作源是飞书文档**《临渊羡鱼 · 人物设定》（`document_id`
+`REiQd3RhZoXFGqxoZcRclL1NnWe`），落盘到 `js/characters-data.js`（唯一数据源，
+不参与页面运行），再跑生成器。两步都能一条命令走完：`sync-characters.mjs`
+默认 **dry-run**（打印「谁新增 / 谁删除 / 哪个字段 旧 → 新」），`--write` 才落盘，
+`--write --gen` 落盘后自动接 `make-characters.mjs`。
+
+- 它按 **slug merge**：`portrait`（立绘文件名）与 `initial`（占位字）**不在文档里**，
+  从现有数据原样保留；新增人物没有立绘时 portrait 留空（生成器用 initial 占位，
+  initial 取姓名首字）。
+- **严格校验，任一不过就拒绝写入**：slug 唯一且只含 `[a-z0-9-]`、分组只能
+  新叶/青枝/乔木且**同组必须连续**（列表页顺序依赖它）、**表格姓名集合与小传
+  姓名集合必须完全一致**、必填字段非空、性格标签 1–2 个、设定标签 1–3 个、
+  生日 `YYYY.MM.DD` 或留空、小传里不许有 HTML 标签。
+- 表格行序 = `CHARACTERS` 数组顺序 = 同学录列表顺序。文档结构见该脚本头注释。
+- **不进 pre-push / CI**（依赖飞书凭据，CI 里没有）；`--from <本地md>` 能离线跑。
+- 幂等：对当前文档 `--write` 后 `git status` 是空的（内容没变就一个字节都不写）。
 
 人物信息**只改 `js/characters-data.js`**（唯一数据源，不参与页面运行），然后跑上面
 那条命令——**光改数据源网站不会变**（页面是预生成的；2026-10-25 就因为只改数据源
@@ -452,6 +505,10 @@ serif——观感一致，不是 bug。（18 人全部有立绘后，占位字�
       - **② 按段替换**（2026-10-31 走的这条）：拿旧 md 与新 md 逐段 diff，只在 html 里替换
         变动过的那些段（替换前逐段验「旧文本唯一、新文本此前不存在」），md 手动同步。
     两条都不是生成器路径。**绝对不要**把已有章节的 md 传给 `new-chapter.js`。
+    **2026-10-31 已补上缺失的那条路**：`node tools/render-chapter.mjs chapter-0N`
+    读 `manuscript/` 重渲染已有章节页（见上面「改已有正文」一节）。模板仍然只有
+    一份（抽到 `tools/chapter-template.cjs`，`new-chapter.js` 与它共用），所以
+    「两个生成器各有一份模板」这个老坑不会在这里复现。
 
 ## 远程开关（出问题时先关功能，别回滚整站）
 
@@ -555,7 +612,6 @@ serif——观感一致，不是 bug。（18 人全部有立绘后，占位字�
 
 | 事项 | 建议时机 | 理由 |
 |---|---|---|
-| 「md → 重新渲染已有章节页」的生成器（改稿专用） | 下次改稿前，优先做 | 现在改已有正文只有两条手工路径（见坑第 19 条），而 `new-chapter.js` 只加新章节、传已有章节的 md 进去会生成新的一章。做起来不难：把 `new-chapter.js` 里「md → 段落 HTML」那段抽成 `tools/render-chapter.mjs`，按 `js/chapters.js` 的章号定位目标页、只替换 `.chapter-content` 里的 `<p>` 序列（保留 `data-quote-index` 装饰），跑完接 `npm run manuscript` 自校验 |
 | 老面板（目录/设置/摘句/备份）从 innerHTML 迁到 `el()` | 下次真要加界面时 | 纯内部质量，无用户可见收益；且 179 项断言测行为不测像素，风险兜不住 |
 | `ui.js` 再拆出 `panels.js`（纯移动） | 想拆随时可做 | 风险低，但也没收益；`ui.js` 3515 行目前还能忍 |
 | 选中文字气泡工具条（摘句/复制/搜索） | 想加功能时的首选 | 唯一“既有用户价值、又顺手带出 `el()` 迁移”的一步 |

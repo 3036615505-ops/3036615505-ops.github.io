@@ -10,6 +10,24 @@
 >
 > 历史条目是原样搬过来的（内容逐字未改，只在块之间统一成一个空行）。
 
+## 2026-10-31 · 补上改稿缺的两条工具：重渲染已有章节 + 人物设定从飞书同步（`?v=` 不变 122 · `CACHE` 不变 v70）
+
+| 项 | 内容 |
+|---|---|
+| 动因 | 改稿流程刚变成「飞书文档是唯一创作源 → 读回 → 落盘 → 发布」，但这条路上有两个洞：① **没有「md → 重新渲染已有章节页」的生成器**，所以上一次改第一章只能手工按段替换 html（坑第 19 条）② 人物设定还是 331 行 JS，改一句台词得钻进代码里找 |
+| 新增文件 | `tools/chapter-template.cjs`（章节页唯一模板 + md→正文渲染，CommonJS）、`tools/render-chapter.mjs`、`tools/sync-characters.mjs`。**零新依赖、零构建步骤** |
+| 改动文件 | `new-chapter.js`（改成共用模块的调用方，体积从 493 行降到 ~300 行：模板 122 行、md 解析、`?v=` 探测、日期插入全部搬走）、`tools/check-precache.mjs`（模板判据的路径改为 `tools/chapter-template.cjs`）、`package.json`（加 `render:chapter` / `sync:characters` 两个转发入口，**不进 verify/pre-push/CI**） |
+| 模板只有一份（硬要求） | 整页模板与「一个段落怎么变 `<p>`」搬进 `tools/chapter-template.cjs`：`renderChapterPage()` 是整页，`renderArticleInner()` 是正文区，后者被前者调用。`new-chapter.js` 只调这两个函数，`render-chapter.mjs` 只调 `renderArticleInner` + 两份清单（`ASSET_SCRIPTS` / `REQUIRED_HOOKS`，写盘自检与页面体检共用同一份）。**CJS 是因为 `new-chapter.js` 是 CJS 且要 `require` 它**（ESM 能 import CJS，反过来不行），所以没有动 new-chapter.js 的模块系统 |
+| `new-chapter.js` 行为未变 | 改动前先存基线，改完逐字比对：`node new-chapter.js manuscript/chapter-02.md --dry-run` 输出与改动**完全一致**。另外五种参数组合也和改动前的版本（`git show HEAD:new-chapter.js`）对拍通过：纯 dry-run / `--date --seal --afterglow --blurb` / `--dates` 三日两组分隔 / `--nodate` / `--title 覆盖 --year 二〇二三` —— 全部逐字节相同（含章内日期与「日期比切换点多 → 退回章末」那条分支） |
+| `render-chapter.mjs` 的边界 | **只重写 `<article class="chapter-content">` 里的正文**（h1 + 段落 + 场景分隔 + 章内日期），页面其余字节原样保留。不重生成整页的理由有二：① 余韵卡那句属于这一章的话**只存在于页面里**（`chapters.js` 没有这个字段），模板重生成会把它换成占位文案 ② 三、四、六章是 `--nodate` 生成的，`chapters.js` 有 `date` 但页面刻意不显示日期行 —— 重算就会凭空多一行，把作者当初的决定静默推翻。所以**日期行一律沿用页面**，分隔「md 有 `---` 就按 md，否则沿用页面」（`manuscript/` 快照里不含分隔标记） |
+| 段落对齐 | 旧段落 vs 新段落走 **LCS**（不是按序号硬替）：插入/删除一段时，场景分隔与日期行会**跟着原来那句话走**，不会整体错开一位。实测在第二章第 5 段后插一段：diff 是 `1 insertion(+), 0 deletion(-)`，两处分隔的位置一像素没动 |
+| 段数告警（唯一会静默出错的地方） | 段数变了一律醒目告警、**不阻止**（作者可能是有意增删）。理由写进输出正文：搜索落点（`data-quote-index`）与阅读进度锚点（`reader-anchor-*`）全靠段序号，段数一变读者已存锚点全体偏移，而页面看着完全正常 |
+| `sync-characters.mjs` 的 merge | 按 **slug** 从现有数据保留 `portrait`（立绘文件名）与 `initial`（占位字）——这两项不在文档里。新增人物：portrait 留空、initial = 姓名首字，并在输出里提示「有立绘后填 assets/portrait-<slug>-1024.webp」。**默认 dry-run**，`--write` 才落盘，`--write --gen` 接 `make-characters.mjs` |
+| 严格校验（任一不过就拒写） | 表格 10 列列序逐列比对；slug 唯一且只含 `[a-z0-9-]`；分组只能是新叶/青枝/乔木且**同组必须连续**（报错会指出「第 X 行已经出现过」）；**表格姓名集合与小传姓名集合完全一致**（缺小传、多小传都报）；必填字段非空；性格标签 1–2、设定标签 1–3；生日 `YYYY.MM.DD` 或留空；小传不许含 HTML 标签。所有错误**收集齐再一起报**，不遇到第一个就停 |
+| 发版 | `?v=` **不变（122）**、`CACHE` **不变（v70）**。判据是「`PRECACHE` 里的字节变没变」：这次没碰任何 CSS/JS/HTML，7 个章节页在 `--all` 之后 `git status` 为空，`js/characters-data.js` 对飞书文档往返一遍也逐字节未变；新增的三个文件都在 `tools/` 里，不属于站点资源 |
+| 验证 | `node tools/render-chapter.mjs --all` 后 `git status` **空**（连跑两次都空）· 改一字的端到端：改 `chapter-02.md` 一个字 → `render-chapter chapter-02` → html 里那一行变了（`git diff --numstat` = `1 1`）、其余一字未动 → `npm run manuscript` 7 章一致 → `git restore` 只复原 md 再渲染一次，html 自动回到原样 · 段数告警实测打印 · `node tools/sync-characters.mjs --doc REiQd3RhZoXFGqxoZcRclL1NnWe --write` 后 `git status` 空 · 三种坏输入（slug 重复 / 分组不连续 / 有表格行没小传）各被拒绝且退出码 1 · `npm run typecheck` 0 诊断 · `npm run manuscript` 绿 · `npm run precache` 绿 · `npm run bump:check` 版本号统一 · `npm run stale` 绿 · `node tools/e2e.mjs` **179/179**（192.4s，一条断言没动） |
+| 已知限制（写进 HANDOVER） | ① `render-chapter` 不改 `chapters.js` 的 `words`/`updated`（人工判断的字段）② md 里写 `---` 会让 `npm run manuscript` 变红：`manuscript-sync` 只把 `<p>/<blockquote>/<hr>` 反写成 md，**不认** `<div class="scene-break">`；解法是确认分隔后跑一次 `manuscript-sync --write --only <chapter>`（页面上的分隔不会丢）。这条告警里就写着 |
+
 ## 2026-10-31 · 第一章正文修订（6 段 · 首次以飞书文档为改稿入口）（`?v=` 不变 122 · `CACHE` linyuan-v69→v70）
 
 | 项 | 内容 |
