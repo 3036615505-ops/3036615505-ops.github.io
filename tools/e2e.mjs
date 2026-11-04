@@ -902,8 +902,30 @@ check('键盘 ← 把上一章插到上方并落位到章首',
   kbdUp.blocks[0] === 'chapter-01.html' && Math.abs(kbdUp.top) < 4 && kbdUp.cur === 'chapter-01.html',
   JSON.stringify(kbdUp));
 
+/* 末章不写死：CHAPTERS 每加一章，下面的 URL 跟着数据走。
+   这里曾经固定写 chapter-07.html，第八、九章上线后「末章」相关的四条断言全部失效
+   （末章反而被当成中间章，滚到底当然会追加）。断言值早就按数据算了，URL 却是常量 ——
+   「加一章不用改测试」这个约定只兑现了一半。 */
+const tailInfo = await evaluate(`(() => {
+  const l = window.CHAPTERS || [];
+  const at = i => l[l.length - 1 - i] || {};
+  return {
+    lastFile: at(0).file || '', lastNum: at(0).num || 0, lastTitle: at(0).title || '',
+    prevFile: at(1).file || '', prevTitle: at(1).title || '',
+    thirdFile: at(2).file || ''
+  };
+})()`);
+const LAST_FILE = tailInfo.lastFile;
+const PREV_FILE = tailInfo.prevFile;
+const THIRD_FILE = tailInfo.thirdFile;
+/* 阅读进度在 localStorage 里的键：'novel/chapter-09.html' → 'novel-chapter-09-html' */
+const storageKey = f => f.replace(/[/.]/g, '-');
+if (!LAST_FILE) {
+  throw new Error('未能从 window.CHAPTERS 读到末章文件名，末章相关断言无法进行');
+}
+
 /* 末章滚到底不追加、不报错 */
-await goto(BASE + '/novel/chapter-07.html');
+await goto(BASE + '/novel/' + LAST_FILE);
 await evaluate(`window.scrollTo(0, document.documentElement.scrollHeight); 1`);
 await sleep(1300);
 const lastCh = await evaluate(`({
@@ -920,7 +942,7 @@ await sleep(700);
 const midCoda = await evaluate(`document.querySelectorAll('.chapter-coda').length`);
 check('中间章没有收束卡', midCoda === 0, 'count=' + midCoda);
 
-await goto(BASE + '/novel/chapter-07.html');
+await goto(BASE + '/novel/' + LAST_FILE);
 await sleep(900);
 /* 催更计数打的是真实第三方接口，测试不能真去 hit —— 否则每次跑测试、
    每次 CI 都把线上数字刷大一次。/get 只读无害，这里连它一起拦掉，
@@ -935,6 +957,9 @@ await evaluate(`(() => {
 })()`);
 /* 期望值全部按 CHAPTERS 现算，不在测试里写死「7 章 / 15,648 字」——
    加一章之后这条断言不该需要跟着改 */
+/* 这一段所有取值都给了兜底：以前 countText / back 直接点下去，一旦收束卡没渲染，
+   这里抛 TypeError 会把后面的断言整段吞掉 —— CI 上只看得到前面两条红，真正的原因
+   藏在「进程以 1 退出」里。断言失败要失败得起，不能连累后续检查。 */
 const coda = await evaluate(`(() => {
   const box = document.querySelector('.chapter-coda');
   if (!box) return { ok: false };
@@ -942,22 +967,23 @@ const coda = await evaluate(`(() => {
   const words = list.reduce((n, c) => n + (c.words || 0), 0);
   const last = list[list.length - 1];
   const say = box.querySelector('.coda-say');
+  const count = box.querySelector('.coda-count');
+  const back = box.querySelector('.coda-back');
   return {
     ok: true,
     inLast: box.parentNode.dataset.file === last.file,
-    countText: box.querySelector('.coda-count').textContent,
+    countText: count ? count.textContent : '',
     updatedText: (box.querySelector('.coda-updated') || {}).textContent || '',
     expectCount: list.length + ' 章',
-    /* 不在模板字符串里写正则转义：\d 会被吞成 d，改用 toLocaleString */
     expectWords: Number(words).toLocaleString('en-US'),
     hasUpdated: !!last.updated,
-    back: box.querySelector('.coda-back').getAttribute('href'),
+    back: back ? (back.getAttribute('href') || '') : '',
     sayHref: say ? (say.getAttribute('href') || '') : ''
   };
 })()`);
 check('末章出现收束卡，且只挂在最后一块上', coda.ok && coda.inLast, JSON.stringify(coda).slice(0, 200));
 check('收束卡显示全书章数与字数',
-  coda.countText.indexOf(coda.expectCount) >= 0 && coda.countText.indexOf(coda.expectWords) >= 0,
+  (coda.countText || '').indexOf(coda.expectCount) >= 0 && (coda.countText || '').indexOf(coda.expectWords) >= 0,
   coda.countText);
 /* 漏填 updated 时给一条说得清失败的断言，而不是让下面那条含糊地挂掉 */
 check('末章登记了 updated 字段', coda.hasUpdated, '在 js/chapters.js 给末章补 updated: YYYY-MM-DD');
@@ -977,6 +1003,7 @@ await sleep(700);
 
 const nudgeAt = await evaluate(`(() => {
   const el = document.querySelector('.chapter-coda .coda-nudge');
+  if (!el) return { x: -1, y: -1, before: 0, missing: true };
   const r = el.getBoundingClientRect();
   return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2),
            before: (JSON.parse(localStorage.getItem('reader-nudge') || '{"count":0}').count || 0) };
@@ -987,17 +1014,18 @@ await sleep(500);
 console.log('EVENTS:', JSON.stringify(await evaluate(`window.__ev`)), 'AT', nudgeAt.x, nudgeAt.y);
 const nudgeAfterReal = await evaluate(`(JSON.parse(localStorage.getItem('reader-nudge') || '{"count":0}').count || 0)`);
 check('真实坐标点「催更」：按钮真的响应',
-  nudgeAfterReal === nudgeAt.before + 1,
-  nudgeAt.before + ' → ' + nudgeAfterReal);
+  !nudgeAt.missing && nudgeAfterReal === nudgeAt.before + 1,
+  nudgeAt.missing ? '找不到 .coda-nudge（收束卡没渲染）' : nudgeAt.before + ' → ' + nudgeAfterReal);
 
 /* 「写给作者」现在走唤端，不开新标签、不离开页面，所以只验证两件事：
    真实坐标能点中（覆盖层没吞掉它），以及点完确实发出了 QQ 唤端。 */
 const sayAt = await evaluate(`(() => {
   const a = document.querySelector('.chapter-coda .coda-say');
   window.__sayFired = 0;
+  if (!a) return { x: -1, y: -1, missing: true };
   a.addEventListener('click', function (e) { e.preventDefault(); window.__sayFired = 1; }, { once: true });
   const r = a.getBoundingClientRect();
-  return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), missing: false };
 })()`);
 await clickAt(sayAt.x, sayAt.y);
 await sleep(350);
@@ -1047,8 +1075,8 @@ check('催更点一次计数 +1 并落盘', nudge.after === nudge.before + 1, JS
 check('催更后按钮显示累计次数', /共 \d+ 次|第 \d+ 次/.test(nudge.text), nudge.text);
 check('催更后有反馈提示', /催更/.test(nudge.toast), nudge.toast);
 
-/* 无限流：从第六章往下接到第七章，收束卡得跟着出现，且只能有一张 */
-await goto(BASE + '/novel/chapter-06.html');
+/* 无限流：从倒数第二章往下接末章，收束卡得跟着出现，且只能有一张 */
+await goto(BASE + '/novel/' + PREV_FILE);
 await sleep(800);
 await evaluate(`window.scrollTo(0, document.documentElement.scrollHeight); 1`);
 await sleep(1800);
@@ -1062,11 +1090,11 @@ const flowCoda = await evaluate(`(() => {
   };
 })()`);
 check('接到末章后收束卡出现在末章块里、只一张',
-  flowCoda.blocks.length === 2 && flowCoda.codaIn === 'chapter-07.html' && flowCoda.codas === 1,
+  flowCoda.blocks.length === 2 && flowCoda.codaIn === LAST_FILE && flowCoda.codas === 1,
   JSON.stringify(flowCoda));
 
 /* 「读完了」是普通跳转：点完真的到目录，并留下读完的标记 */
-await goto(BASE + '/novel/chapter-07.html');
+await goto(BASE + '/novel/' + LAST_FILE);
 await sleep(900);
 await evaluate(`window.scrollTo(0, document.documentElement.scrollHeight); 1`);
 await sleep(600);
@@ -1096,9 +1124,11 @@ check('第一章按 ← 只给提示、不跳转',
   edge.path + ' / ' + edge.toast);
 
 section('首页 · 继续阅读卡');
-/* 场景照抄线上实测：第七章读完（done），第六章停在 22%，第四章停在 25%。
+/* 场景照抄线上实测：最后一章读完（done），前一章停在 22%，再前一章停在 25%。
    卡片上的章名和百分比必须来自同一章 —— 曾经「已读完」的分支只换章、
-   不换百分比，于是显示成「第七章·余响 / 已读 22%」，看着像第七章只读了 22%。 */
+   不换百分比，于是显示成「第七章·余响 / 已读 22%」，看着像第七章只读了 22%。
+   章名与百分比都从 CHAPTERS 现取，别再把某一章写死：第八、九章上线后
+   这里的「末章」曾经指向第七章，标签和实际被测对象已经不是一回事了。 */
 async function homeCardWith(seed) {
   await goto(HOME, 1500);
   await evaluate(`(() => {
@@ -1121,25 +1151,25 @@ async function homeCardWith(seed) {
 }
 
 const rcDone = await homeCardWith(`
-  localStorage.setItem('reader-done--novel-chapter-07-html', '1');
-  localStorage.setItem('reader-pos--novel-chapter-07-html', '97');
-  localStorage.setItem('reader-pos--novel-chapter-06-html', '22');
-  localStorage.setItem('reader-pos--novel-chapter-04-html', '25');
+  localStorage.setItem('reader-done--${storageKey(LAST_FILE)}', '1');
+  localStorage.setItem('reader-pos--${storageKey(LAST_FILE)}', '97');
+  localStorage.setItem('reader-pos--${storageKey(PREV_FILE)}', '22');
+  localStorage.setItem('reader-pos--${storageKey(THIRD_FILE)}', '25');
 `);
-check('读完的末章显示 100%，不继承前几章残留的百分比',
-  rcDone.name.indexOf('第七章') >= 0 && rcDone.meta.indexOf('100%') >= 0 && rcDone.fill === '100%',
-  rcDone.name + ' / ' + rcDone.meta + ' / fill=' + rcDone.fill);
+check('读完的章显示 100%，不继承前几章残留的百分比',
+  rcDone.name.indexOf(tailInfo.lastTitle) >= 0 && rcDone.meta.indexOf('100%') >= 0 && rcDone.fill === '100%',
+  rcDone.name + ' / ' + rcDone.meta + ' / fill=' + rcDone.fill + ' / 期望章=' + tailInfo.lastTitle);
 check('继续阅读按钮指向读完的那一章',
-  rcDone.href === 'novel/chapter-07.html', rcDone.href);
+  rcDone.href === 'novel/' + LAST_FILE, rcDone.href + ' / 期望=' + LAST_FILE);
 
 /* 反向：末章没读时不能凭空 100%，要老老实实停在前一章的 22% */
 const rcMid = await homeCardWith(`
-  localStorage.setItem('reader-pos--novel-chapter-06-html', '22');
-  localStorage.setItem('reader-pos--novel-chapter-04-html', '25');
+  localStorage.setItem('reader-pos--${storageKey(PREV_FILE)}', '22');
+  localStorage.setItem('reader-pos--${storageKey(THIRD_FILE)}', '25');
 `);
 check('末章未读时显示真正读到的那一章与其百分比',
-  rcMid.name.indexOf('第六章') >= 0 && rcMid.meta.indexOf('22%') >= 0 && rcMid.fill === '22%',
-  rcMid.name + ' / ' + rcMid.meta + ' / fill=' + rcMid.fill);
+  rcMid.name.indexOf(tailInfo.prevTitle) >= 0 && rcMid.meta.indexOf('22%') >= 0 && rcMid.fill === '22%',
+  rcMid.name + ' / ' + rcMid.meta + ' / fill=' + rcMid.fill + ' / 期望章=' + tailInfo.prevTitle);
 
 /* 全新读者：一个字都没读，卡片要退回默认的第一章，且不显示任何百分比 */
 const rcNew = await homeCardWith(``);

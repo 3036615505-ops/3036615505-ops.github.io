@@ -34,7 +34,15 @@ const renderChapterPage = tpl.renderChapterPage;
 const sealTextFrom = tpl.sealTextFrom;
 
 /** 序列化条目：固定字段在前，未知字段追加在后 —— 加字段不会再把老字段吃掉 */
-const KEY_ORDER = ['num', 'title', 'file', 'words', 'blurb', 'year', 'date', 'dates', 'seal', 'leaf', 'volume'];
+const KEY_ORDER = ['num', 'title', 'file', 'words', 'blurb', 'year', 'date', 'dates', 'seal', 'leaf', 'volume', 'updated'];
+
+/** 本地日期 YYYY-MM-DD。updated 记的是「这一章正文真正更新的日子」，
+    必须取本地时区 —— toISOString 走 UTC，夜里写完的章会早一天。 */
+function localToday() {
+  var d = new Date();
+  var p = function (n) { return (n < 10 ? '0' : '') + n; };
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
 
 /** 年份统一存成数字：首页要拿它算学年/年级，存「二〇二二」这种字符串没法减。
     接受 2023 与「二〇二三」「二零二三」两种写法。 */
@@ -279,6 +287,10 @@ if (opts.dates) {
 if (opts.seal) newEntry.seal = opts.seal;
 newEntry.leaf = (num - 1) % 8;
 if (opts.volume) newEntry.volume = opts.volume;
+/* 收束卡的「最近更新」读这个字段。以前靠手填，第八、九章就漏了 —— 那两章上线后
+   末章收束卡少一行日期，e2e 的「末章登记了 updated 字段」直接红。默认写今天，
+   补登旧章用 --updated 2026-11-01 覆盖。 */
+newEntry.updated = opts.updated || localToday();
 const all = entries.concat([newEntry]);
 fs.writeFileSync(CHAPTERS_JS, head + 'var CHAPTERS = [\n' + all.map(fmtEntry).join(',\n') + '\n];' + tail);
 
