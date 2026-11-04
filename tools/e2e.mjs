@@ -918,8 +918,10 @@ const tailInfo = await evaluate(`(() => {
 const LAST_FILE = tailInfo.lastFile;
 const PREV_FILE = tailInfo.prevFile;
 const THIRD_FILE = tailInfo.thirdFile;
-/* 阅读进度在 localStorage 里的键：'novel/chapter-09.html' → 'novel-chapter-09-html' */
-const storageKey = f => f.replace(/[/.]/g, '-');
+/* 阅读进度在 localStorage 里的键，必须和 js/chapters.js 的 getChapterStorageId 逐字一致：
+   它先把 file 补成 '/novel/<file>'，再把非字母数字/短横全换成 '-' 并合并连续短横 ——
+   于是前导斜杠也变成一个短横，键是 'reader-pos-' + '-novel-chapter-09-html'，中间两个短横。 */
+const storageKey = f => ('/novel/' + f).replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-');
 if (!LAST_FILE) {
   throw new Error('未能从 window.CHAPTERS 读到末章文件名，末章相关断言无法进行');
 }
@@ -1151,10 +1153,10 @@ async function homeCardWith(seed) {
 }
 
 const rcDone = await homeCardWith(`
-  localStorage.setItem('reader-done--${storageKey(LAST_FILE)}', '1');
-  localStorage.setItem('reader-pos--${storageKey(LAST_FILE)}', '97');
-  localStorage.setItem('reader-pos--${storageKey(PREV_FILE)}', '22');
-  localStorage.setItem('reader-pos--${storageKey(THIRD_FILE)}', '25');
+  localStorage.setItem('reader-done-' + '${storageKey(LAST_FILE)}', '1');
+  localStorage.setItem('reader-pos-' + '${storageKey(LAST_FILE)}', '97');
+  localStorage.setItem('reader-pos-' + '${storageKey(PREV_FILE)}', '22');
+  localStorage.setItem('reader-pos-' + '${storageKey(THIRD_FILE)}', '25');
 `);
 check('读完的章显示 100%，不继承前几章残留的百分比',
   rcDone.name.indexOf(tailInfo.lastTitle) >= 0 && rcDone.meta.indexOf('100%') >= 0 && rcDone.fill === '100%',
@@ -1164,8 +1166,8 @@ check('继续阅读按钮指向读完的那一章',
 
 /* 反向：末章没读时不能凭空 100%，要老老实实停在前一章的 22% */
 const rcMid = await homeCardWith(`
-  localStorage.setItem('reader-pos--${storageKey(PREV_FILE)}', '22');
-  localStorage.setItem('reader-pos--${storageKey(THIRD_FILE)}', '25');
+  localStorage.setItem('reader-pos-' + '${storageKey(PREV_FILE)}', '22');
+  localStorage.setItem('reader-pos-' + '${storageKey(THIRD_FILE)}', '25');
 `);
 check('末章未读时显示真正读到的那一章与其百分比',
   rcMid.name.indexOf(tailInfo.prevTitle) >= 0 && rcMid.meta.indexOf('22%') >= 0 && rcMid.fill === '22%',
@@ -1779,7 +1781,7 @@ check('openSearch 后遮罩可见、输入框已聚焦、正文滚动被锁',
 check('索引未就绪时先出现等待态节点，而不是空列表',
   searchOpen.pending === true && searchOpen.items === 0, JSON.stringify(searchOpen));
 
-/* 等索引就绪（7 次 fetch，本机约 10–40ms；给足 4 秒兜底） */
+/* 等索引就绪（每章一次 fetch，本机约 10–40ms；给足 4 秒兜底） */
 const searchReady = await evaluate(`new Promise((res) => {
   if (LY.ui.searchIndex()) return res(1);
   const t = setInterval(() => {
@@ -1787,15 +1789,17 @@ const searchReady = await evaluate(`new Promise((res) => {
   }, 40);
   setTimeout(() => { clearInterval(t); res(0); }, 4000);
 })`);
-check('章节页抽索引完成（7 章）', searchReady === 1, 'ready=' + searchReady);
+check('章节页抽索引完成（全部章节）', searchReady === 1, 'ready=' + searchReady);
 
 const searchEmpty = await evaluate(`({
   summary: (document.getElementById('searchSummary') || {}).textContent || '',
   listChildren: document.getElementById('searchList').children.length,
-  items: document.querySelectorAll('#searchList .search-item').length
+  items: document.querySelectorAll('#searchList .search-item').length,
+  chapters: (window.CHAPTERS || []).length
 })`);
 check('空输入态只有范围说明（含章数），没有任何历史/推荐项',
-  /搜索 7 章正文/.test(searchEmpty.summary) && searchEmpty.listChildren === 0 && searchEmpty.items === 0,
+  searchEmpty.summary.indexOf('搜索 ' + searchEmpty.chapters + ' 章正文') >= 0 &&
+  searchEmpty.listChildren === 0 && searchEmpty.items === 0,
   JSON.stringify(searchEmpty));
 
 /* 在页面里装一个输入助手：模拟真实输入（改 value + 派发 input）。
@@ -1950,7 +1954,7 @@ const paraAlign = await evaluate(`(async () => {
 const countBad = paraAlign.filter(r => r.indexCount !== r.pageCount);
 const sampleBad = paraAlign.filter(r => !r.samplesOk);
 check('索引段数 === 页面 <p> 数量（逐章，不过滤空段）',
-  countBad.length === 0 && paraAlign.length === 7,
+  countBad.length === 0 && paraAlign.length === searchEmpty.chapters,
   countBad.map(r => r.file + ' ' + r.indexCount + '/' + r.pageCount).join(', ') ||
   paraAlign.map(r => r.pageCount).join('+'));
 check('逐段对齐：每章首/中/末段前 20 字与页面一致',
