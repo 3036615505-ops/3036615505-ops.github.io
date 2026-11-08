@@ -60,8 +60,12 @@
  * v74（2026-11-08 · 图标重出满版母版）：v73 那版是直接裁作者的展示稿，卡片自带的
  * 圆角边框在圆形 / 圆角启动器下会露出「双层轮廓」。这版改用图生图重出的满版母版
  * （铺满画布、无边框、无投影、无水印），`/favicon.png` 的字节再次变化，所以再 +1。
+ *
+ * v75（2026-11-08 · 上线第十章·两家一家）：PRECACHE **新增** `/novel/chapter-10.html`，
+ * 条目本身变了，CACHE 必须升。与 v73/v74 的图标改动是两条并行的线，变基时撞在同一个
+ * 号上（本地写的 v73 与远端图标版的 v73 撞车），故接在 v74 之后取 v75。
  */
-var CACHE = 'linyuan-v74';
+var CACHE = 'linyuan-v75';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
@@ -160,6 +164,7 @@ var PRECACHE = [
   '/novel/chapter-07.html',
   '/novel/chapter-08.html',
   '/novel/chapter-09.html',
+  '/novel/chapter-10.html',
   '/novel/characters.html',
   '/assets/portrait-shenruoqi-thumb.webp',
   '/novel/character-shenruoqi.html',

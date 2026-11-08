@@ -34,7 +34,8 @@ var CHAPTERS = [
   { num: 6, title: '第六章·越界', file: 'chapter-06.html', words: 2184, blurb: '有些界线退得干干净净，有些习惯退不回去。', year: 2022, date: '九月二十', seal: '越界', leaf: 5, updated: '2026-10-25' },
   { num: 7, title: '第七章·余响', file: 'chapter-07.html', words: 2022, blurb: '有些声音传得比名次远，有些诺言一直没过期。', year: 2022, date: '九月二十六', seal: '余响', leaf: 6, updated: '2026-10-25' },
   { num: 8, title: '第八章·前奏', file: 'chapter-08.html', words: 2339, blurb: '有些课在假期前没人听得进去，有些故事在校门口等着人捡。', year: 2022, date: '九月三十', seal: '前奏', leaf: 7, updated: '2026-11-01' },
-  { num: 9, title: '第九章·旧钢笔', file: 'chapter-09.html', words: 2134, blurb: '有些东西丢了能找回来，有些名字只喊给自己听。', year: 2022, date: '九月三十', seal: '钢笔', leaf: 0, updated: '2026-11-01' }
+  { num: 9, title: '第九章·旧钢笔', file: 'chapter-09.html', words: 2134, blurb: '有些东西丢了能找回来，有些名字只喊给自己听。', year: 2022, date: '九月三十', seal: '钢笔', leaf: 0, updated: '2026-11-01' },
+  { num: 10, title: '第十章·两家一家', file: 'chapter-10.html', words: 2463, blurb: '有些饭两家吃了十几年，有些人早就是一家人。', year: 2022, date: '十月一日', seal: '一家', leaf: 1, updated: '2026-11-08' }
 ];
 
 function getChapterStorageId(href) {
