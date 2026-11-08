@@ -1,9 +1,9 @@
 {
-  "versionCode": 18,
-  "versionName": "1.9.1",
+  "versionCode": 19,
+  "versionName": "1.9.2",
   "apkUrl": "https://zephyrw.site/app/linyuan-latest.apk",
-  "size": 214430,
-  "sha256": "4ad37ce70f6d72e5085c99cab2bbac64f7eeda0497f15eee502427e695696464",
-  "notes": "换上一枚新图标：一片金叶落在摊开的书上。这次只换图标，阅读体验没有改动。",
+  "size": 226718,
+  "sha256": "6ba3b7c83ca755c183f8a69e5e7408b239688eacc53c59e7312f00651726f578",
+  "notes": "图标重做了一版：满版绘制，去掉了外层的圆角边框，在圆形和圆角图标下边缘更干净、不再有双层轮廓。",
   "publishedAt": "2026-11-08"
 }
