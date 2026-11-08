@@ -1,9 +1,9 @@
 {
-  "versionCode": 17,
-  "versionName": "1.9.0",
+  "versionCode": 18,
+  "versionName": "1.9.1",
   "apkUrl": "https://zephyrw.site/app/linyuan-latest.apk",
-  "size": 107934,
-  "sha256": "252412c9e42bf4c14266c380fbdde8f6985379a275b2f6d74131cd6e4184f78b",
-  "notes": "这一版是打磨：启动闪屏到正文的过渡不再闪一块空白；「分享章节」改为打开系统分享面板，可以直接发到微信/QQ；切回前台会补查一次更新（以前长时间不退出 App 可能收不到更新提示）；锁定竖屏，去掉系统滚动条",
-  "publishedAt": "2026-10-25"
+  "size": 214430,
+  "sha256": "4ad37ce70f6d72e5085c99cab2bbac64f7eeda0497f15eee502427e695696464",
+  "notes": "换上一枚新图标：一片金叶落在摊开的书上。这次只换图标，阅读体验没有改动。",
+  "publishedAt": "2026-11-08"
 }
