@@ -12,12 +12,12 @@
 | 项 | 值 |
 |---|---|
 | 线上 | <https://zephyrw.site>（GitHub Pages，push 即发布） |
-| 站点资源版本 | `?v=127`（全站 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
-| SW 缓存名 | `linyuan-v74` |
-| 内容契约 | `content/*.json`（manifest + 9 章 + 18 人）是 Android 原生版的数据源；由 `tools/gen-content.mjs` 从页面/数据源派生，`tools/check-content.mjs` 逐字守卫；**不进 PRECACHE、不带 `?v=`、不被任何页面引用**，改它既不升 `?v=` 也不升 `CACHE` |
+| 站点资源版本 | `?v=130`（全站 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
+| SW 缓存名 | `linyuan-v76` |
+| 内容契约 | `content/*.json`（manifest + 10 章 + 18 人）是 Android 原生版的数据源；由 `tools/gen-content.mjs` 从页面/数据源派生，`tools/check-content.mjs` 逐字守卫；**不进 PRECACHE、不带 `?v=`、不被任何页面引用**，改它既不升 `?v=` 也不升 `CACHE` |
 | 阅读器模块 | dom 77 行 · flags 88 · store 247 · engine 631 · ui 3760 · 入口 30 |
 | 样式 | `css/style.css` 5082 行（4 套主题令牌） |
-| 章节 | 9 章（2722 / 2257 / 1999 / 2451 / 2013 / 2184 / 2022 / 2339 / 2134 字，按 `CHAPTERS.words`），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
+| 章节 | 10 章（2722 / 2257 / 1999 / 2451 / 2013 / 2184 / 2022 / 2339 / 2134 / 2463 字，按 `CHAPTERS.words`），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
 | 人物 | 18 人（新叶 7 / 青枝 4 / 乔木 7）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
 | 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 891.5KB（主片 273.1 + 兜底片 618.4）**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
 | Android 壳 | v1.9.2 / versionCode 19（v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死；v1.8.7 修系统返回键直接退出；**v1.9.0 = A 档收官，壳进入封版状态**：桥接补丁下沉到站点 `js/native-bridge.js`（以后改桥不用发版）、原生分享桥、闪屏叠层淡出、onResume 补更新检查、锁竖屏。详见 `app/BACK-HANDLING.md`） |
@@ -152,7 +152,7 @@ git push -u origin wip/mac-键盘
 git config core.hooksPath .githooks   # 没配则本地四项校验不跑，只剩 CI 兜底
 ```
 
-**版本号现状**：`?v=127`（2026-11-09）。谁改谁 bump，`?v=` 与改动一起提交，不要攒——
+**版本号现状**：`?v=130`（2026-11-09）。谁改谁 bump，`?v=` 与改动一起提交，不要攒——
 攒多了中间任何一次 push 都可能带着别人的旧缓存。
 
 ## 两类改动，两种流程
@@ -161,13 +161,13 @@ git config core.hooksPath .githooks   # 没配则本地四项校验不跑，只�
 
 ```bash
 node tools/bump-assets.mjs --write   # ① 改 CSS/JS 必须做，否则用户吃旧缓存
-# ② PRECACHE 里的**内容**变了就要把 CACHE 版本号 +1（v73 → v74）
+# ② PRECACHE 里的**内容**变了就要把 CACHE 版本号 +1（v75 → v76）
 git commit && git push               # ③ pre-push 会跑 4 项校验，CI 会再跑一遍
 ```
 
 **②的判据是「PRECACHE 里的字节变没变」，不是「改的是哪个文件」。** 最容易漏的一类：
-只改了 CSS/JS，但 `?v=` 全站 +1 会改到 9 个 `novel/chapter-0N.html` 里的
-`<link href="…style.css?v=…">` / `<script src="…?v=…">` —— 那 9 页在 PRECACHE 里，
+只改了 CSS/JS，但 `?v=` 全站 +1 会改到 10 个 `novel/chapter-0N.html` 里的
+`<link href="…style.css?v=…">` / `<script src="…?v=…">` —— 那 10 页在 PRECACHE 里，
 于是预缓存的内容变了，**CACHE 必须 +1**。2026-10-29（底部抽屉）就是这么漏过一次：
 「HTML 走网络优先所以不用升」只保证**在线**读者，不升的话预缓存那份 HTML 仍指向旧的
 `?v=`，那些键要等 TTL 自愈才换，**离线读者会长期停在「旧 HTML + 新 JS」且不会自愈**。
@@ -222,7 +222,7 @@ node new-chapter.js 原稿.md --blurb "目录页一句话" --date "九月十九"
 # 飞书改完稿 → 落到 manuscript/chapter-0N.md → 再重渲染页面
 node tools/render-chapter.mjs chapter-01          # 只重渲染这一章的正文
 node tools/render-chapter.mjs chapter-01 --dry-run # 先看 diff
-node tools/render-chapter.mjs --all                # 全部 9 章
+node tools/render-chapter.mjs --all                # 全部 10 章
 ```
 
 方向是 **md 是源、html 是生成物**（和 `new-chapter.js` 同一套模板：整页模板与
@@ -593,7 +593,7 @@ serif——观感一致，不是 bug。（18 人全部有立绘后，占位字�
 - 更新时间来自 `js/chapters.js` 的 `updated: 'YYYY-MM-DD'`（**不是**故事内 `date`）。
   显示成 今天 / 昨天 / 10月25日，跨年才带年份；漏填只是不显示那一行。
   注意 `updated` 是「读者看得出正文变了」的日期——重排、改样式**不要**跟着改，
-  否则一次结构迁移就会把九章全刷成当天。
+  否则一次结构迁移就会把十章全刷成当天。
 - 催更计数**双轨**：本机 `reader-nudge` 记 `{count, at}`（离线也不丢反馈），
   同时打到 Abacus 的计数器做全站总数 —— `abacus.jasoncameron.dev/{get,hit}/zephyrw.site/linyuan-nudge`。
   免注册、CORS 全开、30 次/10 秒限流、单次约 2 秒。按钮的两种说法别混：
@@ -622,7 +622,7 @@ serif——观感一致，不是 bug。（18 人全部有立绘后，占位字�
 | 老面板（目录/设置/摘句/备份）从 innerHTML 迁到 `el()` | 下次真要加界面时 | 纯内部质量，无用户可见收益；且 179 项断言测行为不测像素，风险兜不住 |
 | `ui.js` 再拆出 `panels.js`（纯移动） | 想拆随时可做 | 风险低，但也没收益；`ui.js` 3515 行目前还能忍 |
 | 选中文字气泡工具条（摘句/复制/搜索） | 想加功能时的首选 | 唯一“既有用户价值、又顺手带出 `el()` 迁移”的一步 |
-| 全书搜索改「预构建索引文件」 | **章节数涨到 ~20 章以上**时 | 现在 9 章是运行时现抽（复用已预缓存的章节页，约 10ms，无新资源、无新链路）。涨到几十章后「首次打开面板要等几十次 fetch」才会被感知，那时才值得落盘成 `search-index.json` —— 代价同时是：`PRECACHE` +1 条、`CACHE` +1、CI 加一条「索引段落 = 章节页段落」的漂移检查，并写进 `new-chapter.js` 收尾 |
+| 全书搜索改「预构建索引文件」 | **章节数涨到 ~20 章以上**时 | 现在 10 章是运行时现抽（复用已预缓存的章节页，约 10ms，无新资源、无新链路）。涨到几十章后「首次打开面板要等几十次 fetch」才会被感知，那时才值得落盘成 `search-index.json` —— 代价同时是：`PRECACHE` +1 条、`CACHE` +1、CI 加一条「索引段落 = 章节页段落」的漂移检查，并写进 `new-chapter.js` 收尾 |
 | 全角标点折叠只覆盖 `FF01–FF5E`（**含「，」不含「。」**） | 有读者反馈「搜不到」时 | `foldChar` 是 1:1 码元映射（长度守恒），只折 U+FF01–FF5E 全角 ASCII 区 + ASCII 大小写。实测后果：全角「，」与半角 `,` **等价命中**（两边落到同一批段落），但全角「。」(U+3002) 与半角 `.` **不等价** —— 用英文句点搜中文句号会**一无所获且不报错**。暂不改代码是权衡过的：要补就得加一张显式映射表（`。`↔`.`、`、`↔`,`、`「」`↔`""` …），且必须仍然逐字符一对一（长度守恒），等于多维护一张会漂的表；而读者用中文标点搜是常态。真要修：改 `foldChar` 一处 + 补一条 e2e（「搜 `.` 应命中含 `。` 的段落」），并把本条从「还没做」挪走 |
 | 封面重设计 | 想换封面时 | 三方向候选在**仓库外** `E:/novel-site/_perf/cover-candidates/`（3 张竖版 PNG，2026-10-25 生成）；选定后要生成三件套（528×720 封面 / 144×196 缩略 / 1200×630 分享卡）并调书名叠色。母版 JPG 已移到仓库外 `_source-assets/`，别去 git 历史里翻 |
 | 真机验证清单 | 手上有真机想收尾 A 档时 | 分享面板在国产 ROM 的表现 / 闪屏接缝色差 / v1.8.7 → v1.9.0 覆盖升级 / 切后台 >60s 回前台的更新提示时机 / **搜索的中文输入法组字**（搜狗、Gboard 的 `compositionstart`/`compositionend` 顺序与 `e.isComposing` 支持：e2e 只能用合成事件，真机上「打字过程中结果不闪、上屏即刻出结果」只能手验）—— 这些无头浏览器测不出来 |

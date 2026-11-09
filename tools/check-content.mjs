@@ -508,7 +508,10 @@ function checkAll(snap) {
   });
   ok('缓存纪律');
 
-  return { errors, notes, checks };
+  return {
+    errors, notes, checks,
+    counts: { chapters: chapters.length, characters: charDoc ? charDoc.count : 0 }
+  };
 }
 
 /* ---------- 变异测试（全程内存，不落盘） ---------- */
@@ -683,5 +686,6 @@ if (selfTest) {
     res.errors.forEach((e) => console.error('  [' + e.code + '] ' + e.msg));
     process.exit(1);
   }
-  console.log('✓ 内容契约守卫通过：' + res.checks + ' 项检查，9 章 / 18 人 / manifest 全部逐字自洽');
+  console.log('✓ 内容契约守卫通过：' + res.checks + ' 项检查，' +
+    res.counts.chapters + ' 章 / ' + res.counts.characters + ' 人 / manifest 全部逐字自洽');
 }

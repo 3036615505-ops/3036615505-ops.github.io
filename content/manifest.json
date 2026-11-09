@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "contentVersion": "7ea3a20867f2",
-  "generatedAt": "2026-11-09T13:09:52.802Z",
+  "contentVersion": "e8355bd23650",
+  "generatedAt": "2026-11-09T13:19:02.570Z",
   "chapters": [
     {
       "num": 1,
@@ -64,6 +64,13 @@
       "file": "chapter-09.html",
       "updated": "2026-11-01",
       "hash": "936ad2bce22e",
+      "paragraphCount": 56
+    },
+    {
+      "num": 10,
+      "file": "chapter-10.html",
+      "updated": "2026-11-08",
+      "hash": "bcf8559c6154",
       "paragraphCount": 56
     }
   ],

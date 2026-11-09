@@ -10,20 +10,21 @@
 >
 > 历史条目是原样搬过来的（内容逐字未改，只在块之间统一成一个空行）。
 
-## 2026-11-09 · S0 内容契约化：新增 `content/*.json` + 逐字守卫（`?v=127` / `CACHE v74` 均不变）
+## 2026-11-09 · S0 内容契约化：新增 `content/*.json` + 逐字守卫（`?v=130` / `CACHE v76` 均不变）
 
 | 项 | 内容 |
 |---|---|
 | 动因 | 作者拍板走 Kotlin + Jetpack Compose 全原生（只做 Android），正文**不随 APK**：站点继续 push 即发布，App 从 `https://zephyrw.site/content/*.json` 拉内容。S0 是五阶段第一步，只铺数据与守卫，**站点视觉零变化** |
-| 新增 | `content/manifest.json` + 9 章 `chapter-0N.json` + `characters.json`（18 人）；`tools/content-lib.mjs`（共享实现）、`tools/gen-content.mjs`（全量生成，不碰任何现有 HTML）、`tools/check-content.mjs`（独立逐字守卫 + 17 项内存变异测试） |
+| 新增 | `content/manifest.json` + 10 章 `chapter-0N.json` + `characters.json`（18 人）；`tools/content-lib.mjs`（共享实现）、`tools/gen-content.mjs`（全量生成，不碰任何现有 HTML）、`tools/check-content.mjs`（独立逐字守卫 + 17 项内存变异测试） |
 | 挂点 | `render-chapter.mjs` 同一次运行刷新该章 JSON 与 manifest；`make-characters.mjs` 刷新 `characters.json` 与 manifest。`--dry-run` 一律不写 JSON（页面还没变）。三入口共用 `content-lib`，幂等：重跑 0 文件变化 |
 | 段序号命门 | `paragraphs[].index` 只对 `type:'p'` 递增、0 基全量含空段，与 Web 版进度锚点 / 搜索落点同口径；`scene-break` / `date` 用 `before` 定位**不占号**。守卫刻意用「逐行解析」的另一条路径 + `manuscript/*.md` + `chapters.js` + `characters-data.js` 四方交叉，杜绝生成器与守卫同源解析一起漏节点还全绿 |
 | 两处实现裁决 | ① `type` 扩为 `p` / `scene-break` / `date`（页面真有 `.chapter-date` 这个 `<div>`），C2 断言「页面日期行元素数 == JSON `type:'date'` 数且逐条文本比对」，删日期行 / 丢 `end` / 混 `date` 与 `storyDate` 必须红 ② 页面印章与 `chapters.js` 的 `seal` 不是同一口径（第一章页面「临渊羡鱼」、seal「临渊」），只验与页面逐字一致、不交叉相等 |
 | C3 种子守卫 | 守卫同时读 `twa/app/src/main/assets/content/`：S0 尚无种子包时登记跳过；S2 建包后自动要求「逐字一致 + 同 `contentVersion`」，只改站点 content 不改种子必红（变异 M-17 已验） |
-| 缓存纪律 | `content/*.json` 不进 `PRECACHE`、不带 `?v=`、不被任何页面引用 → **`?v=` 与 `CACHE` 都不动**（`bump:check` 127 / `precache` 79 条 v74 可复核）。守卫 `E_PRECACHE` 会拦「有人把 content/ 加进 PRECACHE 或页面引用」 |
+| 缓存纪律 | `content/*.json` 不进 `PRECACHE`、不带 `?v=`、不被任何页面引用 → **`?v=` 与 `CACHE` 都不动**（`bump:check` 130 / `precache` 80 条 v76 可复核）。守卫 `E_PRECACHE` 会拦「有人把 content/ 加进 PRECACHE 或页面引用」 |
 | 发版守卫 | `npm run verify` 追加 `content:check`（5 项）；pre-push 6 → **7 项**、CI static-checks 加第 ⑦ 步；新增 `gen:content` / `content:check` / `content:mutate` 三个 npm 入口 |
-| 验证 | `gen-content` 二次 0 变化 · `render-chapter.mjs --all` 9 章 HTML 全无变化 · `check-content` 58 项全绿 · 变异测试 **17/17 该红的都红** · `verify` / `verify:all` / `stale` / `contrast` 双主题 / `typecheck` 0 诊断 / `e2e` **179/179（192.3s）** / pre-push **7/7** |
-| 顺带 | 校正 `HANDOVER.md` 现状表漂移（`?v=122→127`、`v69→v74`、7 章→9 章、`v1.9.0/vc17→v1.9.2/vc19`、pre-push 6→7 项），并补一行「内容契约」现状 |
+| 验证 | `gen-content` 二次 0 变化 · `render-chapter.mjs --all` 10 章 HTML 全无变化 · `check-content` 64 项全绿 · 变异测试 **17/17 该红的都红** · `verify` / `verify:all` / `stale` / `contrast` 双主题 / `typecheck` 0 诊断 / `e2e` **179/179（192.3s）** / pre-push **7/7** |
+| 基线合并 | 提交前远端先上线了第十章（`?v=130` / `CACHE linyuan-v76` / PRECACHE 80 条）→ rebase 到 `06dda03` 后重跑 `gen-content`（新增 `content/chapter-10.json`、manifest 的 `contentVersion` 变为 `e8355bd23650`），全套守卫与 e2e 在十章基线上**重验一遍**；`?v=` / `CACHE` 仍不动 |
+| 顺带 | 校正 `HANDOVER.md` 现状表漂移（`?v=122→130`、`v69→v76`、7 章→10 章、`v1.9.0/vc17→v1.9.2/vc19`、pre-push 6→7 项），并补一行「内容契约」现状 |
 | 未动 | `twa` 工程零改动；`sw.js` / `flags.json` / 任何 HTML/CSS/JS 页面字节未变；对外仍是 WebView 版 v1.9.2 |
 
 ## 2026-10-31 · `render-chapter.mjs` 补 `CACHE` 提示（QA P2 · 无发版影响）
