@@ -28,7 +28,8 @@
     anchorRestore: true,  /* 段落锚点恢复位置（关掉则退回按百分比） */
     backup: true,         /* 阅读数据备份与恢复 */
     infiniteScroll: true, /* 章末自动接下一章（关掉即回到「一次只装一章」） */
-    search: true          /* 阅读器内全章搜索（关掉即藏掉工具栏入口并拒绝打开） */
+    search: true,         /* 阅读器内全章搜索（关掉即藏掉工具栏入口并拒绝打开） */
+    upgradeExportHint: true /* S1：壳内「升级到原生版前请先备份」引导；浏览器里恒不显示 */
   };
 
   var current = {};

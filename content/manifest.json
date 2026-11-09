@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "contentVersion": "e8355bd23650",
-  "generatedAt": "2026-11-09T13:19:02.570Z",
+  "contentVersion": "4b6df2a4e62b",
+  "generatedAt": "2026-11-09T13:49:22.174Z",
   "chapters": [
     {
       "num": 1,
@@ -86,7 +86,8 @@
       "backup",
       "infiniteScroll",
       "readingAids",
-      "search"
+      "search",
+      "upgradeExportHint"
     ]
   },
   "assets": {

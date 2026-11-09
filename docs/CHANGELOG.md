@@ -10,6 +10,18 @@
 >
 > 历史条目是原样搬过来的（内容逐字未改，只在块之间统一成一个空行）。
 
+## 2026-11-09 · S1 数据出口桥 + App v1.9.3（versionCode 20）WebView 隔离版
+
+| 项 | 内容 |
+|---|---|
+| 动因 | 全原生版读不到 WebView 的 `localStorage`，进度 / 书签 / 摘句 / 自定义字体只能经「旧版导出 → 原生侧导入」迁移。按 `_design/native-app/README.md` **裁定 B**，导出桥必须随**一个已发布并铺开的 WebView 版**上线，与原生版（M4）之间至少隔一个已发布版本；「方案 A 纯 push 不用发版」的说法已作废 |
+| 站点改动 | `js/reader.store.js` 新增 `collectReaderDataAsync()`（只读 IndexedDB `linyuan-font`，字体分块转 base64，在旧结构之外**只追加** `bridge:1` + `fonts[]`；IDB 不可用降级为 `fonts:[]`）；`js/reader.ui.js` 壳内「存到手机」可见、导出以 `exportReady` 为准绝不交半成品、设置面板加**仅壳内**的升级引导；`js/native-bridge.js` 落盘失败给可见提示，不再静默 `.catch` 吞掉；`js/reader.flags.js` / `flags.json` 加 `upgradeExportHint` 开关 |
+| 向后兼容 | 新增字段不影响 `app` / `schema` / `exportedAt` / `summary` / `data` 五个旧字段，旧备份文件、`importReaderData()`、原生侧导入器三条路径零回归 |
+| 版本 | 站点 `?v=130 → 131`、`CACHE linyuan-v76 → v77`（PRECACHE 里 4 个 JS 与章节页 HTML 字节都变了）；PRECACHE 仍 80 条，`content/*.json` 与 CSS 一字未改 |
+| App | `versionCode 19 → 20`、`1.9.2 → 1.9.3`；**壳侧零代码改动**，只升版本号。与站点桥同批由 `publish-apk.sh` 发布，`version.json` 的 `notes` 承担「升级前请导出」触达 |
+| 验收 | `verify` / `verify:all` / `stale` / `contrast` 双主题 / `typecheck` / `content:mutate` / `pre-push 7/7` 全绿；**`e2e 187/187`**（S1 新增 8 条断言 + 1 个具名 section：导出 schema、字体 base64 可还原、旧版可读回、壳内拦截安装、按钮可见、saveText 收完整备份、失败可见提示、引导开关）。**e2e 基线由 179 升到 187，M3 迁移矩阵以当时实际断言数为准** |
+| 未完 | **J-3 真机导出演练未执行**，M4 四条放行判据目前只满足 ①（桥随 v20 发布）④（v21 单调 > 20）。演练清单、触达证据要求、大字体跨桥内存风险登记见 `E:/novel-site/_design/native-app/S1-DRILL.md` |
+
 ## 2026-11-09 · S0 内容契约化：新增 `content/*.json` + 逐字守卫（`?v=130` / `CACHE v76` 均不变）
 
 | 项 | 内容 |

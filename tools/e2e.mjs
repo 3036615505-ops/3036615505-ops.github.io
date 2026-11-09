@@ -519,6 +519,66 @@ const exported = await evaluate(`(() => {
 check('导出：JSON 合法、含进度键、不含无关键', exported.ok && exported.schema === 2 && exported.hasPos && !exported.foreign, JSON.stringify(exported));
 check('导出：文本框只读（防误改）', exported.readonly === true);
 
+/* ===== S1 导出桥：带自定义字体，且旧版仍能读回 ===== */
+const s1Export = await evaluate(`(async () => {
+  /* 造一条 IndexedDB 字体记录，模拟读者导入过自定义字体 */
+  const bytes = new Uint8Array([1,2,3,4,5,6,7,8,9]);
+  await new Promise((res, rej) => {
+    const req = indexedDB.open('linyuan-font', 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('fonts')) db.createObjectStore('fonts');
+    };
+    req.onsuccess = () => {
+      const db = req.result;
+      const tx = db.transaction('fonts', 'readwrite');
+      tx.objectStore('fonts').put({ name: '测试字体.ttf', data: bytes.buffer, at: 123456 }, 'user');
+      tx.oncomplete = () => { db.close(); res(); };
+      tx.onerror = () => { db.close(); rej(tx.error); };
+    };
+    req.onerror = () => rej(req.error);
+  });
+  openDataModal('export');
+  /* 等字体读完：bridge:1 出现在文本框里才算最终备份 */
+  for (let i = 0; i < 40; i++) {
+    try { if (JSON.parse(document.getElementById('dataText').value).bridge === 1) break; } catch (e) {}
+    await new Promise(r => setTimeout(r, 50));
+  }
+  const p = JSON.parse(document.getElementById('dataText').value);
+  const f = p.fonts && p.fonts[0];
+  return {
+    app: p.app, schema: p.schema, hasSummary: !!p.summary, hasData: !!p.data,
+    exportedAt: typeof p.exportedAt, bridge: p.bridge,
+    fontsLen: p.fonts && p.fonts.length,
+    f: f, decodedLen: f ? atob(f.base64).length : -1,
+    pos: p.data && p.data['${POS_KEY}']
+  };
+})()`);
+check('S1 导出：只追加 bridge/fonts，app/schema/summary/data 一个不少',
+  s1Export.app === 'linyuan-reader' && s1Export.schema === 2 &&
+  s1Export.hasSummary && s1Export.hasData && s1Export.exportedAt === 'string' &&
+  s1Export.bridge === 1, JSON.stringify({ app: s1Export.app, schema: s1Export.schema,
+    summary: s1Export.hasSummary, data: s1Export.hasData, bridge: s1Export.bridge }));
+check('S1 导出：自定义字体转 base64，字段齐全且字节可还原',
+  s1Export.fontsLen === 1 && !!s1Export.f &&
+  s1Export.f.db === 'linyuan-font' && s1Export.f.store === 'fonts' &&
+  s1Export.f.key === 'user' && s1Export.f.name === '测试字体.ttf' &&
+  s1Export.f.mime === 'font/ttf' && s1Export.f.at === 123456 &&
+  s1Export.decodedLen === 9, JSON.stringify(s1Export.f && { db: s1Export.f.db,
+    name: s1Export.f.name, mime: s1Export.f.mime, decoded: s1Export.decodedLen }));
+
+const s1ImportBack = await evaluate(`(() => {
+  const err = LY.store.importReaderData(document.getElementById('dataText').value);
+  return { err: err, pos: localStorage.getItem('${POS_KEY}') };
+})()`);
+check('S1 导出：新版备份能被 WebView 版自身 importReaderData 读回',
+  s1ImportBack.err === '' && s1ImportBack.pos === '42', JSON.stringify(s1ImportBack));
+/* 清掉测试字体，别让后面几节误以为用户装过自定义字体 */
+await evaluate(`new Promise((res) => {
+  const r = indexedDB.deleteDatabase('linyuan-font');
+  r.onsuccess = r.onerror = r.onblocked = () => res(1);
+})`);
+
 await evaluate(`closeDataModal(); localStorage.setItem('${POS_KEY}', '7'); openDataModal('import'); 1`);
 await sleep(200);
 const importPayload = JSON.stringify({ app: 'linyuan-reader', schema: 2, data: { [POS_KEY]: '88', 'other-app': 'x' } });
@@ -2443,6 +2503,82 @@ const allSheetsClosed = await evaluate(`(() => ({
 check('一节跑完：五个抽屉全部收起，body 滚动锁已释放',
   allSheetsClosed.anyVisible === false && allSheetsClosed.bodyOverflow === '',
   JSON.stringify(allSheetsClosed));
+
+/* ===== S1：壳内完整导出链路 =====
+   放在所有既有断言之后，因为这里要重新导航：native-bridge.js 在页面脚本
+   执行前就要看见 window.LinyuanApp，装上 blob 下载拦截。注入脚本只在
+   新 document 生效，不会污染前面跑完的那些断言。 */
+section('阅读页 · 壳内导出落盘（S1）');
+await send('Page.addScriptToEvaluateOnNewDocument', {
+  source: `window.LinyuanApp = {
+    copy: function () { return true; },
+    share: function () {},
+    saveText: function (name, text) {
+      window.__s1Saved = window.__s1Saved || [];
+      window.__s1Saved.push({ name: name, text: text });
+    }
+  };`
+});
+await goto(CHAPTER);
+const s1Hook = await evaluate(`(() => ({
+  bridge: !!window.LinyuanApp,
+  hooked: !!document.__linyuanDownloadHooked
+}))()`);
+check('S1 壳内：native-bridge 的 blob 下载拦截已安装',
+  s1Hook.bridge === true && s1Hook.hooked === true, JSON.stringify(s1Hook));
+
+await evaluate(`localStorage.setItem('${POS_KEY}', '42'); openDataModal('export'); 1`);
+await sleep(400);
+const s1Btn = await evaluate(`(() => {
+  const b = document.getElementById('dataDownloadBtn');
+  return { visible: b ? getComputedStyle(b).display !== 'none' : false,
+           text: b ? b.textContent : '' };
+})()`);
+check('S1 壳内：「存到手机」按钮可见（老版这里被隐藏）',
+  s1Btn.visible === true && s1Btn.text === '存到手机', JSON.stringify(s1Btn));
+
+const s1Hint = await evaluate(`(() => {
+  openSettings();
+  LY.flags.apply({ upgradeExportHint: true });
+  const el = document.getElementById('upgradeExportHint');
+  const on = !!el && getComputedStyle(el).display !== 'none';
+  LY.flags.apply({ upgradeExportHint: false });
+  const off = !!el && getComputedStyle(el).display === 'none';
+  LY.flags.apply({ upgradeExportHint: true });
+  LY.ui.closeSettings();
+  return { on: on, off: off };
+})()`);
+check('S1 引导：壳内显示，远程开关关掉即隐藏',
+  s1Hint.on === true && s1Hint.off === true, JSON.stringify(s1Hint));
+
+await evaluate(`dataDownload(); 1`);
+await sleep(500);
+const s1Saved = await evaluate(`(() => {
+  const s = (window.__s1Saved || [])[0];
+  if (!s) return null;
+  let p = null;
+  try { p = JSON.parse(s.text); } catch (e) {}
+  return { name: s.name, ok: !!p, bridge: p && p.bridge,
+           fontsIsArray: !!(p && Array.isArray(p.fonts)),
+           pos: p && p.data && p.data['${POS_KEY}'] };
+})()`);
+check('S1 壳内：saveText 收到完整备份（bridge:1 + fonts[] + 进度 + 文件名）',
+  !!s1Saved && s1Saved.ok && s1Saved.bridge === 1 && s1Saved.fontsIsArray &&
+  s1Saved.pos === '42' && /^临渊羡鱼-阅读数据-\d{8}\.json$/.test(s1Saved.name),
+  JSON.stringify(s1Saved));
+
+const s1Fail = await evaluate(`(async () => {
+  window.__s1Toasts = [];
+  LY.ui.toast = function (t) { window.__s1Toasts.push(t); };
+  window.LinyuanApp.saveText = function () { throw new Error('disk full'); };
+  window.__s1Saved = [];
+  dataDownload();
+  await new Promise(r => setTimeout(r, 400));
+  return { toasts: window.__s1Toasts.slice(), saved: window.__s1Saved.length };
+})()`);
+check('S1 壳内：落盘失败给出可见提示，不再静默吞掉',
+  s1Fail.toasts.some(t => t.indexOf('没能存到手机') >= 0) && s1Fail.saved === 0,
+  JSON.stringify(s1Fail));
 
 section('全局');
 check('全程无未捕获异常', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 300));

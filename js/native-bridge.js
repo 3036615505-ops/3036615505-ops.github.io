@@ -123,9 +123,25 @@
       if (typeof bridge.saveText !== 'function') { return; }
       event.preventDefault();
       var name = anchor.getAttribute('download') || '';
+      /* S1 起 blob 落盘的不只是「导出 Markdown」，还有读者升级到原生 App 前
+         唯一的一份阅读数据备份。以前 `.catch(function(){})` 静默吞掉失败，
+         会让人以为备份好了 —— 现在必须给可见提示。 */
+      function saveFailed() {
+        try {
+          if (window.LY && window.LY.ui && typeof window.LY.ui.toast === 'function') {
+            window.LY.ui.toast('没能存到手机，请改用「复制」自己保存');
+            return;
+          }
+        } catch (e) {}
+        if (window.console) console.warn('[bridge] saveText failed', name);
+      }
       fetch(href).then(function (response) { return response.text(); })
-        .then(function (text) { bridge.saveText(name, text); })
-        .catch(function () {});
+        .then(function (text) {
+          var ok = false;
+          try { bridge.saveText(name, text); ok = true; } catch (e) {}
+          if (!ok) saveFailed();
+        })
+        .catch(saveFailed);
     }, true);
   }
 })();

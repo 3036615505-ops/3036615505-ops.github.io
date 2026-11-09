@@ -20,6 +20,7 @@
   function getStoredQuotes() { return LY.store.getStoredQuotes(); }
   function saveStoredQuotes(list) { return LY.store.saveStoredQuotes(list); }
   function collectReaderData() { return LY.store.collectReaderData(); }
+  function collectReaderDataAsync() { return LY.store.collectReaderDataAsync(); }
   function importReaderData(text) { return LY.store.importReaderData(text); }
   function getCurrentFileName() { return LY.store.getCurrentFileName(); }
   function getCurrentChapterTitle() { return LY.store.getCurrentChapterTitle(); }
@@ -2564,6 +2565,11 @@
               '<button class="mode-toggle-btn" onclick="openDataModal(\'export\')">备份数据</button>' +
               '<button class="mode-toggle-btn" onclick="openDataModal(\'import\')">恢复数据</button>' +
             '</div>' +
+            /* 只在壳内出现：需要迁移到原生 App 的只有 WebView 版读者。
+               浏览器读者零视觉变化；开关可远程关掉，不必改代码升 ?v=。 */
+            '<div class="setting-sublabel" id="upgradeExportHint" style="display:none">' +
+              '新版 App 会升级为原生版本，升级前请点「备份数据 → 存到手机」留好进度与自定义字体。' +
+            '</div>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -2597,6 +2603,11 @@
     if (aids) aids.style.display = LY.flags.isOn('readingAids') ? '' : 'none';
     var backup = ov.querySelector('[data-group="backup"]');
     if (backup) backup.style.display = LY.flags.isOn('backup') ? '' : 'none';
+    var upgradeHint = ov.querySelector('#upgradeExportHint');
+    if (upgradeHint) {
+      upgradeHint.style.display =
+        (LY.flags.isOn('upgradeExportHint') && !!window.LinyuanApp) ? '' : 'none';
+    }
   }
 
   window.openSettings = function() {
@@ -3383,6 +3394,13 @@
 
   var dataConfirmUntil = 0;
 
+  /* 导出面板里「字体读完了没」。collectReaderDataAsync() 要开 IndexedDB，
+     可能比读者点按钮还慢。文本框里先放一份旧格式的可复制内容兜底，
+     就绪后原地换成带 bridge/fonts 的完整备份；两个导出操作都以这里为准，
+     绝不把「没有字体的半成品」当成最终备份交出去。 */
+  var exportReadyFlag = true;
+  var exportReady = Promise.resolve();
+
 
   function formatDuration(sec) {
     if (!sec) return '0 分钟';
@@ -3434,16 +3452,51 @@
     var dl = document.getElementById('dataDownloadBtn');
 
     if (mode === 'export') {
-      var payload = collectReaderData();
+      var base = collectReaderData();
+      var shell = window.LinyuanApp;
+      /* v1.9.0 起壳侧有 bridge.saveText，native-bridge.js 会把 blob 下载接到
+         它上面；更老的壳没有这个方法时仍隐藏，免得点了没反应。 */
+      var canSave = !shell || typeof shell.saveText === 'function';
       title.textContent = '备份阅读数据';
-      hint.textContent = '包含 ' + payload.summary.chapters + ' 章的进度、' +
-        payload.summary.quotes + ' 条摘句、阅读 ' + formatDuration(payload.summary.seconds) +
-        '。复制后自己存好，换设备时用「恢复数据」贴回来。';
-      ta.value = JSON.stringify(payload, null, 2);
+      hint.textContent = '包含 ' + base.summary.chapters + ' 章的进度、' +
+        base.summary.quotes + ' 条摘句、阅读 ' + formatDuration(base.summary.seconds) +
+        '。正在整理自定义字体…';
+      /* 先落一份旧格式的可复制内容：IDB 打开慢 / 被禁时也不会对着空框。
+         就绪后原地换成带 bridge:1 + fonts[] 的完整备份。 */
+      ta.value = JSON.stringify(base, null, 2);
       ta.setAttribute('readonly', 'readonly');
       primary.textContent = '复制';
-      /* 壳里下不了文件，按钮直接不出现，免得更糟的静默失败 */
-      dl.style.display = window.LinyuanApp ? 'none' : '';
+      dl.style.display = canSave ? '' : 'none';
+      dl.textContent = shell ? '存到手机' : '存为文件';
+
+      exportReadyFlag = false;
+      exportReady = collectReaderDataAsync().then(function (payload) {
+        exportReadyFlag = true;
+        /* 读者可能已经关掉面板、甚至切到「恢复数据」：别把导出内容写进导入框 */
+        if (dataMode !== 'export') return payload;
+        var cur = document.getElementById('dataText');
+        var h = document.getElementById('dataHint');
+        if (cur) cur.value = JSON.stringify(payload, null, 2);
+        if (h) {
+          h.textContent = '包含 ' + payload.summary.chapters + ' 章的进度、' +
+            payload.summary.quotes + ' 条摘句、阅读 ' + formatDuration(payload.summary.seconds) +
+            '，以及 ' + payload.fonts.length + ' 个自定义字体。' +
+            (shell ? '升级到新版 App 前，请点「存到手机」留好这份备份。'
+                   : '复制后自己存好，换设备时用「恢复数据」贴回来。');
+        }
+        return payload;
+      }, function () {
+        /* 兜底：连 collectReaderDataAsync 都炸了，也要给一份合法的完整备份 */
+        exportReadyFlag = true;
+        var payload = collectReaderData();
+        payload.bridge = 1;
+        payload.fonts = [];
+        if (dataMode === 'export') {
+          var cur = document.getElementById('dataText');
+          if (cur) cur.value = JSON.stringify(payload, null, 2);
+        }
+        return payload;
+      });
     } else {
       title.textContent = '恢复阅读数据';
       hint.textContent = '把备份内容整段贴进下面的框里，会覆盖这台设备上现有的进度、摘句和设置。';
@@ -3451,6 +3504,8 @@
       ta.removeAttribute('readonly');
       primary.textContent = '导入并覆盖';
       dl.style.display = 'none';
+      exportReadyFlag = true;
+      exportReady = Promise.resolve();
     }
 
     openSheet(ov);
@@ -3472,6 +3527,9 @@
 
   window.dataPrimaryAction = function() {
     if (dataMode === 'export') {
+      /* 绝不让读者复制到「还没带上字体的半成品」。这里不异步等待：
+         clipboard.writeText 需要用户手势，等 Promise 会把手势丢掉。 */
+      if (!exportReadyFlag) { showToast('正在整理备份，请稍候再点'); return; }
       var ta = document.getElementById('dataText');
       copyText(ta.value).then(function() {
         showToast('备份内容已复制');
@@ -3509,20 +3567,26 @@
 
 
   window.dataDownload = function() {
-    try {
-      var blob = new Blob([document.getElementById('dataText').value], { type: 'application/json' });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      var d = new Date();
-      a.href = url;
-      a.download = '临渊羡鱼-阅读数据-' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '.json';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(function() { URL.revokeObjectURL(url); }, 4000);
-    } catch (e) {
-      showToast('无法保存文件，请改用复制');
+    /* 等 exportReady 是为了「存到手机」拿到的必然是带 fonts[] 的完整备份。
+       绝大多数时候字体早就读完了，走同步分支，保留 a.click() 的用户手势。 */
+    function doDownload() {
+      try {
+        var blob = new Blob([document.getElementById('dataText').value], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        var d = new Date();
+        a.href = url;
+        a.download = '临渊羡鱼-阅读数据-' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function() { URL.revokeObjectURL(url); }, 4000);
+      } catch (e) {
+        showToast('无法保存文件，请改用复制');
+      }
     }
+    if (exportReadyFlag) { doDownload(); return; }
+    exportReady.then(doDownload);
   };
 
 

@@ -193,6 +193,113 @@
   }
 
 
+  /* ===== S1：带自定义字体的导出桥（Android 全原生化 M1） =====
+     自定义字体存在 IndexedDB `linyuan-font` / `fonts` / `user`，localStorage
+     里只有文件名（reader-custom-font）；原生版又读不到 WebView 的存储域。
+     所以升级成原生 App 之前，必须把字体二进制一并导出成备份文件。
+
+     契约（IMPLEMENTATION §6.2.3）：在 collectReaderData() 的旧结构之外
+     **只追加** bridge:1 与 fonts[]，一个旧字段都不删不改 —— 旧备份文件、
+     WebView 版自身的 importReaderData()、原生侧导入器三条路径零回归。
+
+     失败降级：隐私模式 / IDB 被禁 / 记录损坏，一律返回 fonts:[]。
+     「读字体失败」绝不能变成「整个备份导出不了」。 */
+
+  var EXPORT_FONT_DB = 'linyuan-font';
+  var EXPORT_FONT_STORE = 'fonts';
+  var EXPORT_FONT_REC = 'user';
+
+  function exportFontMime(name) {
+    var n = String(name || '').toLowerCase();
+    if (/\.woff2$/.test(n)) return 'font/woff2';
+    if (/\.woff$/.test(n)) return 'font/woff';
+    if (/\.otf$/.test(n)) return 'font/otf';
+    if (/\.ttc$/.test(n)) return 'font/collection';
+    if (/\.ttf$/.test(n)) return 'font/ttf';
+    return 'application/octet-stream';
+  }
+
+  /* ArrayBuffer → base64：按 3 的倍数分块 btoa 再拼接。
+     每块 24576 字节，除末块外不会产生 '='，直接 join 仍是合法 base64；
+     分块是为了避免 24MB 字体在 WebView 里一次性堆出 ~32MB 字符串峰值。 */
+  function exportBufferToBase64(buf) {
+    var bytes = ArrayBuffer.isView(buf)
+      ? new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)
+      : new Uint8Array(buf);
+    var CH = 0x6000;
+    var parts = [];
+    for (var i = 0; i < bytes.length; i += CH) {
+      var end = Math.min(i + CH, bytes.length);
+      var bin = '';
+      for (var j = i; j < end; j += 0x800) {
+        bin += String.fromCharCode.apply(null, bytes.subarray(j, Math.min(j + 0x800, end)));
+      }
+      parts.push(btoa(bin));
+    }
+    return parts.join('');
+  }
+
+  /** @returns {Promise<Array>} 永远 resolve，读不到字体时为 [] */
+  function readExportFonts() {
+    return new Promise(function (resolve) {
+      if (!window.indexedDB || typeof btoa !== 'function') { resolve([]); return; }
+      var req;
+      try { req = indexedDB.open(EXPORT_FONT_DB, 1); }
+      catch (e) { resolve([]); return; }
+      var fresh = false;
+      req.onupgradeneeded = function () {
+        /* 从没导入过字体的读者：这里会新建一个空库，get 自然拿不到记录。
+           不能 reject —— 这批读者占绝大多数。 */
+        fresh = true;
+        var db = req.result;
+        if (!db.objectStoreNames.contains(EXPORT_FONT_STORE)) {
+          db.createObjectStore(EXPORT_FONT_STORE);
+        }
+      };
+      req.onerror = req.onblocked = function () { resolve([]); };
+      req.onsuccess = function () {
+        var db = req.result;
+        function done(v) { try { db.close(); } catch (e) {} resolve(v || []); }
+        if (fresh) { done([]); return; }
+        try {
+          var tx = db.transaction(EXPORT_FONT_STORE, 'readonly');
+          var get = tx.objectStore(EXPORT_FONT_STORE).get(EXPORT_FONT_REC);
+          get.onsuccess = function () {
+            var rec = get.result;
+            if (!rec || !rec.data) { done([]); return; }
+            try {
+              done([{
+                db: EXPORT_FONT_DB, store: EXPORT_FONT_STORE, key: EXPORT_FONT_REC,
+                name: String(rec.name || '自定义'),
+                mime: exportFontMime(rec.name),
+                at: rec.at || 0,
+                base64: exportBufferToBase64(rec.data)
+              }]);
+            } catch (e) { done([]); }
+          };
+          get.onerror = function () { done([]); };
+          tx.onerror = tx.onabort = function () { done([]); };
+        } catch (e) { done([]); }
+      };
+    });
+  }
+
+  /** @returns {Promise<Object>} 带 bridge / fonts 的完整备份；任何情况下都 resolve */
+  function collectReaderDataAsync() {
+    function build(fonts) {
+      var payload = collectReaderData();
+      payload.bridge = 1;
+      payload.fonts = fonts;
+      return payload;
+    }
+    return readExportFonts().then(function (fonts) {
+      return build(fonts);
+    }, function () {
+      return build([]);
+    });
+  }
+
+
   /** @param {string} text @returns {string} 出错时返回中文原因，成功返回空串 */
   function importReaderData(text) {
     var payload;
@@ -240,6 +347,7 @@
     getStoredQuotes: getStoredQuotes,
     saveStoredQuotes: saveStoredQuotes,
     collectReaderData: collectReaderData,
+    collectReaderDataAsync: collectReaderDataAsync,
     importReaderData: importReaderData,
     getCurrentFileName: getCurrentFileName,
     getCurrentChapterTitle: getCurrentChapterTitle
