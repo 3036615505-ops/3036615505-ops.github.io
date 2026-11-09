@@ -1,0 +1,462 @@
+{
+  "schema": 1,
+  "count": 18,
+  "items": [
+    {
+      "slug": "linshu",
+      "name": "林纾",
+      "group": "xinlei",
+      "primary": true,
+      "portrait": "portrait-linshu-1024.webp",
+      "initial": "",
+      "role": "主视角",
+      "tags": [
+        "明亮"
+      ],
+      "quote": "“南南，请我喝焦糖玛奇朵！”",
+      "desc": "做他漫长岁月里永不熄灭的光。",
+      "birthday": "2007.04.20",
+      "traits": [
+        "青梅竹马",
+        "被偏爱"
+      ],
+      "bio": [
+        "与叶南衡两小无猜。两家父母相识，从小一起长大。是南城一中当之无愧的学霸，成绩格外优异。长得很漂亮，同时待人友善，不失风雅，在外人的眼中她总是面带微笑，但却“可远观而不可亵玩”。四大校花之一。",
+        "爱笑，她的笑，总是叶南衡心中的那束忘不了的光。她对叶南衡的爱意藏在每一个不经意的细节里，小到可能只是下意识的，她自己都不曾注意到。她是明媚的，给叶南衡的生活里添加了不一样的色彩。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-linshu-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-linshu-thumb.webp"
+    },
+    {
+      "slug": "nanheng",
+      "name": "叶南衡",
+      "group": "xinlei",
+      "primary": true,
+      "portrait": "portrait-nanheng-1024.webp",
+      "initial": "",
+      "role": "主视角",
+      "tags": [
+        "温柔"
+      ],
+      "quote": "“我一直会在的。”",
+      "desc": "把暖意赠予世间，独自收容所有沉郁。",
+      "birthday": "2006.11.18",
+      "traits": [
+        "INFJ",
+        "温柔",
+        "内耗"
+      ],
+      "bio": [
+        "叶南衡长得很漂亮，和妈妈顾池宴一样漂亮。他是林纾口中“世界上最温柔的人”；是江不秋孤独年少里唯一不需要她开口索取就自动照进来的光；是宁樽酒最崇拜的人，虽然他自己从不觉得自己有什么值得被崇拜的地方；也是全校都认识的人。",
+        "他从小就很懂事，天天笑嘻嘻的，却从来不愿意告诉别人自己的心事。大家都说他是个大笨蛋——明明自己也有不开心的时候，却从来不说，只顾着让身边的人开心。他对每一个人都温柔，因为他不希望别人难过，他不想让别人经历那些孤单和沉默，所以他把所有的暖意都给了外面，把所有的情绪都吞进了自己肚子里。",
+        "他也是一个十分内耗的人。在深夜，只有他自己一个人的时候，他会莫名其妙地睡不着，他并不难过，但也并不开心，他只是会哭，也许不是因为悲伤，也许只是因为太累了，扮演一个永远阳光的人是一件很累的事。他从来不告诉任何人这件事，第二天太阳升起，他还是那个笑嘻嘻的叶南衡，还是那个全校都认识的、温柔的、懂事的、从来不愿意让别人替他担心的——大笨蛋。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-nanheng-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-nanheng-thumb.webp"
+    },
+    {
+      "slug": "jiangbuqiu",
+      "name": "江不秋",
+      "group": "xinlei",
+      "primary": true,
+      "portrait": "portrait-jiangbuqiu-1024.webp",
+      "initial": "",
+      "role": "主视角",
+      "tags": [
+        "清冷"
+      ],
+      "quote": "“我见过光，就很难再接受黑暗了。”",
+      "desc": "身如不秋草木，曾遇微光，终难忘。",
+      "birthday": "2007.08.16",
+      "traits": [
+        "偏爱叶南衡",
+        "天生善良",
+        "高一下转入"
+      ],
+      "bio": [
+        "“人天解种不秋草，欲界独为无色花。”不秋取竹之四季常青，冬夏常翠，永不凋零之意。母亲在她很小的时候车祸去世了，父亲再婚后，与父亲的交流渐渐减少。她其实知道无论是父亲还是继母，都对她很好，但她的世界里已经容不下任何人了——除了那个在这之前，在那个雪天闯进她世界里的男孩。母亲死后，她的世界里只有那个男孩了。",
+        "她不喜欢被人可怜，不喜欢跟人亲近，喜欢独来独往。她的美是精致的美，是易碎的美，与林纾的那种漂亮不一样，她的美给人一种难以亲近的高冷的感觉。是四大校花之首。不爱笑，不爱说话。后来在叶南衡等人的引导下渐渐敞开心扉。但不秋最终还是没能不秋。这么温暖的世界，还是没能留住她。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-jiangbuqiu-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-jiangbuqiu-thumb.webp"
+    },
+    {
+      "slug": "liyan",
+      "name": "黎颜",
+      "group": "xinlei",
+      "primary": false,
+      "portrait": "portrait-liyan-1024.webp",
+      "initial": "颜",
+      "role": "朋友",
+      "tags": [
+        "傲娇"
+      ],
+      "quote": "“别怕，我在这儿。”",
+      "desc": "一身正气，瞧见了委屈就要管到底。",
+      "birthday": "2007.02.13",
+      "traits": [
+        "正义感强",
+        "热烈",
+        "傲娇"
+      ],
+      "bio": [
+        "重要主角团之一。四大校花之一，与叶南衡一行人在办报活动中初见。后来，交集越来越多，矛盾也不少，算是与他们“不打不相识”。",
+        "个性傲娇，一开始看不起叶南衡，觉得他是“老好人”，个性软弱。后来却在一次次的经历中，发现叶南衡就是这样的人，就是这么的温柔，渐渐喜欢上他。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-liyan-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-liyan-thumb.webp"
+    },
+    {
+      "slug": "ningzunjiu",
+      "name": "宁樽酒",
+      "group": "xinlei",
+      "primary": false,
+      "portrait": "portrait-ningzunjiu-1024.webp",
+      "initial": "樽",
+      "role": "朋友",
+      "tags": [
+        "沉着"
+      ],
+      "quote": "“……我也可以，成为那样的人吗？”",
+      "desc": "把哥哥的影子放在心上，把仰望的人当成方向。",
+      "birthday": "2007.06.05",
+      "traits": [
+        "不善言辞",
+        "自卑"
+      ],
+      "bio": [
+        "重要主角团之一。父母离婚，与哥哥相依为命。但哥哥因为车祸昏迷，一直陪在他身边照顾他。渐渐地不爱说话了。",
+        "被叶南衡无声的帮助了很多次，在他身上找到了哥哥的感觉。从那以后，心里十分仰慕叶南衡。暗恋四大校花之一的黎颜——他与黎颜在小学的时候是同学，那时的他胆小，自卑，但是黎颜是一个非常有正义感的人，在他被欺负的时候，挺身而出。虽然黎颜不记得，因为那就是她会做的事，不是因为这个人是谁。但是，黎颜的身影却深深刻在了他的脑海里，挥之不去。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-ningzunjiu-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-ningzunjiu-thumb.webp"
+    },
+    {
+      "slug": "yangmenghan",
+      "name": "杨梦寒",
+      "group": "xinlei",
+      "primary": false,
+      "portrait": "portrait-yangmenghan-1024.webp",
+      "initial": "梦",
+      "role": "四大校花",
+      "tags": [
+        "安静"
+      ],
+      "quote": "“……嗯，我在听。”",
+      "desc": "安静地走进人群，也安静地被光照亮。",
+      "birthday": "2007.10.21",
+      "traits": [
+        "安静",
+        "内向",
+        "温柔"
+      ],
+      "bio": [
+        "重要主角团之一。四大校花之一，是一个安静的人。成绩很好，在板报活动中与叶南衡等人相识，后来交集加多，渐渐地融入了他们这个团体。性格也逐渐开朗起来。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-yangmenghan-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-yangmenghan-thumb.webp"
+    },
+    {
+      "slug": "baiyuhuan",
+      "name": "白余欢",
+      "group": "xinlei",
+      "primary": false,
+      "portrait": "portrait-baiyuhuan-1024.webp",
+      "initial": "欢",
+      "role": "朋友",
+      "tags": [
+        "乐观"
+      ],
+      "quote": "“哈哈哈哈哈哈哈哈哈——”",
+      "desc": "南城第一乐子人。",
+      "birthday": "2007.06.07",
+      "traits": [
+        "开朗",
+        "外向",
+        "搞笑"
+      ],
+      "bio": [
+        "重要主角团之一。胖胖的，所以被叶南衡亲切地称为“白胖子”。在喜欢上杨梦寒后，努力减肥。瘦下来后，妥妥的帅哥。叶南衡一行人中最幽默的一个人，平时特别不正经。",
+        "生平最大的乐趣就是“调戏”杨梦寒了，却十分有分寸。也正是因为他的这份开朗，才让杨梦寒的世界拥有了很多的欢声笑语。爱八卦，南城百晓生，是大家口中的“白大嗓子”。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-baiyuhuan-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-baiyuhuan-thumb.webp"
+    },
+    {
+      "slug": "taoyaoyao",
+      "name": "桃夭夭",
+      "group": "qingzhi",
+      "primary": false,
+      "portrait": "portrait-taoyaoyao-1024.webp",
+      "initial": "夭",
+      "role": "数学老师",
+      "tags": [
+        "克制"
+      ],
+      "quote": "“肖灼，你为什么一直躲着我？”",
+      "desc": "只有靠近她的人才懂得她心中的炽热。",
+      "birthday": "",
+      "traits": [
+        "外冷内热"
+      ],
+      "bio": [
+        "学校的数学老师，很漂亮，身世显赫，被肖灼叫做“大小姐”。是同学们眼中的灭绝师太，暗恋了肖灼许久，但肖灼迟迟不肯表白，自己也耷拉不下脸面。",
+        "尤其喜欢叶南衡和江不秋。喜欢叶南衡，是因为叶南衡总给人一种乐观开朗的感觉，是个“小宝藏”；看到了江不秋的不合群，想到了曾经的自己，给予了她很多帮助。也推进了叶南衡和江不秋之间的交流。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-taoyaoyao-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-taoyaoyao-thumb.webp"
+    },
+    {
+      "slug": "xiaozhuo",
+      "name": "肖灼",
+      "group": "qingzhi",
+      "primary": false,
+      "portrait": "portrait-xiaozhuo-1024.webp",
+      "initial": "灼",
+      "role": "体育老师",
+      "tags": [
+        "憨厚"
+      ],
+      "quote": "“我……我就是，不放心你。”",
+      "desc": "一身腱子肉，揣着一颗不敢开口的心。",
+      "birthday": "",
+      "traits": [
+        "憨厚",
+        "长情"
+      ],
+      "bio": [
+        "学校的体育老师，长得很结实，人很憨厚，与桃夭夭是同学，暗恋了她很久。但碍于两人身份地位的差距，不敢表白。在叶南衡等人的促进下，最终和桃夭夭走到了一起。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-xiaozhuo-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-xiaozhuo-thumb.webp"
+    },
+    {
+      "slug": "shenruoqi",
+      "name": "沈若栖",
+      "group": "qingzhi",
+      "primary": false,
+      "portrait": "portrait-shenruoqi-1024.webp",
+      "initial": "沈",
+      "role": "「临渊羡鱼」店主",
+      "tags": [
+        "温柔",
+        "观察者"
+      ],
+      "quote": "“我又游向哪里呢？”",
+      "desc": "她把店开在水边，等每一条游累了的鱼靠岸。",
+      "birthday": "",
+      "traits": [
+        "温柔",
+        "话少",
+        "观察者"
+      ],
+      "bio": [
+        "名校毕业后在上海一家顶级广告公司做文案策划。三年里每天工作十四个小时，写过无数让甲方拍案叫绝的方案，也熬过无数个凌晨三点的改稿夜。同事叫她“拼命三娘”，父母说她“出息了”，她自己心里只有一句“再撑一撑就成功了”。",
+        "去年秋天一个普通的周二下午，她站在公司四十八楼的落地窗前，看着楼下蚂蚁一样的车流，忽然问了自己一句：“我又游向哪里呢？”她这才发现，自己已经很久没有好好看过一朵花，很久没有好好泡过一杯咖啡，也很久没有好好看过一个人的眼睛了——生活被 KPI、deadline、PPT 填满，她成了一条拼命游的鱼，却忘了自己为什么要游。",
+        "于是她辞了职回到南城，开了“临渊羡鱼”。店名取的是字面之意：站在水边，羡慕水里的游鱼。她羡慕的不是游得更快的鱼，而是知道自己为什么游的鱼。这家店，是给所有在城市里游累了、想歇一歇的鱼一个可以坐下来发呆的地方，也是她给自己的答案。",
+        "常穿一件洗得发白的靛蓝色围裙，下摆有一小块怎么也洗不掉的咖啡渍，她说是“开业第一天的纪念”。头发随意挽成低髻，几缕碎发总垂在耳边，眼睛很亮，像深井里的水。话不多，习惯站在吧台后面一边擦杯子一边看店里的人——谁在开心，谁在难过，谁有话想说又说不出口，她一眼就能看出来。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-shenruoqi-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-shenruoqi-thumb.webp"
+    },
+    {
+      "slug": "yeyulan",
+      "name": "叶羽澜",
+      "group": "qingzhi",
+      "primary": false,
+      "portrait": "portrait-yeyulan-1024.webp",
+      "initial": "澜",
+      "role": "叶南衡表姐",
+      "tags": [
+        "通透"
+      ],
+      "quote": "“走啦，小笨蛋。”",
+      "desc": "世上最懂南衡的人，潇洒地来，又潇洒地走。",
+      "birthday": "",
+      "traits": [
+        "通透",
+        "潇洒"
+      ],
+      "bio": [
+        "叶南衡的表姐，温柔，漂亮。目前在上大学。是世界上最懂叶南衡的人，也是最心疼叶南衡的人。曾经被小时候的乐观的叶南衡“拯救”过，所以对叶南衡十分喜欢，胜过姐弟。",
+        "因为回家做手术，而留在了这里一段时间，期间见过江不秋、林纾，并告诉她们自己的感受和经历，告诉她们叶南衡是一个怎样的人。最后，潇洒地离开了家——“走啦，小笨蛋”。是小说进程重要的推进人之一。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-yeyulan-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-yeyulan-thumb.webp"
+    },
+    {
+      "slug": "guchiyan",
+      "name": "顾池宴",
+      "group": "qiaomu",
+      "primary": false,
+      "portrait": "portrait-guchiyan-1024.webp",
+      "initial": "顾",
+      "role": "叶南衡母亲",
+      "tags": [
+        "婉和"
+      ],
+      "quote": "“慢慢来，我陪着你。”",
+      "desc": "絮语温婉，乐观坦荡，是叶南衡永远可以安心停靠的港湾。",
+      "birthday": "",
+      "traits": [
+        "温柔",
+        "乐观",
+        "爱唠叨"
+      ],
+      "bio": [
+        "叶南衡的母亲。是南城一中的一名语文老师。是叶南衡口中“极其啰嗦”的人。是一个很温柔的人，又长得十分漂亮，温婉大方，深受学生们的喜爱。是学生们口中“别人的妈妈”。",
+        "她的温柔和乐观深深地影响了叶南衡，使之从容地面对世界。很爱很爱叶南衡。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-guchiyan-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-guchiyan-thumb.webp"
+    },
+    {
+      "slug": "yeyuan",
+      "name": "叶渊",
+      "group": "qiaomu",
+      "primary": false,
+      "portrait": "portrait-yeyuan-1024.webp",
+      "initial": "渊",
+      "role": "叶南衡父亲",
+      "tags": [
+        "沉稳"
+      ],
+      "quote": "“南衡那孩子，什么事都自己扛。”",
+      "desc": "白大褂裹着全家的安稳，也牵着两代人的旧缘。",
+      "birthday": "",
+      "traits": [
+        "沉稳"
+      ],
+      "bio": [
+        "叶南衡的父亲。如今是南城人民医院（二级甲等医院）的一名科主任（呼吸与危重症医学科）。",
+        "在北城时，与江不秋的妈妈曾经是同事。是江不秋和叶南衡关系的重要推动之一。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-yeyuan-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-yeyuan-thumb.webp"
+    },
+    {
+      "slug": "baiyu",
+      "name": "白榆",
+      "group": "qiaomu",
+      "primary": false,
+      "portrait": "portrait-baiyu-1024.webp",
+      "initial": "榆",
+      "role": "林纾母亲",
+      "tags": [
+        "分寸"
+      ],
+      "quote": "“毕业快乐，同学们。”",
+      "desc": "给青春留白，让风推着这群少年向上生长吧。",
+      "birthday": "",
+      "traits": [
+        "有气质",
+        "疼孩子"
+      ],
+      "bio": [
+        "林纾的母亲。是一个很有气质的人。跟顾池宴是多年闺蜜。是南城一中的一位英语老师，同时也是林纾和叶南衡的班主任。",
+        "十分爱林纾，同时也十分喜欢叶南衡，早就将叶南衡视为自己的女婿了。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-baiyu-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-baiyu-thumb.webp"
+    },
+    {
+      "slug": "linwangshu",
+      "name": "林望舒",
+      "group": "qiaomu",
+      "primary": false,
+      "portrait": "portrait-linwangshu-1024.webp",
+      "initial": "林",
+      "role": "林纾父亲",
+      "tags": [
+        "细心"
+      ],
+      "quote": "“等爸爸回来，带你看星星。”",
+      "desc": "把星星画给女儿，把奔忙留给自己。",
+      "birthday": "",
+      "traits": [
+        "严谨",
+        "常年出差"
+      ],
+      "bio": [
+        "林纾的父亲。是某研究所的一名航天工程师。林纾小时候，他的工作还不忙，能够每天陪林纾和白榆。但是现在却因为经常出差，不常在家。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-linwangshu-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-linwangshu-thumb.webp"
+    },
+    {
+      "slug": "sujiwen",
+      "name": "苏霁温",
+      "group": "qiaomu",
+      "primary": false,
+      "portrait": "portrait-sujiwen-1024.webp",
+      "initial": "温",
+      "role": "江不秋母亲",
+      "tags": [
+        "温婉"
+      ],
+      "quote": "“不秋，要做秋天也吹不落的叶子。”",
+      "desc": "她给女儿取名「不秋」，愿四季都吹不落她。",
+      "birthday": "",
+      "traits": [
+        "温柔",
+        "浪漫"
+      ],
+      "bio": [
+        "江不秋的母亲。在江不秋五岁时因为车祸去世了。她给女儿取名“不秋”，希望她能够拒绝所有季节的萧瑟，留住雨霁后的一片晴暖。但是，自从她去世后，女儿的世界便很少放晴了。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-sujiwen-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-sujiwen-thumb.webp"
+    },
+    {
+      "slug": "jiangzhenmo",
+      "name": "江枕默",
+      "group": "qiaomu",
+      "primary": false,
+      "portrait": "portrait-jiangzhenmo-1024.webp",
+      "initial": "默",
+      "role": "江不秋父亲",
+      "tags": [
+        "沉默"
+      ],
+      "quote": "“有些话，说了怕她难过，不说，怕她不懂。”",
+      "desc": "爱在心口难开，枕着思念过长夜。",
+      "birthday": "",
+      "traits": [
+        "重情重义",
+        "少言寡语"
+      ],
+      "bio": [
+        "江不秋的父亲。“枕”是沉默的陪伴；“默”是少言寡语，爱在心口难开的性格。江不秋的清冷与沉默又何尝不是一面映出父亲最深的性格底色的镜子。",
+        "他很爱自己的妻子和女儿，但却有自己难言的苦衷。他始终在女儿看不见的地方，默默枕着思念与愧疚。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-jiangzhenmo-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-jiangzhenmo-thumb.webp"
+    },
+    {
+      "slug": "linxihe",
+      "name": "林晞和",
+      "group": "qiaomu",
+      "primary": false,
+      "portrait": "portrait-linxihe-1024.webp",
+      "initial": "和",
+      "role": "江不秋继母",
+      "tags": [
+        "善良"
+      ],
+      "quote": "“我什么都不求，你好好的就行。”",
+      "desc": "雨霁之后，她把光让给了所有人。",
+      "birthday": "",
+      "traits": [
+        "善良",
+        "不求回报"
+      ],
+      "bio": [
+        "江不秋的继母。江不秋口中“很好很好的人”。她跟江不秋的爸妈是同学，也一直喜欢着江枕默。但是知道他喜欢的是江不秋的母亲后，便选择了退出。",
+        "在江枕默因为苏霁温的死而消沉的时候，主动地走向了他，让他再次振作起来，却从不奢求什么。在她表明了自己曾经喜欢她的心迹之后，江枕默作为一个重情重义的人，最终给了她一个家。",
+        "她也是个很善良的人，对江不秋视如己出。江不秋也知道继母对她很好，只不过，在母亲死后，她的世界就容不下任何人了。"
+      ],
+      "portraitUrl": "https://zephyrw.site/assets/portrait-linxihe-1024.webp",
+      "thumbUrl": "https://zephyrw.site/assets/portrait-linxihe-thumb.webp"
+    }
+  ]
+}

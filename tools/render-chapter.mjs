@@ -16,7 +16,7 @@
  *   node tools/render-chapter.mjs --all                 # 全部（按 js/chapters.js 的章号）
  *   node tools/render-chapter.mjs 1 3 5 --dry-run        # 也可以按章号
  *
- * 它只改一件事：`<article class="chapter-content">` 里的**正文**（h1 + 段落 +
+ * 页面上它只改一件事：`<article class="chapter-content">` 里的**正文**（h1 + 段落 +
  * 场景分隔 + 章内日期行）。页面上其余每一字节都原样保留 —— head、顶栏、
  * 余韵卡（`.chapter-afterglow`，那句属于这一章的话只存在于页面里）、章末印章、
  * 底部工具栏的 7 个挂点、prev/next 链接、所有 `?v=`。
@@ -34,6 +34,12 @@
  * 锚点（`reader-anchor-<id>` 的 `{p,i,o}`）全靠段序号，段数一变全体偏移，而页面
  * 看着完全正常。所以段数不一致会醒目打印告警 —— 但**不阻止**（作者可能是有意增删段）。
  *
+ * 另外**同一次运行**会用最终 token 序列 + 页面余韵卡刷新 `content/chapter-0N.json`
+ * 与 `content/manifest.json`（Android 原生版内容契约，见 tools/content-lib.mjs）。
+ * 这些 JSON 是 App 专用数据，不进 PRECACHE、不带 ?v=、不被任何页面引用，
+ * 改它们既不升 ?v= 也不升 CACHE。`--dry-run` 一律不写 JSON（页面还没变，
+ * 写了反而制造契约漂移）。
+ *
  * 零依赖：只用 Node 内置模块。
  */
 
@@ -41,6 +47,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import {
+  CONTENT_DIR, chapterJsonName, buildChapterPayload,
+  parseAfterglowBlock, writeJsonIfChanged, refreshManifest
+} from './content-lib.mjs';
 
 /* 共用模板是 CommonJS（new-chapter.js 要 require 它），ESM 这边用 createRequire 取。
    反过来不行：CJS 不能 require 一个 .mjs。所以这一层只能这么接，且**不改动**
@@ -397,6 +407,18 @@ function renderChapter(entry, ctx) {
     fs.writeFileSync(htmlPath, html.slice(0, innerStart) + newInner + html.slice(innerEnd), 'utf8');
   }
 
+  /* 内容契约：用**最终**的 newTokens（不是页面旧 items）+ 页面余韵卡导出章节 JSON。
+     余韵卡那句「属于这一章的话」只存在于页面 HTML 里，chapters.js / md 都没有，
+     必须从页面抽；段落的 0 基全量序号由 buildChapterPayload 统一编号，与 Web 版
+     进度锚点 / 搜索落点同口径。dry-run 不落盘，避免页面没变而契约先动。 */
+  let contentChanged = false;
+  if (!ctx.dryRun) {
+    const afterglow = parseAfterglowBlock(html, entry.file);
+    const payload = buildChapterPayload(entry, newTokens, afterglow);
+    contentChanged = writeJsonIfChanged(
+      path.join(CONTENT_DIR, chapterJsonName(entry.num)), payload);
+  }
+
   /* 段数告警：这是唯一会静默出错的地方。告警但**不阻止** —— 作者可能是有意增删段。 */
   if (oldPs.length !== newPs.length) {
     const delta = newPs.length - oldPs.length;
@@ -418,7 +440,7 @@ function renderChapter(entry, ctx) {
     console.log('· ' + entry.file + ' 无变化（正文 ' + newPs.length + ' 段）');
   }
 
-  return { name, changed, warnings, oldCount: oldPs.length, newCount: newPs.length };
+  return { name, changed, contentChanged, warnings, oldCount: oldPs.length, newCount: newPs.length };
 }
 
 /* ---------- 主流程 ---------- */
@@ -513,9 +535,30 @@ if (failures) {
   process.exit(1);
 }
 
+/* 内容契约 manifest：按**全部**章节的现有 JSON 汇总，不是只按本次 targets ——
+   只渲染一章时也要让 contentVersion 反映全书。缺任何一章 JSON 就报错，
+   绝不静默生成一份不完整的 manifest。 */
+let contentWritten = results.filter((r) => r.contentChanged).length;
+if (!dryRun) {
+  try {
+    const m = refreshManifest();
+    if (m.changed) contentWritten += 1;
+    console.log((m.changed ? '✓ ' : '· ') + 'content/manifest.json（contentVersion ' +
+      m.contentVersion + (m.changed ? '' : ' · 无变化') + '）');
+  } catch (err) {
+    failures += 1;
+    console.error('✗ 内容契约 manifest 刷新失败：' + (err && err.message ? err.message : String(err)));
+  }
+  if (contentWritten) {
+    console.log('· 内容契约更新 ' + contentWritten + ' 个 JSON（不进 PRECACHE、不带 ?v= → ?v= 与 CACHE 都不动）');
+  }
+}
+if (failures) process.exit(1);
+
 if (dryRun) {
   console.log('\ndry-run 结束，没有写入任何文件。去掉 --dry-run 才会真正落盘。');
 } else {
   console.log('\n下一步自校验：npm run manuscript（正文与源稿逐字比对）');
+  console.log('               node tools/check-content.mjs（内容契约逐字守卫）');
   if (targets.length > 1) console.log('               npm run precache（章节页预缓存条目齐全）');
 }

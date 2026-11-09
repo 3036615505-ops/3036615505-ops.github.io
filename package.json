@@ -20,8 +20,8 @@
     "manuscript": "node tools/manuscript-sync.mjs",
     "apk": "node tools/check-apk.mjs",
 
-    "//3": "— 一个入口跑完静态五项（Node 四项 + 字体那项）—",
-    "verify": "npm run bump:check && npm run precache && npm run manuscript && npm run apk",
+    "//3": "— 一个入口跑完静态五项（Node），verify:all 再加字体那项 —",
+    "verify": "npm run bump:check && npm run precache && npm run manuscript && npm run apk && npm run content:check",
     "verify:all": "npm run verify && npm run kai:check",
 
     "//4": "— 端到端 —",
@@ -35,6 +35,10 @@
     "gen:characters": "node tools/make-characters.mjs",
     "gen:sitemap": "node tools/make-sitemap.mjs",
     "gen:announce": "node tools/make-announce.mjs",
+    "//5b": "— 内容契约（Android 原生版数据源；不进 PRECACHE、不带 ?v=）—",
+    "gen:content": "node tools/gen-content.mjs",
+    "content:check": "node tools/check-content.mjs",
+    "content:mutate": "node tools/check-content.mjs --self-test",
     "gen:thumbs": "python tools/make-portrait-thumbs.py",
     "kai": "python tools/make-kai-subset.py",
 

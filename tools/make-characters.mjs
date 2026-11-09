@@ -26,6 +26,9 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import {
+  CONTENT_DIR, buildCharactersPayload, writeJsonIfChanged, refreshManifest
+} from './content-lib.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_JS = path.join(ROOT, 'js', 'characters-data.js');
@@ -554,6 +557,23 @@ const sitemapRun = spawnSync(process.execPath, [sitemapTool], { stdio: 'inherit'
 if (sitemapRun.status !== 0) {
   console.error('⚠ sitemap.xml 刷新失败（页面已生成，不影响阅读）。请手动跑:');
   console.error('    node tools/make-sitemap.mjs');
+}
+
+/* 5) 内容契约（Android 原生版）：同一次运行追加产出 content/characters.json
+   并刷新 manifest。不改任何生成出来的 HTML。若 content/ 还没铺设（S0 之前的老
+   clone / 只跑本脚本没跑 gen-content），只提示、不把已经落盘的页面产物拖死。 */
+try {
+  const charsHit = writeJsonIfChanged(
+    path.join(CONTENT_DIR, 'characters.json'), buildCharactersPayload(chars));
+  console.log((charsHit ? '✓ ' : '· ') + 'content/characters.json（' + chars.length +
+    ' 人' + (charsHit ? '' : ' · 无变化') + '）');
+  const m = refreshManifest();
+  console.log((m.changed ? '✓ ' : '· ') + 'content/manifest.json（contentVersion ' +
+    m.contentVersion + (m.changed ? '' : ' · 无变化') + '）');
+} catch (err) {
+  console.error('⚠ 内容契约未刷新（页面产物不受影响）：' +
+    (err && err.message ? err.message : String(err)));
+  console.error('   补跑：node tools/gen-content.mjs');
 }
 
 console.log('\n下一步：');

@@ -1,0 +1,133 @@
+{
+  "schema": 1,
+  "contentVersion": "7ea3a20867f2",
+  "generatedAt": "2026-11-09T13:09:52.802Z",
+  "chapters": [
+    {
+      "num": 1,
+      "file": "chapter-01.html",
+      "updated": "2026-05-21",
+      "hash": "2594403917fd",
+      "paragraphCount": 73
+    },
+    {
+      "num": 2,
+      "file": "chapter-02.html",
+      "updated": "2026-05-21",
+      "hash": "436b343213eb",
+      "paragraphCount": 61
+    },
+    {
+      "num": 3,
+      "file": "chapter-03.html",
+      "updated": "2026-10-24",
+      "hash": "1fc540eb7cbe",
+      "paragraphCount": 43
+    },
+    {
+      "num": 4,
+      "file": "chapter-04.html",
+      "updated": "2026-10-24",
+      "hash": "da2ace7a70b3",
+      "paragraphCount": 74
+    },
+    {
+      "num": 5,
+      "file": "chapter-05.html",
+      "updated": "2026-10-25",
+      "hash": "5c57245d4065",
+      "paragraphCount": 49
+    },
+    {
+      "num": 6,
+      "file": "chapter-06.html",
+      "updated": "2026-10-25",
+      "hash": "ce725eef4bb2",
+      "paragraphCount": 60
+    },
+    {
+      "num": 7,
+      "file": "chapter-07.html",
+      "updated": "2026-10-25",
+      "hash": "89e242832c29",
+      "paragraphCount": 45
+    },
+    {
+      "num": 8,
+      "file": "chapter-08.html",
+      "updated": "2026-11-01",
+      "hash": "405848a7e3d6",
+      "paragraphCount": 52
+    },
+    {
+      "num": 9,
+      "file": "chapter-09.html",
+      "updated": "2026-11-01",
+      "hash": "936ad2bce22e",
+      "paragraphCount": 56
+    }
+  ],
+  "characters": {
+    "hash": "562c39b280e5",
+    "count": 18
+  },
+  "flags": {
+    "url": "/flags.json",
+    "keys": [
+      "anchorRestore",
+      "autoscroll",
+      "backup",
+      "infiniteScroll",
+      "readingAids",
+      "search"
+    ]
+  },
+  "assets": {
+    "baseUrl": "https://zephyrw.site/assets/",
+    "portraits": [
+      "portrait-baiyu-1024.webp",
+      "portrait-baiyuhuan-1024.webp",
+      "portrait-guchiyan-1024.webp",
+      "portrait-jiangbuqiu-1024.webp",
+      "portrait-jiangzhenmo-1024.webp",
+      "portrait-linshu-1024.webp",
+      "portrait-linwangshu-1024.webp",
+      "portrait-linxihe-1024.webp",
+      "portrait-liyan-1024.webp",
+      "portrait-nanheng-1024.webp",
+      "portrait-ningzunjiu-1024.webp",
+      "portrait-shenruoqi-1024.webp",
+      "portrait-sujiwen-1024.webp",
+      "portrait-taoyaoyao-1024.webp",
+      "portrait-xiaozhuo-1024.webp",
+      "portrait-yangmenghan-1024.webp",
+      "portrait-yeyuan-1024.webp",
+      "portrait-yeyulan-1024.webp"
+    ],
+    "thumbs": [
+      "portrait-baiyu-thumb.webp",
+      "portrait-baiyuhuan-thumb.webp",
+      "portrait-guchiyan-thumb.webp",
+      "portrait-jiangbuqiu-thumb.webp",
+      "portrait-jiangzhenmo-thumb.webp",
+      "portrait-linshu-thumb.webp",
+      "portrait-linwangshu-thumb.webp",
+      "portrait-linxihe-thumb.webp",
+      "portrait-liyan-thumb.webp",
+      "portrait-nanheng-thumb.webp",
+      "portrait-ningzunjiu-thumb.webp",
+      "portrait-shenruoqi-thumb.webp",
+      "portrait-sujiwen-thumb.webp",
+      "portrait-taoyaoyao-thumb.webp",
+      "portrait-xiaozhuo-thumb.webp",
+      "portrait-yangmenghan-thumb.webp",
+      "portrait-yeyuan-thumb.webp",
+      "portrait-yeyulan-thumb.webp"
+    ],
+    "fonts": [
+      "linyuan-kai-rest.woff2",
+      "linyuan-kai-subset.woff2",
+      "zcool-xiaowei-subset.woff2"
+    ]
+  }
+}
