@@ -1,9 +1,9 @@
 {
-  "versionCode": 19,
-  "versionName": "1.9.2",
+  "versionCode": 20,
+  "versionName": "1.9.3",
   "apkUrl": "https://zephyrw.site/app/linyuan-latest.apk",
   "size": 226718,
-  "sha256": "6ba3b7c83ca755c183f8a69e5e7408b239688eacc53c59e7312f00651726f578",
-  "notes": "图标重做了一版：满版绘制，去掉了外层的圆角边框，在圆形和圆角图标下边缘更干净、不再有双层轮廓。",
-  "publishedAt": "2026-11-08"
+  "sha256": "04aa020ae1dd4fc0c19f11804c249919ad792df19e052f867a96c1502cafa033",
+  "notes": "这一版是升级到新版 App 前的过渡版。请在「设置 → 阅读数据 → 备份数据 → 存到手机」导出一份阅读数据，里面有进度、摘句和自定义字体，升级到原生版后可用它恢复。",
+  "publishedAt": "2026-11-09"
 }
