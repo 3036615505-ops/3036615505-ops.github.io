@@ -10,6 +10,18 @@
 >
 > 历史条目是原样搬过来的（内容逐字未改，只在块之间统一成一个空行）。
 
+## 2026-11-09 · 发版冷启动性能修复（`?v=131` / `CACHE v77` **均不变**）
+
+| 项 | 内容 |
+|---|---|
+| 动因 | 作者装 v1.9.3 后反馈「文件可以找到」「选楷体没问题但反应有些慢」「进阅读页好久才刷出来」。`git diff` 证明 S1 的 `reader.ui.js` 改动全在 2564 行之后（设置 / 数据面板）、`reader.store.js` 只新增函数，**渲染路径零改动** → 不是导出桥回归 |
+| 真因 | S1 改了 PRECACHE 内 4 个 JS → 按约定 `?v=130→131` + `CACHE v76→v77`：① 全站统一 `?v=` 换值让**全部** CSS/JS 的新 URL cache miss，只能走网络，且没有导航那条 500ms 兜底；② `CACHE` 换名后 activate 删旧缓存，连带删掉 `cacheFirst` 运行时写入的**楷体两片 919KB**（它们不在 PRECACHE）；③ install 80 条 `Promise.allSettled` 齐发，慢网下图片抢占 CSS/JS 队头。线上实测（本机代理链路，不等于用户手机）：CSS 133KB 4.8–5.2s、楷体主片 323KB 14.2s、兜底片 596KB 20s 未下完、章节页 TTFB 1.3–3.2s |
+| 改动 | **只改 `sw.js`**：install 改「关键路径优先（`precachePriority`）+ 每批 4 条（`precacheBatch`）+ 命中即跳过」；activate 删旧缓存前用 `migrateFonts()` 把带 `?f=` 内容键的字体条目迁进新 CACHE。无差别搬二进制会钉住旧图标，所以只搬这两片。PRECACHE 条目、CSS、章节 JSON、`twa` 一字未改 |
+| 版本判据 | **刻意不升 `?v=` / `CACHE` 名**：判据始终是「PRECACHE 里的字节变没变」，本次只改 install / activate 逻辑；升名反而会触发又一次全量重建，与修复目的相悖。新 SW 由浏览器自更新拿到，同名 CACHE 下 install 命中即跳过、几乎零下载。`contentVersion` 也不变（manifest 不含 `sw.js`） |
+| 验证 | `verify` / `verify:all` / `content:mutate 17/17` / `stale` / `contrast` 双主题 / `typecheck` / `pre-push 7/7` 全绿；`e2e 187/187`（195.8s，最终形态复跑一次）；`git status` 干净 |
+| 效果边界 | 修的是「**每次发版都复发**」的两项（字体重下、带宽抢占）；本次已经发生的冷启动要等缓存填完，请作者再打开 1–2 次确认恢复。排查过程与 J-3 记录见 `_design/native-app/S1-DRILL.md` §4 / §6.5 |
+| 未修（待拍板） | 全站统一 `?v=` 会让改一个 JS 作废全部 CSS/JS 缓存。根治需按文件内容 hash 做单文件版本号，牵动 `bump-assets.mjs` 与两个生成器的 HTML 头模板。若「不是首次打开也慢」，再按这条查 |
+
 ## 2026-11-09 · S1 数据出口桥 + App v1.9.3（versionCode 20）WebView 隔离版
 
 | 项 | 内容 |

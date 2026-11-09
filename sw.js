@@ -16,6 +16,14 @@
  *      才在后台补一次刷新（按 date 头算年龄，文本 24h / 二进制 7d，见 CACHE_TTL）。
  *      这些引用都带版本号（如 css/style.css?v=NN），改版时版本号 +1 → URL 变 →
  *      旧条目自然没人再请求，所以正常情况下根本轮不到 TTL 生效；
+ *      ⚠ 代价（2026-11-09 作者反馈「进阅读页好久才刷出来」时定位）：`?v=` 是
+ *      **全站统一号**，任何一个 JS 改动都会让全部 CSS/JS 的 URL 失效。发版后
+ *      第一次打开这些新 URL 全部 cache miss，只能走网络，而且**没有导航那条
+ *      500ms 兜底**（那是 networkFirst 专属）。PRECACHE 里存的是裸路径，只作
+ *      离线 ignoreSearch 兜底，救不了这次 miss。慢链路实测 133KB CSS 约 5s、
+ *      楷体主片 323KB 约 14s，所以发版后头一两次打开明显慢；缓存填好后
+ *      每次命中即零等待。若要根治得改成「按文件内容 hash 的单文件版本号」，
+ *      属工具链级改动，本轮不做。
  *      TTL 只是「忘了 +1 版本号」时的自愈护栏，把「永久陈旧」收敛成有界陈旧
  *      （真实边界与两个前提见下面 cacheFirst 的注释，别只看这一行）。
  *      CSS 与 <head> 里的 JS 是渲染阻塞资源，走网络优先会为首屏多等最多
@@ -230,34 +238,109 @@ function precacheRequest(url) {
 }
 
 /**
+ * 预缓存的「先来后到」。只用来排序，**不改 PRECACHE 的条目**
+ * （tools/check-precache.mjs 仍按原数组逐条校验）。
+ *
+ * 原来 80 条一起 Promise.allSettled 打出去，慢网下 1024 立绘 / 封面图会把
+ * CSS 与 JS 的队头占满：读者看到的是「页面好久才刷出来」，而带宽其实正被
+ * 他这一屏根本用不上的图片吃着。现在按渲染关键路径分三层，每批只放 4 条。
+ */
+function precachePriority(url) {
+  if (url === '/css/style.css' || url.indexOf('/js/') === 0) return 0; /* 渲染关键路径 */
+  if (url === '/') return 1;                                            /* 离线首页兜底 */
+  if (/\.html?$/.test(url) || url === '/novel/') return 2;                /* 正文 / 书架 */
+  return 3;                                                             /* 图片 / manifest */
+}
+
+/** 每批并发上限：手机 WebView 上 4 条足够吃满链路，再多是互相抢 */
+var PRECACHE_BATCH = 4;
+
+/**
  * 逐条预缓存，失败的只 warn、不阻断 install。
  *
  * 改前是 cache.addAll(PRECACHE)（Cache 实例上的方法；`caches` 本身没有 addAll）：**全有全无** —— 任意一条 404（改名、删图、
  * 新增文件忘了提交）都会让整个 install reject，于是 SW 永远装不上新版本，
  * 用户被钉在旧缓存上，而且表现为「明明发了版却没变化」，很难查。
- * 现在改用 Promise.allSettled：n-1 条成功也照常激活，坏的那条记日志，
- * 运行时该资源走一次网络后由 cacheFirst 写回缓存。
+ * 之后改成 Promise.allSettled 全量齐发，现在再加两件事：
+ *   ① 分批 + 命中即跳过 —— SW 自更新（CACHE 名没变）时几乎零下载，
+ *      不再为了「改了 sw.js 一行」把 80 条重下一遍；
+ *   ② 关键路径排前面 —— 换 CACHE 名后首屏先拿到 CSS/JS，图片慢慢补。
  *
  * 代价（必须知道）：预缓存的「齐全」不再由 install 失败来保证，
  * 所以新增资源时必须自己确认路径存在 —— tools/check-precache.mjs 就是干这个的。
  */
+function precacheBatch(cache, urls, from) {
+  if (from >= urls.length) return Promise.resolve();
+  var batch = urls.slice(from, from + PRECACHE_BATCH);
+  return Promise.all(batch.map(function(url) {
+    /* 「命中即跳过」的前提是项目约定：PRECACHE 里的字节变了就必须 +1 CACHE 名。
+       所以同名 CACHE 下条目存在 ⇔ 内容没变；万一条目真陈旧，cacheFirst 的
+       TTL 自愈（文本 24h / 二进制 7d）仍会在后台把它治新。 */
+    return cache.match(precacheRequest(url)).catch(function() { return null; }).then(function(hit) {
+      if (hit) return;                       /* 同名 CACHE 已有条目 → 不重下 */
+      return cache.add(precacheRequest(url)).catch(function(err) {
+        console.warn('[sw] 预缓存失败，跳过（运行时会走网络兜底）:', url, err && err.message);
+      });
+    });
+  })).then(function() { return precacheBatch(cache, urls, from + PRECACHE_BATCH); });
+}
+
 self.addEventListener('install', function(e) {
   e.waitUntil(
     caches.open(CACHE).then(function(c) {
-      return Promise.allSettled(PRECACHE.map(function(url) {
-        return c.add(precacheRequest(url)).catch(function(err) {
-          console.warn('[sw] 预缓存失败，跳过（运行时会走网络兜底）:', url, err && err.message);
-        });
-      }));
+      var ordered = PRECACHE.slice().sort(function(a, b) {
+        return precachePriority(a) - precachePriority(b);
+      });
+      return precacheBatch(c, ordered, 0);
     }).then(function() { return self.skipWaiting(); })
   );
 });
 
+/**
+ * 换 CACHE 名时，把旧缓存里的「楷体两片」搬进新缓存。
+ *
+ * 为什么只搬这两片、不无差别搬所有二进制：/favicon.png 之类 URL 不带内容键，
+ * 换图标靠的**正是** CACHE +1 强制重下；无差别搬会让旧图标永久残留。
+ * 楷体主片 / 兜底片在 CSS 里带 `?f=` 内容键（子集内容变了必然改 ?f=，
+ * 见 css/style.css 的 @font-face），所以「URL 相同」⇔「内容相同」，搬运安全。
+ *
+ * 这两片合计约 919KB，不在 PRECACHE 里，是 cacheFirst 运行时写进来的。
+ * 改前每次发版 CACHE +1 → activate 删旧缓存 → 读者第一次选楷体要重新下
+ * 十几秒（慢链路实测主片 323KB / 14s）；这正是「选楷体反应慢」的直接原因，
+ * 而且**每次发版都会复发**，不是某次过渡版独有。
+ */
+function migrateFonts(target, oldName) {
+  return caches.open(oldName).then(function(old) {
+    return old.keys().then(function(reqs) {
+      var fonts = reqs.filter(function(r) {
+        return r.url.indexOf('/assets/fonts/') >= 0 && r.url.indexOf('?f=') >= 0;
+      });
+      return Promise.all(fonts.map(function(r) {
+        return target.match(r).then(function(hit) {
+          if (hit) return;
+          return old.match(r).then(function(res) {
+            if (res) return target.put(r, res);
+          });
+        });
+      }));
+    });
+  });
+}
+
 self.addEventListener('activate', function(e) {
   e.waitUntil(
     caches.keys().then(function(keys) {
-      return Promise.all(keys.filter(function(k) { return k !== CACHE; })
-        .map(function(k) { return caches.delete(k); }));
+      var olds = keys.filter(function(k) { return k !== CACHE; });
+      if (!olds.length) return;
+      return caches.open(CACHE).then(function(target) {
+        return Promise.all(olds.map(function(k) {
+          return migrateFonts(target, k)
+            .catch(function(err) {
+              console.warn('[sw] 字体缓存迁移失败（退化为重新下载）:', k, err && err.message);
+            })
+            .then(function() { return caches.delete(k); });
+        }));
+      });
     }).then(function() { return self.clients.claim(); })
   );
 });
