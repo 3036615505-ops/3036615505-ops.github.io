@@ -84,8 +84,15 @@
  * （`text-align: justify` + `overflow-wrap: anywhere`），PRECACHE 条目一个没增删，
  * 但 `?v=` 升到 133 改到了所有预缓存 HTML 的引用字节，按判据仍须 +1 ——
  * 不升的话老用户 SW 不重新 install，离线读者会长期停在参差的那版正文。
+ *
+ * v81（2026-11-11 · 正文行长钉死 13 字）：`.chapter-content` 的左右 padding 由固定
+ * 20px 改成按字号反推的算式（13 × (字号 + 字距)，多出的宽度变成两侧留白），
+ * 顺手把两个主题里覆盖 `letter-spacing` 的写法收成 `--reader-tracking` 变量，
+ * 否则算式里的 0.5px 与实际字距对不上、会稳定少排一个字。
+ * 只动 CSS、PRECACHE 条目没增删，但 `?v=` 升到 134 改了所有预缓存 HTML 的引用字节，
+ * 按判据仍须 +1；不升的话离线读者会长期停在「宽屏 15/16 字一行」的旧版面。
  */
-var CACHE = 'linyuan-v80';
+var CACHE = 'linyuan-v81';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。

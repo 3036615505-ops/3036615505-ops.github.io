@@ -2173,14 +2173,30 @@ body.reading-page {
 :root[data-para="loose"] { --para-delta: 10px; }
 
 .chapter-content {
-  /* 顶部留出状态栏/刘海高度：沉浸模式隐藏状态栏后 env() 归零，正文自然贴顶 */
-  padding: calc(24px + env(safe-area-inset-top, 0px)) 20px calc(48px + 28px);
+  /* 每行字数。中文行长是排版里最影响观感的一个量，之前它是个隐变量：
+     左右各 20px 固定内边距，360 / 393 / 430 宽的手机分别排出 14、15、16 字一行，
+     同一章在不同机器上呼吸感完全不同，而且越宽的屏排得越挤。
+     现在列宽由字号反推——13 × (字号 + 字距)，多出来的宽度一律变成两侧留白，
+     所以任何机型、任何字号档位都是每行 13 字，正文仍然居中。
+     要调整行长，只改这一个数（13 改 14、改 12 都行），别去动 padding。 */
+  --reader-cpl: 13;
+  /* 字距。padding 的算式里要用到它，所以先提成变量，避免两处各写一份、改一处忘一处 */
+  --reader-tracking: 0.4px;
+
+  /* 顶部留出状态栏/刘海高度：沉浸模式隐藏状态栏后 env() 归零，正文自然贴顶。
+     左右取 max(20px, 上面算出的留白)：算式给出的留白小于 20px 说明屏幕窄到
+     放不下 13 字，此时退回 20px 的固定边距，宁可少排一个字也不挤到贴边。
+     算式里 -1px 是给亚像素舍入留的容差：正好卡在边界上时，浏览器可能少算半个像素
+     而把第 13 个字甩到下一行，白白排成 12 字。 */
+  padding: calc(24px + env(safe-area-inset-top, 0px))
+           max(20px, calc((100% - var(--reader-cpl) * (var(--font-size-base) + var(--reader-tracking)) - 1px) / 2))
+           calc(48px + 28px);
   font-family: -apple-system, "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   font-size: var(--font-size-base);
   line-height: calc(var(--reader-lh-base) + var(--lh-delta));
   color: var(--reading-text);
   min-height: 80vh;
-  letter-spacing: 0.4px;
+  letter-spacing: var(--reader-tracking);
   transition: color 0.3s;
   animation: contentFadeIn 0.4s ease-out;
 }
@@ -2235,7 +2251,7 @@ body.reading-page {
 }
 
 :root[data-theme="wheat"] .chapter-content {
-  letter-spacing: 0.5px;
+  --reader-tracking: 0.5px;
 }
 
 :root[data-theme="dark"] {
@@ -2243,7 +2259,7 @@ body.reading-page {
 }
 
 :root[data-theme="dark"] .chapter-content {
-  letter-spacing: 0.5px;
+  --reader-tracking: 0.5px;
 }
 
 :root[data-theme="green"] {
