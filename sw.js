@@ -79,8 +79,13 @@
  * v79（2026-11-10 · 上线第十一章·晚饭）：PRECACHE 新增 `/novel/chapter-11.html`；
  * 同一批里楷体子集扩到 3925 字（新增揄揶杞枸炫耷锃），`?f=` 升到 12/5、`?v=` 升到 132 ——
  * 所有章节页的引用字节都变了，预缓存内容整体换了一遍，必须再 +1。
+ *
+ * v80（2026-11-10 · 正文两端对齐）：只改 `css/style.css` 里 `.chapter-content p`
+ * （`text-align: justify` + `overflow-wrap: anywhere`），PRECACHE 条目一个没增删，
+ * 但 `?v=` 升到 133 改到了所有预缓存 HTML 的引用字节，按判据仍须 +1 ——
+ * 不升的话老用户 SW 不重新 install，离线读者会长期停在参差的那版正文。
  */
-var CACHE = 'linyuan-v79';
+var CACHE = 'linyuan-v80';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。

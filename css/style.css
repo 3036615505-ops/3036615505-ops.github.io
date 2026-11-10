@@ -2197,7 +2197,16 @@ body.reading-page {
 .chapter-content p {
   text-indent: 2em;
   margin-bottom: calc(var(--reader-para-base) + var(--para-delta));
-  word-break: break-all;
+  /* 两端对齐：中文靠字间均分剩余空间把右端拉齐，末行不受影响（justify 不处理最后一行）。
+     不写这一行时，段落回落到默认左对齐，每行在「排得下的最后一个字」处断行；
+     再叠加断行禁忌（行首不能是 ，。」、行尾不能是 “（）与楷体标点自身的右侧留白，
+     右边缘会参差到一两字宽 —— 这是 2026-11-10 作者反馈的排版问题，不是字体缺陷。 */
+  text-align: justify;
+  /* 长西文/数字串整体换行，不在词中间切碎。原来是 word-break: break-all —— 中文本来就能
+     逐字断行，那个声明只对西文生效，却会让 iPhone / 2000 这类串被切成两半；
+     切碎之后 justify 还要把它们拉满整行，字距会异常松。overflow-wrap: anywhere
+     只在「整词放不下」时才断开，比 break-all 保守，也比默认值多一层兜底。 */
+  overflow-wrap: anywhere;
   font-weight: 400;
   /* 这里曾经用 content-visibility: auto + contain-intrinsic-size: 2em 省渲染，
      但它让「没进过视口的段落」高度只是估算值：跳进章节中间时整章高度是假的，
