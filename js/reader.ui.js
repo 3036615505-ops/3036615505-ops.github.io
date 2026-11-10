@@ -478,14 +478,15 @@
   function applyFontTo(root) {
     var stack = fontStackFor(state.fontFamily);
     /* 字重跟字体族一起落，由 .chapter-content p 的 --reader-weight 消费。
-       黑体档 450：400 时正文竖笔约 0.076em，比番茄那类自带 Medium 的 App 细一档
-       （真机反馈「不够粗」）；直接给 500 又粗过了头（反馈「粗了点」），450 落在中间——
-       屏幕渲染实测墨量 400 : 450 : 500 = 63019 : 72728 : 80009。
+       黑体档 420：400 时正文竖笔约 0.076em，比番茄那类自带 Medium 的 App 细一档
+       （真机反馈「不够粗」）；500 又粗过了头（反馈「粗了点」）；450 偏 500 一侧，
+       再往下收到 420 —— 五档墨量（400/420/450/500）实测 3198651 : 3507805 : 3802334，
+       420 正好落在 400 与 450 的中点偏一点点。
        楷体档必须回 400 —— 打包的楷体只声明了 400 一片，写 500 会被合成加粗、笔画发糊。
-       --reader-bold 是给 CSS 列宽算式用的开关：450 同样走合成加粗（advance 与 500 相同，
-       比 400 宽 1.3%），不预留的话 13 字会被挤成 12 字。楷体档不膨胀，所以是 0。 */
+       --reader-bold 是给 CSS 列宽算式用的开关：420 同样走合成加粗（advance 与 450/500
+       一致），不预留的话 13 字会被挤成 12 字。楷体档不膨胀，所以是 0。 */
     var isKai = state.fontFamily === 'kai';
-    var weight = isKai ? '400' : '450';
+    var weight = isKai ? '400' : '420';
     (root || document).querySelectorAll('.chapter-content').forEach(function (el) {
       el.style.fontFamily = stack;
       el.style.setProperty('--reader-weight', weight);
