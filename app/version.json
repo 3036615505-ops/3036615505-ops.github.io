@@ -1,9 +1,9 @@
 {
-  "versionCode": 23,
-  "versionName": "2.0.2",
+  "versionCode": 24,
+  "versionName": "2.0.3",
   "apkUrl": "https://zephyrw.site/app/linyuan-latest.apk",
-  "size": 3016457,
-  "sha256": "0a75ee9d26429d5e4731d04e89dc0bf42f8ab798655ffdea3b61be1f95d72822",
-  "notes": "修好了少数设备升级后界面没有切换过来的问题：这类设备会把一次临时的读不到当成「关闭」缓存住。这一版会自动纠正，装上后打开两次即可。",
+  "size": 1390168,
+  "sha256": "ad988fccac027e2a50258a7e13c273ad0d7bdceca7ed85c6ca1464c8d6fc224b",
+  "notes": "安装包从 3 MB 缩到 1.3 MB，下载快了一半以上，更新失败时也能选「用浏览器下载」。楷体字库改成用到才下载：你如果一直用黑体，这次更新和以前一样；如果选过楷体，第一次切换会自动补齐，只需一次网络。",
   "publishedAt": "2026-11-10"
 }
