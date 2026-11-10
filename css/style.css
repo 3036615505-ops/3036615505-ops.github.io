@@ -2182,14 +2182,25 @@ body.reading-page {
   --reader-cpl: 13;
   /* 字距。padding 的算式里要用到它，所以先提成变量，避免两处各写一份、改一处忘一处 */
   --reader-tracking: 0.4px;
+  /* 合成加粗的增宽比例。系统字体没有 Medium（多数 Android ROM 只有 400 与 700）时，
+     浏览器会把 400 描边加粗成 500，advance 跟着变宽 —— WebKit 实测 +1.3%
+     （单字 22.500 → 22.787px），Chromium 约 1%–2%。13 个字因此多出 3.7px，
+     正好把第 13 个字挤到下一行，实测整章从「13 字 150 行」掉成「12 字 156 行」。
+     所以列宽必须按字重预留这份膨胀：--reader-bold 是开关（由 applyFontTo 按档位写），
+     乘上 --reader-bold-bloat 才是实际比例。取 3%，覆盖各平台的合成加粗区间。 */
+  --reader-bold: 1;
+  --reader-bold-bloat: 0.03;
 
   /* 顶部留出状态栏/刘海高度：沉浸模式隐藏状态栏后 env() 归零，正文自然贴顶。
      左右取 max(20px, 上面算出的留白)：算式给出的留白小于 20px 说明屏幕窄到
      放不下 13 字，此时退回 20px 的固定边距，宁可少排一个字也不挤到贴边。
      算式里 -1px 是给亚像素舍入留的容差：正好卡在边界上时，浏览器可能少算半个像素
-     而把第 13 个字甩到下一行，白白排成 12 字。 */
+     而把第 13 个字甩到下一行，白白排成 12 字。
+     字宽那一项要乘 (1 + 加粗膨胀)：楷体档 --reader-bold 为 0，列宽回到纯粹的
+     13 × (字号 + 字距)；黑体档为 1，多留一份合成加粗的余量。余量在 400 真字重下
+     会摊进去变成约 0.7px 的额外字距，肉眼几乎看不出，比掉字要好。 */
   padding: calc(24px + env(safe-area-inset-top, 0px))
-           max(20px, calc((100% - var(--reader-cpl) * (var(--font-size-base) + var(--reader-tracking)) - 1px) / 2))
+           max(20px, calc((100% - var(--reader-cpl) * (var(--font-size-base) * (1 + var(--reader-bold) * var(--reader-bold-bloat)) + var(--reader-tracking)) - 1px) / 2))
            calc(48px + 28px);
   font-family: -apple-system, "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   font-size: var(--font-size-base);
@@ -2223,7 +2234,12 @@ body.reading-page {
      切碎之后 justify 还要把它们拉满整行，字距会异常松。overflow-wrap: anywhere
      只在「整词放不下」时才断开，比 break-all 保守，也比默认值多一层兜底。 */
   overflow-wrap: anywhere;
-  font-weight: 400;
+  /* 字重由字体档位决定（reader.ui.js 的 applyFontTo 写这个变量）：
+     黑体档 500 —— 400 时思源/系统黑体的正文竖笔约 0.076em，比常见阅读 App
+     （思源黑体 Medium 约 0.105em）细一档，真机反馈「黑体不够粗」；
+     楷体档 400 —— 打包的楷体只声明了 400 一片，写 500 会被合成加粗、笔画发糊。
+     没有变量时（未执行脚本、旧缓存）落到 500，与默认黑体档一致。 */
+  font-weight: var(--reader-weight, 500);
   /* 这里曾经用 content-visibility: auto + contain-intrinsic-size: 2em 省渲染，
      但它让「没进过视口的段落」高度只是估算值：跳进章节中间时整章高度是假的，
      进度百分比、底部页码、剩余时间全部跟着偏，位置恢复也会一路漂。

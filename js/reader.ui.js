@@ -477,8 +477,18 @@
   /* 字体落在每篇正文上（不是 :root），所以新接上来的章要单独补一次 */
   function applyFontTo(root) {
     var stack = fontStackFor(state.fontFamily);
+    /* 字重跟字体族一起落，由 .chapter-content p 的 --reader-weight 消费。
+       黑体档 500：400 时正文竖笔约 0.076em，比番茄那类自带 Medium 的 App 细一档，
+       真机反馈「黑体不够粗」。楷体档必须回 400 —— 打包的楷体只声明了 400 一片，
+       写 500 浏览器会合成加粗，笔画糊成一团。
+       --reader-bold 是给 CSS 列宽算式用的开关：合成加粗会把字形撑宽 1.3%，
+       不预留的话 13 字会被挤成 12 字。楷体档不膨胀，所以是 0。 */
+    var isKai = state.fontFamily === 'kai';
+    var weight = isKai ? '400' : '500';
     (root || document).querySelectorAll('.chapter-content').forEach(function (el) {
       el.style.fontFamily = stack;
+      el.style.setProperty('--reader-weight', weight);
+      el.style.setProperty('--reader-bold', isKai ? '0' : '1');
     });
   }
 
