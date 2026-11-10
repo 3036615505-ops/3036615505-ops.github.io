@@ -23,17 +23,17 @@
     "inLanguage": "zh-CN"
   }
   </script>
-  <link rel="stylesheet" href="../css/style.css?v=131">
+  <link rel="stylesheet" href="../css/style.css?v=132">
   <!-- 原生壳能力补丁（剪贴板 / 原生分享 / blob 导出）。章节页没有 theme.js，
        所以紧跟样式表；它必须早于正文末尾的 reader.* 模块执行 —— 那些模块
        会直接使用 navigator.clipboard 与 navigator.share。 -->
-  <script src="../js/native-bridge.js?v=131"></script>
+  <script src="../js/native-bridge.js?v=132"></script>
   <!-- 站内「新章节更新了」横幅（取 announce.json 与 localStorage 比对，每会话一次）。
        defer：它只读 DOM 与 localStorage、往 body 补一条横幅，不参与首绘；
        留在 head 里同步加载会让正文白等一个网络往返（4G 实测首绘 +150~300ms）。 -->
-  <script src="../js/announce.js?v=131" defer></script>
+  <script src="../js/announce.js?v=132" defer></script>
   <!-- 点击即反馈：按下就在顶部点亮一条细线，盖住「跳转前的空窗期」。 -->
-  <script src="../js/nav-feedback.js?v=131" defer></script>
+  <script src="../js/nav-feedback.js?v=132" defer></script>
 </head>
 <body class="reading-page">
   <div class="reading-wrapper">
@@ -134,7 +134,7 @@
       <div class="reader-progress-bar">
         <div class="fill" id="progressFill" style="width:0%"></div>
       </div>
-      <a href="#" class="next-ch">下一章</a>
+      <a href="chapter-11.html" class="next-ch">下一章</a>
     </div>
     <div class="reader-menu-row">
       <a href="#" onclick="openDirectory();return false">
@@ -166,13 +166,13 @@
 
   </div>
 
-  <script src="../js/chapters.js?v=131"></script>
-  <script src="../js/transition.js?v=131"></script>
-  <script src="../js/reader.flags.js?v=131"></script>
-  <script src="../js/reader.dom.js?v=131"></script>
-  <script src="../js/reader.store.js?v=131"></script>
-  <script src="../js/reader.engine.js?v=131"></script>
-  <script src="../js/reader.ui.js?v=131"></script>
-  <script src="../js/reader.js?v=131"></script>
+  <script src="../js/chapters.js?v=132"></script>
+  <script src="../js/transition.js?v=132"></script>
+  <script src="../js/reader.flags.js?v=132"></script>
+  <script src="../js/reader.dom.js?v=132"></script>
+  <script src="../js/reader.store.js?v=132"></script>
+  <script src="../js/reader.engine.js?v=132"></script>
+  <script src="../js/reader.ui.js?v=132"></script>
+  <script src="../js/reader.js?v=132"></script>
 </body>
 </html>

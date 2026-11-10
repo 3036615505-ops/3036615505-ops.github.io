@@ -72,8 +72,15 @@
  * v75（2026-11-08 · 上线第十章·两家一家）：PRECACHE **新增** `/novel/chapter-10.html`，
  * 条目本身变了，CACHE 必须升。与 v73/v74 的图标改动是两条并行的线，变基时撞在同一个
  * 号上（本地写的 v73 与远端图标版的 v73 撞车），故接在 v74 之后取 v75。
+ *
+ * v76–v78（2026-11-09/10 · App v2.0.0–v2.0.3 系列）：预缓存分批、字体缓存跨代数保留、
+ * S1 数据出口桥、S0 内容契约化几次发版连续占用，号段由各处改动接续，此处不逐条补写。
+ *
+ * v79（2026-11-10 · 上线第十一章·晚饭）：PRECACHE 新增 `/novel/chapter-11.html`；
+ * 同一批里楷体子集扩到 3925 字（新增揄揶杞枸炫耷锃），`?f=` 升到 12/5、`?v=` 升到 132 ——
+ * 所有章节页的引用字节都变了，预缓存内容整体换了一遍，必须再 +1。
  */
-var CACHE = 'linyuan-v77';
+var CACHE = 'linyuan-v79';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
@@ -173,6 +180,7 @@ var PRECACHE = [
   '/novel/chapter-08.html',
   '/novel/chapter-09.html',
   '/novel/chapter-10.html',
+  '/novel/chapter-11.html',
   '/novel/characters.html',
   '/assets/portrait-shenruoqi-thumb.webp',
   '/novel/character-shenruoqi.html',
