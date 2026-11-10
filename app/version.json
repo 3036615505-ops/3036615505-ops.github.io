@@ -1,9 +1,9 @@
 {
-  "versionCode": 24,
-  "versionName": "2.0.3",
+  "versionCode": 25,
+  "versionName": "2.0.4",
   "apkUrl": "https://zephyrw.site/app/linyuan-latest.apk",
-  "size": 1390168,
-  "sha256": "ad988fccac027e2a50258a7e13c273ad0d7bdceca7ed85c6ca1464c8d6fc224b",
-  "notes": "安装包从 3 MB 缩到 1.3 MB，下载快了一半以上，更新失败时也能选「用浏览器下载」。楷体字库改成用到才下载：你如果一直用黑体，这次更新和以前一样；如果选过楷体，第一次切换会自动补齐，只需一次网络。",
+  "size": 226662,
+  "sha256": "4f0c64207010d8bbf2389cedd53a6f65eba905bfdb8747e9cfa65e5b640d63d6",
+  "notes": "安装包从 1.4 MB 缩到 0.2 MB，下载和安装都更快了。界面和内容没有任何变化。",
   "publishedAt": "2026-11-10"
 }
