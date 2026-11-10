@@ -1,9 +1,9 @@
 {
-  "versionCode": 22,
-  "versionName": "2.0.1",
+  "versionCode": 23,
+  "versionName": "2.0.2",
   "apkUrl": "https://zephyrw.site/app/linyuan-latest.apk",
   "size": 3016457,
-  "sha256": "055e1c451e5f2c3af4ead1191c831b0f265571214006f960228b8093c0e8ce7d",
-  "notes": "书架上的「检查更新」拆成了「同步新章」和「检查新版本」两个入口，各自管各自的事；同时修好了在原生界面里可能收不到 App 更新提示的问题。",
+  "sha256": "0a75ee9d26429d5e4731d04e89dc0bf42f8ab798655ffdea3b61be1f95d72822",
+  "notes": "修好了少数设备升级后界面没有切换过来的问题：这类设备会把一次临时的读不到当成「关闭」缓存住。这一版会自动纠正，装上后打开两次即可。",
   "publishedAt": "2026-11-10"
 }
