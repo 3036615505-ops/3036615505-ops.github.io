@@ -117,8 +117,15 @@
  * （diff>20 仅 469 像素，集中在抗锯齿边缘），是「默认黑体稍重一点」的手感。
  * 仍是合成加粗，`--reader-bold` 的 3% 余量照旧；四宽实测每行 13 字不变。
  * `?v=` 升到 138，预缓存 HTML 引用字节全变，照例 +1。
+ *
+ * v86（2026-11-11 · 首屏瘦身：ZCOOL 标题字体精确子集化）：
+ * `assets/fonts/zcool-xiaowei-subset.woff2` 从 201,752 B 裁到 20,984 B（171 字形），
+ * 它是 PRECACHE 条目且 URL 不带 `?f=`，预缓存字节实打实变了 → CACHE 必须 +1，
+ * 否则老读者 SW 不重新 install，会一直吃那份 197KB 的旧字体。
+ * `?v=` 不动：CSS 只改注释（渲染字节没变），HTML/JS 一行没动。
+ * 生成器与体积护栏见 tools/make-zcool-subset.py。
  */
-var CACHE = 'linyuan-v85';
+var CACHE = 'linyuan-v86';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。

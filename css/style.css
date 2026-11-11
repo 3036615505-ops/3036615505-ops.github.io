@@ -58,7 +58,12 @@
    ──────────────────────────────────────────────────────────── */
 
 /* ===== 字体 ===== */
-/* ZCOOL XiaoWei 自托管子集（仅含站点已用字符，约 420KB；替代 Google Fonts，国内可达） */
+/* ZCOOL XiaoWei 自托管精确子集（替代 Google Fonts，国内可达）。
+   只收真正用这个字体的短标题文字：站名 / 书封 / 分组名 / 小传·设定 / 人物首字，
+   外加人物名、章节标题等以后会进标题的字。生成器与体积护栏见 tools/make-zcool-subset.py。
+   2026-11-11：201,752 B → 20,984 B（171 字形），首屏最大单点 13.5s → 1.4s @15KB/s。
+   ⚠ 此字体在 sw.js 的 PRECACHE 里、URL 不带 ?f=：改字节必须把 CACHE 名 +1，
+     否则老读者会一直吃旧字体。check-precache.mjs 按原路径解析条目，别给它加查询串。 */
 @font-face {
   font-family: 'ZCOOL XiaoWei';
   font-style: normal;
