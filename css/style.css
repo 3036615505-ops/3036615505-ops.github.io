@@ -5128,3 +5128,100 @@ body.is-reading {
   color: var(--text-muted);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   v5 视觉精修层 —— 2026-11-11，作者四屏逐屏通过后上线（试验版）
+   ───────────────────────────────────────────────────────────────────────────
+   ★ 这是「试验层」：所有精修集中在这一段，上面任何原有规则都没改。
+   ★ 回退：整段删除，或 `git revert <本次 commit>` —— 站点立刻回到原外观。
+   ★ 真机确认保留后，再把下面的值合并回各自组件的原始规则里。
+
+   六项（提案样张 _design/ui-rebuild/visual-proposal-v5.html）：
+     ① 明度三台阶  ② 1px 发丝线  ③ 对齐网格  ④ 柔到没形状的阴影
+     ⑤ 干净字阶    ⑥ 短动效（400 → 200ms）
+   底线：色相 / 圆角体系 / 楷体 / 结构全保留；不做窗口隐喻、不加英文 mono 标签。
+   装饰两项（叶形图标、章末朱印）线上本就存在，本层不新增也不删除。
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ① 明度：压平三段渐变，卡片由纯白改柔白，stage→page→surface 落差明确但更柔 */
+  --bg: #f7f2e9;
+  --bg-card: #fffdfa;
+  --card-warm: rgba(255, 253, 248, .92);
+  --site-bg: linear-gradient(180deg, #fbf8f2 0%, #f6f0e5 55%, #f2eadd 100%);
+  /* ② 1px 发丝线：实色边界 → 极淡中性线，只分隔、不承担文字对比 */
+  --border: rgba(61, 50, 40, .085);
+  --border-light: rgba(61, 50, 40, .05);
+  --card-border: rgba(184, 134, 78, .10);
+  /* ④ 柔阴影：范围更大、不透明度更低，看不到形状 */
+  --shadow: 0 2px 8px rgba(76, 48, 18, .03);
+  --shadow-hover: 0 8px 24px rgba(76, 48, 18, .06);
+  --card-shadow: 0 18px 48px rgba(76, 48, 18, .055), 0 2px 8px rgba(76, 48, 18, .025);
+  --card-shadow-soft: 0 12px 32px rgba(76, 48, 18, .04), 0 1px 4px rgba(76, 48, 18, .02);
+  /* ③ 圆角收成 12 / 20 两级（抽屉 .modal-panel 的 22px 是 e2e 契约，硬编码不动） */
+  --radius: 12px;
+  --radius-lg: 20px;
+}
+
+/* 夜读：同样六项，但用深色专属值 —— 沿用浅色发丝线/阴影在深底上会看不见 */
+:root[data-theme="dark"] {
+  --border: rgba(233, 222, 203, .10);
+  --border-light: rgba(233, 222, 203, .06);
+  --card-border: rgba(212, 160, 80, .11);
+  --card-shadow: 0 18px 48px rgba(0, 0, 0, .26), 0 2px 8px rgba(0, 0, 0, .14);
+  --card-shadow-soft: 0 12px 32px rgba(0, 0, 0, .20), 0 1px 4px rgba(0, 0, 0, .10);
+  --site-bg: linear-gradient(180deg, #221f18 0%, #1d1b15 60%, #191711 100%);
+}
+
+/* ③ 左边缘统一到 24px：只动水平内外边距，垂直节奏原样保留 */
+.home-header { padding-left: 24px; padding-right: 24px; }
+.tree-band,
+.home-reading-card,
+.home-quote,
+.chapter-afterglow { margin-left: 24px; margin-right: 24px; }
+.date-list-section,
+.char-detail-section { padding-left: 24px; padding-right: 24px; }
+.home-reading-card,
+.home-quote,
+.chapter-afterglow { padding-left: 24px; padding-right: 24px; }
+.char-group-label { margin-left: 24px; margin-right: 24px; }
+.chapter-afterglow { border-radius: var(--radius-lg); }
+
+/* ⑤ 干净字阶：22 / 17 / 14 / 12，元数据不低于 12px */
+.home-title { font-size: 22px; }
+.char-group-label { font-size: 17px; }
+.date-item-title,
+.char-detail-section-title { font-size: 14px; }
+.home-subtitle,
+.leaf-pill,
+.date-list-title,
+.date-list-total,
+.date-item-date,
+.date-item-words,
+.tree-caption-sub,
+.rc-meta,
+.home-footer,
+.app-version,
+.app-update-link,
+.quotes-hero-kicker,
+.quotes-hero-sub { font-size: 12px; }
+
+/* ⑥ 短动效：400ms → 200ms；只覆盖时长，不改动画名与延迟 */
+.home-quote,
+.home-reading-card,
+.reading-footprints,
+.detail-info,
+.detail-desc,
+.detail-links,
+.start-reading,
+.reading-overview,
+.chapter-section,
+.chapter-content { animation-duration: .2s; }
+.rc-btn:active,
+.date-item:active { transform: scale(.985); }
+@media (prefers-reduced-motion: reduce) {
+  .home-quote, .home-reading-card, .reading-footprints, .detail-info,
+  .detail-desc, .detail-links, .start-reading, .reading-overview,
+  .chapter-section, .chapter-content { animation: none; }
+  .rc-btn:active, .date-item:active { transform: none; }
+}
+
