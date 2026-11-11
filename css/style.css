@@ -5225,3 +5225,195 @@ body.is-reading {
   .rc-btn:active, .date-item:active { transform: none; }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   v6 视觉层 —— 2026-11-11「梧桐叙事线 + 扉页首屏」试验版
+   ───────────────────────────────────────────────────────────────────────────
+   ★ 与 v5 同样的「试验层」：全部改动只在这一段，上面任何原有规则一行没改，
+     HTML / JS / 生成器模板 / PRECACHE 清单一个字节没动。
+     ★ 回退 = 整段删除 → npm run bump --write → CACHE +1 → 全量回归。
+   ★ 样张：_design/ui-rebuild/visual-proposal-v6.html（按「全书」档落地）。
+   ★ 作者裁定：「进度即树」不做 —— .rc-bar / #treeBand 完全不动，百分比进度条保留。
+   ★ 样张是仿真，线上真实 DOM 不同，故用纯 CSS 适配：
+       首页扉页   → .home-header 伪元素排印（保留 #leafPillText 的 JS 绑定）
+       阅读页书眉 → 挂在 .chapter-content h1::before，每章自动带，不碰 13 字版心
+       同学录扉页 → 用页面已有的 .char-hero（「一页页翻过去 / 都是他们」）升级排印
+       章节行叶形 → 线上本来就是三态叶形 SVG（已读/在读/未读），不改，避免丢状态
+   ★ 新增小字统一 12px（沿用 v5 已确认字阶）；只用系统宋体栈，
+     不碰 ZCOOL 子集（「卷 / 同学录 / 都是他们」不在那 171 字形里，用了会回落）。
+   ★ 三枚装饰图形用 CSS 变量存 data-URL，夜读只换颜色变量，不加外链、不加字体。
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* mask 只取 alpha，所以同一份带色 SVG 既能直接当背景，也能当装饰形状上当前景色 */
+  --v6-twig: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2054%2014'%3E%3Cpath%20d='M0%207H54M18%207c3-5%207-6%2010-6-1%204-4%206-10%206z'%20fill='none'%20stroke='%23b8864e'%20stroke-width='1'/%3E%3C/svg%3E");
+  --v6-branch: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2048%2014'%3E%3Cpath%20d='M0%208H48M14%208c3-6%207-7%2010-7-1%204-4%207-10%207zM30%208c3-5%206-6%209-6-1%204-4%206-9%206z'%20fill='none'%20stroke='%23b8864e'%20stroke-width='1'/%3E%3C/svg%3E");
+  --v6-leaf: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%202C7%208%204%2013%2012%2022c8-9%205-14%200-20z'%20fill='%23b8864e'/%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] {
+  --v6-twig: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2054%2014'%3E%3Cpath%20d='M0%207H54M18%207c3-5%207-6%2010-6-1%204-4%206-10%206z'%20fill='none'%20stroke='%23d4a050'%20stroke-width='1'/%3E%3C/svg%3E");
+  --v6-leaf: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%202C7%208%204%2013%2012%2022c8-9%205-14%200-20z'%20fill='%23d4a050'/%3E%3C/svg%3E");
+}
+
+/* ── ① 首页扉页化 ─────────────────────────────────────────────────────────── */
+.home-header {
+  display: block;
+  padding: 26px 24px 18px;
+  position: relative;
+}
+.home-header::before {                 /* 顶部梧桐枝线 + 卷次题记 */
+  content: "临渊羡鱼 · 卷一";
+  display: block;
+  height: 14px;
+  line-height: 14px;
+  margin-bottom: 24px;
+  padding-left: 64px;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+  font-size: 12px;
+  letter-spacing: .22em;
+  color: var(--text-muted);
+  background: var(--v6-twig) no-repeat left center / 54px 14px;
+}
+.home-title {
+  font-size: 36px;
+  letter-spacing: .16em;
+  line-height: 1.24;
+}
+.home-subtitle {
+  font-size: 12px;
+  letter-spacing: .16em;
+  margin-top: 12px;
+}
+.home-header::after {                  /* 发丝线 + 卷次落款 */
+  content: "第一卷 · 少年事";
+  display: block;
+  margin-top: 22px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+  font-size: 12px;
+  letter-spacing: .12em;
+  color: var(--text-muted);
+}
+.home-title::after {                   /* 右上淡叶：mask 上色，颜色跟随主题 */
+  content: "";
+  position: absolute;
+  right: 28px;
+  top: 76px;
+  width: 38px;
+  height: 38px;
+  opacity: .20;
+  background-color: var(--accent);
+  -webkit-mask: var(--v6-leaf) center / contain no-repeat;
+          mask: var(--v6-leaf) center / contain no-repeat;
+}
+/* 叶态胶囊 → 落款行右端的题记。元素与 #leafPillText 的 JS 绑定原样保留，
+   只是去掉胶囊底、隐藏那枚 11px 小图标（大淡叶已承担这一处的意象）。 */
+.leaf-pill {
+  position: absolute;
+  right: 24px;
+  bottom: 18px;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+  font-size: 12px;
+  letter-spacing: .12em;
+  color: var(--text-muted);
+}
+.leaf-pill svg { display: none; }
+
+/* ── ② 阅读页书眉 + 当章叶态 ─────────────────────────────────────────────── */
+/* 挂在 h1 上而不是 .chapter-block：后者已有「章间分隔」的 ::before，
+   且 render-chapter.mjs 只重写 article 内部，h1 一直在，书眉每章自动带。 */
+.chapter-content h1::before {
+  content: "临渊羡鱼 · 卷一 · 少年事";
+  display: block;
+  margin: 0 0 14px;
+  padding: 0 26px 10px 0;
+  border-bottom: 1px solid var(--border-light);
+  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: .12em;
+  line-height: 17px;
+  text-align: left;
+  color: var(--text-muted);
+  background: var(--v6-leaf) no-repeat right center / 17px 17px;
+}
+/* 芽 → 展 → 盛 → 落：只改叶的尺寸，文字一行不动 */
+.chapter-block:nth-child(4n+1) .chapter-content h1::before { background-size: 11px 11px; }
+.chapter-block:nth-child(4n+2) .chapter-content h1::before { background-size: 14px 14px; }
+.chapter-block:nth-child(4n+3) .chapter-content h1::before { background-size: 17px 17px; }
+.chapter-block:nth-child(4n+4) .chapter-content h1::before { background-size: 13px 13px; }
+
+/* ── ③ 余韵卡尾花 ────────────────────────────────────────────────────────── */
+/* 朱印 .chapter-seal 是 absolute 右下角，尾花居中收束，两者不冲突；
+   卡头《章节标题》与「属于这一章的话」一个字都没动（e2e 有断言）。 */
+.chapter-afterglow::after {
+  content: "";
+  display: block;
+  height: 15px;
+  margin-top: 16px;
+  background-image: var(--v6-leaf),
+                    linear-gradient(var(--border), var(--border)),
+                    linear-gradient(var(--border), var(--border));
+  background-repeat: no-repeat;
+  background-position: center center, left center, right center;
+  background-size: 15px 15px, 38px 1px, 38px 1px;
+  opacity: .55;
+}
+
+/* ── ④ 光阴册枝线 ────────────────────────────────────────────────────────── */
+/* .date-year 的 ::before/::after 已是两侧渐变线，枝条挂在年份文字自己的 ::before 上 */
+.date-year-label::before {
+  content: "";
+  display: inline-block;
+  vertical-align: -3px;
+  width: 46px;
+  height: 14px;
+  margin-right: 10px;
+  background-color: var(--accent);
+  -webkit-mask: var(--v6-branch) center / contain no-repeat;
+          mask: var(--v6-branch) center / contain no-repeat;
+  opacity: .72;
+}
+
+/* ── ⑤ 同学录扉页化 + 分组小叶 ───────────────────────────────────────────── */
+/* .detail-header 是带返回键的 sticky 工具栏，不能动；扉页用内容区已有的 .char-hero */
+.char-hero { padding: 26px 24px 18px; }
+.char-hero::before {
+  content: "人物簿 · 三辑";
+  display: block;
+  height: 14px;
+  line-height: 14px;
+  margin-bottom: 24px;
+  padding-left: 64px;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+  font-size: 12px;
+  letter-spacing: .22em;
+  color: var(--text-muted);
+  background: var(--v6-twig) no-repeat left center / 54px 14px;
+}
+.char-hero-kicker { font-size: 12px; letter-spacing: .22em; }
+.char-hero-title {
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: .16em;
+  line-height: 1.24;
+  margin-top: 12px;
+}
+/* .char-group-label::after 已是发丝线，::before 空着，正好放分组前的小叶 */
+.char-group-label::before {
+  content: "";
+  flex: none;
+  width: 14px;
+  height: 14px;
+  background-color: var(--accent);
+  -webkit-mask: var(--v6-leaf) center / contain no-repeat;
+          mask: var(--v6-leaf) center / contain no-repeat;
+  opacity: .72;
+}
+
+/* v6 层结束 ─────────────────────────────────────────────────────────────── */
+
