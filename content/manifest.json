@@ -1,27 +1,27 @@
 {
   "schema": 1,
-  "contentVersion": "bbcf5f96c5bc",
-  "generatedAt": "2026-11-10T15:20:26.651Z",
+  "contentVersion": "19c3c3601bd9",
+  "generatedAt": "2026-11-14T08:41:19.286Z",
   "chapters": [
     {
       "num": 1,
       "file": "chapter-01.html",
-      "updated": "2026-05-21",
-      "hash": "2594403917fd",
-      "paragraphCount": 73
+      "updated": "2026-11-14",
+      "hash": "d9f48acb87be",
+      "paragraphCount": 78
     },
     {
       "num": 2,
       "file": "chapter-02.html",
-      "updated": "2026-05-21",
-      "hash": "436b343213eb",
-      "paragraphCount": 61
+      "updated": "2026-11-14",
+      "hash": "2114761b975b",
+      "paragraphCount": 65
     },
     {
       "num": 3,
       "file": "chapter-03.html",
-      "updated": "2026-10-24",
-      "hash": "1fc540eb7cbe",
+      "updated": "2026-11-14",
+      "hash": "02971c9bd401",
       "paragraphCount": 43
     },
     {
