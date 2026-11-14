@@ -1,20 +1,20 @@
 {
   "schema": 1,
-  "contentVersion": "19c3c3601bd9",
-  "generatedAt": "2026-11-14T08:41:19.286Z",
+  "contentVersion": "ee49996d0a4f",
+  "generatedAt": "2026-11-14T08:46:52.508Z",
   "chapters": [
     {
       "num": 1,
       "file": "chapter-01.html",
       "updated": "2026-11-14",
-      "hash": "d9f48acb87be",
+      "hash": "845ba4ad50f7",
       "paragraphCount": 78
     },
     {
       "num": 2,
       "file": "chapter-02.html",
       "updated": "2026-11-14",
-      "hash": "2114761b975b",
+      "hash": "519470d6b9a2",
       "paragraphCount": 65
     },
     {
