@@ -5417,3 +5417,109 @@ body.is-reading {
 
 /* v6 层结束 ─────────────────────────────────────────────────────────────── */
 
+
+/* ============================================================================
+   v7 视觉对齐层（第一批：页面边缘 + 卡片内边距 + 嵌套缩进）
+   ----------------------------------------------------------------------------
+   起因：v5 精修层的「左边缘统一 24px」只覆盖了首页与章节页余韵卡，
+        其余页面仍是各写各的 —— 书架 16、人物页 14、剪贴本 18、
+        同学录卡片 30 / 分组标签 54（嵌套 padding 累积）。
+
+   做法：只统一三件事，不换风格、不动结构 —
+         ① 页面边缘   --gutter   24px（一级容器的 margin / padding-inline）
+         ② 卡片内边距 --card-pad 24px（卡片类元素，原 20/22）
+         ③ 嵌套缩进   --indent   8px（卡片内列表，不再逐层累加）
+
+   冻结区（这些「不齐」是设计，不是 bug，一律不碰）：
+         · 阅读正文 .chapter-content x=44 —— 13 字版心 + 字重 410
+         · 书架书名 / 人物页姓名 x=147 / 121 —— 被封面横向推开
+         · .reader-bottombar x=12 —— 固定工具栏
+         · .detail-header / .tab-bar 全宽 —— sticky 与底部导航
+         · .modal-panel 圆角 22px —— e2e 几何断言
+         · 三态叶形 SVG —— 已读/在读/未读的状态语义
+         · 章末余韵卡 .chapter-afterglow 24 / 卡头 49 —— 已对齐
+
+   待办（第二批，本轮不做）：圆角 14/16/18 收编为 12/20、字阶 10/11px 升到 12px。
+
+   回退：整段删除即可，v5 / v6 层与上面所有原有规则零改动。
+   ============================================================================ */
+
+:root {
+  --gutter: 24px;    /* 页面边缘：一级容器距屏幕两侧 */
+  --card-pad: 24px;  /* 卡片内边距：卡片内容距卡片边缘 */
+  --indent: 8px;     /* 嵌套缩进：卡片内列表，每级 8px 且不再累加 */
+}
+
+/* ---------- ① 书架页 novel/index.html ---------- */
+
+/* 一级容器统一到 --gutter（原 16px） */
+.detail-info,
+.detail-desc,
+.detail-links,
+.reading-overview,
+.reading-footprints,
+.chapter-section,
+.start-reading {
+  margin-left: var(--gutter);
+  margin-right: var(--gutter);
+}
+
+/* 卡片内边距统一到 --card-pad（原 22 / 20px） */
+.detail-info,
+.detail-desc,
+.reading-overview,
+.reading-footprints,
+.reading-footprints.mini,
+.detail-link-card {
+  padding-left: var(--card-pad);
+  padding-right: var(--card-pad);
+}
+
+.chapter-section-header {
+  padding-left: var(--card-pad);
+  padding-right: var(--card-pad);
+}
+
+/* 目录：卡片内列表只留一级缩进，不再 18px 累加。
+   结果 —— 分区标题文字 x≈49、章节行文字 x≈50，同一张卡片内对齐。 */
+.chapter-list {
+  padding-left: var(--indent);
+  padding-right: var(--indent);
+}
+
+/* ---------- ② 同学录 novel/characters.html ---------- */
+
+/* 列表容器改成页面边缘，卡片直接落在 24（原 16 + 14 = 30） */
+.character-list {
+  margin-left: var(--gutter);
+  margin-right: var(--gutter);
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* 分组标题原本再叠 24px margin，与容器缩进累积成 54；归零后落回 24 */
+.char-group-label {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* ---------- ③ 人物页 novel/character-*.html ---------- */
+
+/* 外层容器 14 → 24；内层 .char-detail-section 的 24px 内边距保持不变，
+   于是小传标题与正文从 38 落到 48（内容边缘） */
+.char-detail {
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
+}
+
+/* ---------- ④ 剪贴本 quotes.html ---------- */
+
+/* 扉页与摘句列表原 18 / 14，统一到 24 */
+.quotes-hero,
+.quotes-list {
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
+}
+
+/* v7 层结束 ─────────────────────────────────────────────────────────────── */
+
