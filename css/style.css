@@ -5523,3 +5523,121 @@ body.is-reading {
 
 /* v7 层结束 ─────────────────────────────────────────────────────────────── */
 
+
+/* ============================================================================
+   v8 视觉收编层（第二批：圆角裸值 + 字阶下限）
+   ----------------------------------------------------------------------------
+   背景：v5 层已把令牌定成 --radius: 12px / --radius-lg: 20px，
+        但组件里还散着一批**没走令牌的裸值**（14 / 16 / 18px），
+        以及 10 / 11px 的元数据小字。这一层把它们收编干净。
+
+   ① 圆角：裸值 → 12（小卡/列表项/输入）或 20（大卡/主按钮/浮动栏）
+   ② 字阶：10 / 11px → 12px（元数据、徽章、工具栏、tab 标签）
+
+   不动（有意保留）：
+         · .modal-panel 22px —— e2e 断言 borderTopLeftRadius/BottomLeft = 22px/0px
+         · .character-card 实际渲染 8px —— 与左侧 3px 强调竖条配套的紧圆角，
+           不是「漏掉的中间值」；改成 20 会与竖条打架
+         · .detail-cover 12px —— 已经对了
+         · .chapter-afterglow 20px —— 走的是 var(--radius-lg)，已对
+         · .book-cover 的 3px 8px 8px 3px —— 书脊造型，不是通用圆角
+         · 12.5px 年份分节符、22px 阅读正文 —— 视觉/版心需要，冻结
+         · 999px 胶囊与 50% 头像 —— 语义值
+
+   回退：整段删除即可，v5 / v6 / v7 层与所有原有规则零改动。
+   ============================================================================ */
+
+/* ---------- ① 圆角：14 / 16 / 18px 裸值收编 ---------- */
+
+/* 小卡 / 列表项 / 输入 → 12px */
+.chapter-item,
+.quote-entry,
+.reading-card-btn,
+.reader-menu-row a,
+.reader-menu-row button,
+.data-modal textarea,
+.book-item .book-cover {
+  border-radius: 12px;
+}
+
+/* 大卡 / 主按钮 / 浮动工具栏 → 20px */
+.btn-primary,
+.tree-band,
+.setting-group,
+.reader-topbar {
+  border-radius: 20px;
+}
+
+/* 阅读进度轨道：高 32px，16px 本来就是一个半圆口径。
+   换成胶囊语义值，视觉零变化，但不再是一个「凑出来的中间数」。 */
+.reader-progress-bar {
+  border-radius: 999px;
+}
+
+/* 宽屏浮起的底部导航（移动端是全宽贴底，无圆角） */
+@media (min-width: 768px) {
+  .tab-bar {
+    border-radius: 12px 12px 0 0;
+  }
+}
+
+/* ---------- ② 字阶：10 / 11px → 12px ---------- */
+
+.character-tag,
+.character-role,
+.char-tag,
+.char-tag.role,
+.home-quote .quote-source,
+.book-author,
+.book-new-badge,
+.book-progress-badge,
+.footprints-kicker,
+.footprint-pill span,
+.app-version,
+.app-update-sep,
+.app-update-link,
+.chapter-status,
+.chapter-date,
+.reader-menu-row a,
+.reader-menu-row button,
+.quote-entry-meta,
+.quote-entry-actions button,
+.quote-entry-actions a,
+.home-subtitle,
+.leaf-pill,
+.rc-meta,
+.date-list-title,
+.date-list-total,
+.date-item-date,
+.date-item-words,
+.date-item-new,
+.tab-item span,
+.char-hero-kicker,
+.char-desc,
+.char-more,
+.char-detail-birth,
+.quotes-hero-kicker,
+.quotes-hero-sub,
+.lightbox-hint,
+.theme-label,
+.tree-caption-sub,
+.batt-charge,
+.batt-pct,
+.search-summary,
+.search-item-meta,
+.search-more,
+#readerStatus,
+#readerPos,
+#readerClock,
+#readerRemain,
+#autoScrollPill .auto-pp {
+  font-size: 12px;
+}
+
+/* 目录里的「已读」角标长在伪元素上 */
+.dir-item.done .dir-item-title::after {
+  font-size: 12px;
+}
+
+/* v8 层结束 ─────────────────────────────────────────────────────────────── */
+
