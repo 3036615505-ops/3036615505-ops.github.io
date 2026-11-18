@@ -5661,7 +5661,7 @@ body.is-reading {
 
 :root {
   --sk-tone: rgba(61, 50, 40, 0.075);
-  --sk-glow: rgba(255, 253, 248, 0.78);
+  --sk-glow: rgba(255, 250, 240, 0.55);
 }
 
 :root[data-theme="dark"] {
@@ -5676,7 +5676,7 @@ body.is-reading {
 #quotesList:empty {
   position: relative;
   overflow: hidden;
-  min-height: 260px;
+  min-height: 240px;
 }
 
 /* ---------- 掠过的光：唯一在动的东西 ---------- */
@@ -5690,13 +5690,12 @@ body.is-reading {
   bottom: 0;
   left: 0;
   width: 68%;
-  /* 两端各留一段长渐隐，中间才是一条有宽度的亮带 —— 否则会看成一根光柱 */
+  /* 单峰对称渐隐：中间最亮、两侧对称淡出，掠过时才是「光」不是「柱」 */
   background: linear-gradient(
     102deg,
-    transparent 18%,
-    var(--sk-glow) 44%,
-    var(--sk-glow) 56%,
-    transparent 82%
+    transparent 22%,
+    var(--sk-glow) 50%,
+    transparent 78%
   );
   transform: translateX(-110%);
   will-change: transform;
@@ -5724,7 +5723,7 @@ body.is-reading {
 #dateList:empty::before {
   content: "";
   display: block;
-  height: 300px;
+  height: 240px;
   background-image:
     linear-gradient(var(--sk-tone), var(--sk-tone)),
     linear-gradient(var(--sk-tone), var(--sk-tone)),
