@@ -5641,3 +5641,147 @@ body.is-reading {
 
 /* v8 层结束 ─────────────────────────────────────────────────────────────── */
 
+
+
+
+/* ============================================================================
+   v9 扫光骨架屏（JS 渲染容器在内容到达前的占位）
+   ----------------------------------------------------------------------------
+   为什么落在这三个容器上：全站目录 / 人物 / 正文都是同步渲染（实测「CSS 到位 →
+   内容出现」空窗 0ms），唯一真实的空白是 #dateList / #chapterList / #quotesList
+   —— 它们由 body 末尾的脚本填充，脚本下载执行前就是空容器。
+
+   为什么用 :empty：容器在 HTML 里写成 `...id="dateList"></div>`（无空白子节点），
+   脚本一填 innerHTML，:empty 立刻不成立 —— 骨架连同扫光整体消失，
+   **零 JS、零 HTML 改动、零生命周期管理**，失败时（脚本没跑起来）也能优雅退化。
+
+   扫光只动 transform：不碰 left / background-position，不触发重排重绘，
+   只走合成层；will-change 提前提层，避免首帧抖动。
+   ============================================================================ */
+
+:root {
+  --sk-tone: rgba(61, 50, 40, 0.075);
+  --sk-glow: rgba(255, 253, 248, 0.78);
+}
+
+:root[data-theme="dark"] {
+  --sk-tone: rgba(236, 230, 218, 0.075);
+  --sk-glow: rgba(255, 244, 228, 0.12);
+}
+
+/* ---------- 骨架只在「容器还空着」时存在 ---------- */
+
+#dateList:empty,
+#chapterList:empty,
+#quotesList:empty {
+  position: relative;
+  overflow: hidden;
+  min-height: 260px;
+}
+
+/* ---------- 掠过的光：唯一在动的东西 ---------- */
+
+#dateList:empty::after,
+#chapterList:empty::after,
+#quotesList:empty::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 68%;
+  /* 两端各留一段长渐隐，中间才是一条有宽度的亮带 —— 否则会看成一根光柱 */
+  background: linear-gradient(
+    102deg,
+    transparent 18%,
+    var(--sk-glow) 44%,
+    var(--sk-glow) 56%,
+    transparent 82%
+  );
+  transform: translateX(-110%);
+  will-change: transform;
+  animation: skSweep 1.6s linear infinite;
+  pointer-events: none;
+}
+
+/* 起点与终点都在容器外，中途匀速掠过，循环不停顿 */
+@keyframes skSweep {
+  to { transform: translateX(240%); }
+}
+
+/* 系统要求减少动态效果：留骨架，不扫光 */
+@media (prefers-reduced-motion: reduce) {
+  #dateList:empty::after,
+  #chapterList:empty::after,
+  #quotesList:empty::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* ---------- 首页 光阴目录：年份条 + 5 行（左标题 / 右字数）---------- */
+
+#dateList:empty::before {
+  content: "";
+  display: block;
+  height: 300px;
+  background-image:
+    linear-gradient(var(--sk-tone), var(--sk-tone)),
+    linear-gradient(var(--sk-tone), var(--sk-tone)),
+    linear-gradient(var(--sk-tone), var(--sk-tone)),
+    linear-gradient(var(--sk-tone), var(--sk-tone)),
+    linear-gradient(var(--sk-tone), var(--sk-tone)),
+    linear-gradient(var(--sk-tone), var(--sk-tone)),
+    linear-gradient(var(--sk-tone), var(--sk-tone)),
+    linear-gradient(var(--sk-tone), var(--sk-tone)),
+    linear-gradient(var(--sk-tone), var(--sk-tone)),
+    linear-gradient(var(--sk-tone), var(--sk-tone)),
+    linear-gradient(var(--sk-tone), var(--sk-tone));
+  background-size:
+    34% 12px,
+    62% 16px, 14% 11px,
+    56% 16px, 14% 11px,
+    64% 16px, 14% 11px,
+    50% 16px, 14% 11px,
+    58% 16px, 14% 11px;
+  background-position:
+    0 4px,
+    0 40px, 100% 42px,
+    0 84px, 100% 86px,
+    0 128px, 100% 130px,
+    0 172px, 100% 174px,
+    0 216px, 100% 218px;
+  background-repeat: no-repeat;
+}
+
+/* ---------- 书架 目录：3 张章节卡占位（真实卡高 120，间距 14）---------- */
+
+#chapterList:empty::before {
+  content: "";
+  display: block;
+  height: 400px;
+  background-image:
+    linear-gradient(var(--sk-tone), var(--sk-tone)),
+    linear-gradient(var(--sk-tone), var(--sk-tone)),
+    linear-gradient(var(--sk-tone), var(--sk-tone));
+  background-size: 100% 120px;
+  background-position: 0 0, 0 134px, 0 268px;
+  background-repeat: no-repeat;
+}
+
+/* ---------- 剪贴本 摘句：3 条占位（真实条高 106，间距 12）---------- */
+
+#quotesList:empty::before {
+  content: "";
+  display: block;
+  height: 350px;
+  background-image:
+    linear-gradient(var(--sk-tone), var(--sk-tone)),
+    linear-gradient(var(--sk-tone), var(--sk-tone)),
+    linear-gradient(var(--sk-tone), var(--sk-tone));
+  background-size: 100% 106px;
+  background-position: 0 0, 0 118px, 0 236px;
+  background-repeat: no-repeat;
+}
+
+/* v9 层结束 ─────────────────────────────────────────────────────────────── */
