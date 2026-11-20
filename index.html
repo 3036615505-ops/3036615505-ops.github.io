@@ -19,14 +19,14 @@
        抢走同一条连接上的带宽（实测冷启动：cover 199ms 起、CSS 201ms 起）。
        这里改指 144x196 的 cover-thumb.webp（5.7KB），
        不再用 528x720 的 cover.webp（69.4KB）去画一个 46x62 的方块。 -->
-  <link rel="stylesheet" href="css/style.css?v=146">
+  <link rel="stylesheet" href="css/style.css?v=147">
   <link rel="preload" as="image" href="assets/cover-thumb.webp">
-  <script src="js/theme.js?v=146"></script>
-  <script src="js/native-bridge.js?v=146"></script>
+  <script src="js/theme.js?v=147"></script>
+  <script src="js/native-bridge.js?v=147"></script>
   <!-- 站内「新章节更新了」横幅（取 announce.json 与 localStorage 比对，每会话一次）。 -->
-  <script src="js/announce.js?v=146" defer></script>
+  <script src="js/announce.js?v=147" defer></script>
   <!-- 点击即反馈：按下就在顶部点亮一条细线，盖住「跳转前的空窗期」。 -->
-  <script src="js/nav-feedback.js?v=146" defer></script>
+  <script src="js/nav-feedback.js?v=147" defer></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame home-page">
@@ -42,12 +42,13 @@
       </div>
     </header>
 
-    <!-- 六级阶段图只给 data-src：真正的 src 由下面内联脚本按当前阅读进度
-         只写 1~2 张（相邻两级做淡入淡出），不是六张全下载。
+    <!-- 六级阶段图：第一帧直接给静态 src，让浏览器在解析 HTML 时就能发现这张 LCP
+         图（实测 LCP 元素就是它）。其余五帧只给 data-src，由下面内联脚本按当前
+         进度写 1~2 张；如果这次用不到第一帧，脚本会把 src 撤掉、请求随即取消。
          decoding="async" 让解码离开首帧合成，避免首屏多占一次同步解码。 -->
     <section class="tree-band" id="treeBand">
       <div class="tree-sway">
-        <img class="tree-stage" data-src="assets/tree-bare.webp" alt="" decoding="async">
+        <img class="tree-stage" src="assets/tree-bare.webp" data-src="assets/tree-bare.webp" alt="" decoding="async" fetchpriority="high">
         <img class="tree-stage" data-src="assets/tree-s1.webp" alt="" decoding="async">
         <img class="tree-stage" data-src="assets/tree-s2.webp" alt="" decoding="async">
         <img class="tree-stage" data-src="assets/tree-s3.webp" alt="" decoding="async">
@@ -125,8 +126,7 @@
        弱网下 chapters.js 没回来之前整页白屏（首屏可感知卡顿）。
        放在这里首屏骨架先画出来；但必须保持在下面依赖 CHAPTERS 的内联脚本之前
        （经典脚本按文档顺序执行，内联脚本是同步 IIFE，等不到任何异步回调）。 -->
-  <script src="js/chapters.js?v=146"></script>
-  <script src="js/transition.js?v=146"></script>
+  <script src="js/chapters.js?v=147"></script>
 
   <script>
   (function() {
@@ -170,6 +170,10 @@
       // 按需加载：只请求当前进度用到的两级（相邻级做淡入淡出），其余不下载
       var lo = Math.floor(pct / rung + 1e-6);
       var hi = Math.ceil(pct / rung - 1e-6);
+      /* 第一帧的 src 是为了让浏览器在解析 HTML 时就发现 LCP 图（见上面的注释）。
+         如果这一屏的进度根本用不到它，立刻撤掉 —— 请求还没发完就被取消，
+         老读者不会为此多付这张图的字节。 */
+      if (lo !== 0 && hi !== 0 && stages[0].getAttribute('src')) stages[0].removeAttribute('src');
       stages.forEach(function(img, i) {
         if ((i === lo || i === hi) && !img.getAttribute('src')) {
           img.src = img.getAttribute('data-src');

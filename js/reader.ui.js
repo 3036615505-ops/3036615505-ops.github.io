@@ -1,11 +1,5 @@
-/**
- * 界面层 —— 面板、工具栏、主题、字体、状态条、阅读辅助
- *
- * 这一层负责「看得见的东西」：把状态写成 DOM，把点击转成状态变化。
- * 不自己算位置，需要位置就问 engine。
- *
- * 依赖：reader.store.js、reader.engine.js（都在前面加载）
- */
+/* 界面层 —— 面板、工具栏、主题、字体、状态条、阅读辅助
+   设计说明、历史与踩坑记录见 _design/notes/reader.ui.js.md（原文按行号归档）。 */
 (function() {
   'use strict';
   var LY = window.LY || (/** @type {any} */ (window.LY = {}));
@@ -56,19 +50,9 @@
     autoCloseTimer: null
   };
 
-
   var fontSizes = ['small', 'medium', 'large'];
 
   var fontSizeLabels = { small: '小', medium: '中', large: '大' };
-
-  /* 字号的具体像素值只在 css/style.css 的 [data-fontsize="…"] 里定义一处。
-     这里曾经同时写内联 --font-size-base，和 CSS 那三条各存一份 19/22/25：
-     内联优先级更高，CSS 反而成了永不生效的死代码，改一处忘另一处就悄悄分叉。
-     现在 JS 只负责落属性，数值归 CSS 一家管。 */
-
-  /* 字体四选：黑体（强制中文无衬线）/ 系统（跟随手机系统字体）/ 楷体（站点自带）
-     / 自定义（读者自己导入的字体文件）。旧的「衬线」已移除——安卓几乎没有中文衬线
-     字体，两个选项落到同一套字形，等于假按钮。 */
 
   var fontFamilies = ['fzyouhei', 'system', 'kai', 'custom'];
 
@@ -76,14 +60,6 @@
   var CYCLE_FAMILIES = ['fzyouhei', 'system', 'kai'];
 
   var fontFamilyLabels = { fzyouhei: '黑体', system: '系统', kai: '楷体', custom: '自定义' };
-
-  /* ===== 读者自带的字体 =====
-
-     系统字体这条路在 WebView 里走不通：ROM 的主题字体只作用于原生控件，
-     网页拿不到名字也拿不到文件（详见 app/FONT-BRIDGE.md）。但读者手里如果
-     有字体文件，网页可以自己加载 —— FontFace 读 ArrayBuffer，二进制存进
-     IndexedDB，之后每次打开都自动装回去。这是唯一完全不依赖 ROM、也不依赖
-     App 壳的做法。 */
 
   var USER_FAMILY = 'LinyuanUser';
 
@@ -105,11 +81,6 @@
 
   var USER_FONT_MAX = 24 * 1024 * 1024;   /* 字体文件再大就不像话了，也怕撑爆配额 */
 
-  /* 壳（Android App）里 <input type=file> 不是网页想弹就能弹的：
-     必须壳实现 WebChromeClient.onShowFileChooser 并把结果回给 filePathCallback。
-     v1.8.4 的壳没有这个回调（解包 dex 查过，只有下载相关的逻辑），
-     在 App 里点「导入」就是字面意义的没反应。
-     所以壳内且版本过旧时不装死，直接说明原因；壳升级后版本判断自动放行。 */
   var SHELL_PICKER_MIN = '1.8.5';
 
   function shellAppVersion() {
@@ -134,12 +105,10 @@
     return a[2] < min[2];
   }
 
-
   function refreshProgressControls(pct) {
     pct = clampProgress(pct);
     updateProgressFill(pct);
   }
-
 
   /* ===== INIT ===== */
 
@@ -172,9 +141,6 @@
     initReadingTime();
     initHitDisposers();
 
-    /* 整页跳转过来的搜索意图：必须在 restoreProgress() **之前**读并设成 landing，
-       否则那道「没读过就返回」的闸门会把落点吞掉（跳到的章往往一次都没读过）。
-       读完即删：意图只生效一次，读者自己刷新不会再被拽过去。 */
     var jumpIntent = readJumpIntent();
     if (jumpIntent) {
       setLanding({ p: 0, i: jumpIntent.i, o: 0 }, SEARCH_LANDING_RATIO);
@@ -193,11 +159,6 @@
     flushPendingHighlight();
     ready = true;
   }
-
-
-  /* ===== 沉浸模式：隐藏系统状态栏 + 底部固定状态条 =====
-     参考番茄小说：底部是一条固定、不透明、不随正文滚动的状态栏，
-     正文滚到它下面会被盖住；左侧为章节内位置，右侧为时间与电量。 */
 
   function initImmersive() {
     var bridge = window.LinyuanApp;
@@ -287,7 +248,6 @@
     }
   }
 
-
   /* ===== FONT SIZE ===== */
 
   function applyFontSize(size) {
@@ -298,7 +258,6 @@
     if (el) el.textContent = fontSizeLabels[size] || '大';
   }
 
-
   window.changeFontSize = function(dir) {
     var idx = fontSizes.indexOf(state.fontSize);
     if (idx === -1) idx = 2;
@@ -307,10 +266,6 @@
     if (idx >= fontSizes.length) idx = fontSizes.length - 1;
     keepPositionWhile(function() { applyFontSize(fontSizes[idx]); });
   };
-
-  /* 改版式（字号/字体/宽度）会让整章重排。用户的心智是「我还是在那一句」，
-     不是「我还是在 47%」——所以先把锚点记下来，应用后再落回同一段。
-     初始化阶段不这么做（那时锚点还是空的，而且 restoreProgress 稍后会接手）。 */
 
   var ready = false;
 
@@ -324,33 +279,12 @@
     });
   }
 
-
-  /* ===== FONT FAMILY =====
-     三个选项的区别（这是用户真正能感知到的部分）：
-       黑体 —— 明确点名中文无衬线（Noto Sans CJK / 思源黑体 / 苹方 / 雅黑）。
-               手机装了主题字体时，这里仍然回到黑体，不会被系统字体带跑。
-       系统 —— 只写 system-ui，完全交给手机自己的字体。MIUI / 鸿蒙 / 三星换了
-               系统字体，阅读正文会跟着变——这也是它和「黑体」的唯一区别。
-       楷体 —— 站点自带（霞鹜文楷子集，OFL 授权）。安卓基本没有系统楷体，
-               所以这里必须自带字体文件；首次选择时才下载，不选的人不付流量。 */
-
   var KAI_FAMILY = 'LinyuanKai';
   /* 兜底片：GB2312 一级字里主片没覆盖的部分。只在缺字时由浏览器按需下载，
      不主动 load()/check() —— 它存在的意义就是「平常永远用不到」。 */
   var KAI_REST_FAMILY = 'LinyuanKaiRest';
 
   var kaiLoading = false;
-
-  /* 系统字体名：WebView 不会自动跟随 ROM 主题字体，只能向壳要名字再交给 CSS。
-     壳在 1.8.3 之后用的方法名不统一（dex 里 getSystemFontFamily 与
-     getSystemFontFamilyName 同时存在），所以这里按候选表逐个试，谁能给出
-     合法值就用谁 —— 只认一个名字的话，壳一旦改名，「系统」就静默退回默认字体。
-
-     实测（荣耀，v1.8.4 壳）：三个方法都在，但返回的是 "sans-serif" —— 也就是
-     Java 侧的默认 Typeface 只能报出「通用无衬线族」，报不出主题字体的名字。
-     这不是壳写错了，Typeface 本来就没有「当前主题字体叫什么」的接口；
-     要真拿到，得靠 SystemFonts.getAvailableFonts() 枚举家族名 + 把字体文件
-     交给网页，见 app/FONT-BRIDGE.md。 */
 
   var SYSTEM_FONT_METHODS = ['getSystemFontFamily', 'getSystemFontFamilyName', 'getSystemFont'];
 
@@ -362,10 +296,6 @@
 
   var fontAvailCache = {};
 
-  /* 「系统」档的字体栈。把 sans-serif 放在 system-ui 前面是有意的：
-     ROM 换主题字体时替换的是字体配置文件里那个「默认无衬线族」，也就是
-     sans-serif 指向的东西；system-ui 走的是 WebView 自己的 UI 字体，
-     两者在真机上常常不是同一套。先写 sans-serif，等于先给主题字体一次机会。 */
   var SYSTEM_STACK = 'sans-serif,system-ui';
 
   /* 这些是 CSS 通用族名 / 占位词，不是某个具体字体。壳返回它们说明
@@ -376,11 +306,6 @@
     return !!s && Object.prototype.hasOwnProperty.call(GENERIC_FAMILIES, String(s).toLowerCase());
   }
 
-
-  /* 壳可能把 Java 对象直接 toString 回来（android.graphics.Typeface@1a2b3c），
-     也可能返回 'default' / 'sans-serif' 这类占位词。这些都不是字体家族名，
-     拼进 font-family 只会变成一个谁也不认识的字符串，必须挡掉。 */
-
   function looksLikeFontName(s) {
     if (!s) return false;
     if (s.length > 60) return false;
@@ -389,12 +314,6 @@
     if (isGenericFamily(s)) return false;
     return true;
   }
-
-
-  /* 关键一步：壳给的名字，WebView 里未必真的有这个字体。
-     判据是「换字体后画出来的像素有没有变」，做法是以 monospace 为基准：
-     名字不存在时浏览器会落到基准字体，像素完全一致；存在时必然不同。
-     只用中文样本 —— 我们关心的是正文字形，拉丁字母的差异说明不了问题。 */
 
   var HEITI_STACK = '"Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif';
 
@@ -437,16 +356,11 @@
     return ok;
   }
 
-  /* 「系统」和「黑体」画出来一模一样，就说明这台手机的默认字体本来就是
-     我们在「黑体」里点名的那个 —— 手机上通常表现为「换了主题字体，正文没变」。
-     这个结论比「已跟随系统字体」有用得多：它直接告诉用户，问题在手机那边，
-     不是这个开关没点。 */
   function systemLooksSameAsHeiti() {
     var a = fontSignature(SYSTEM_STACK);
     var b = fontSignature(HEITI_STACK);
     return a !== null && b !== null && a === b;
   }
-
 
   function detectSystemFontName() {
     if (systemFontName !== null) return systemFontName;
@@ -473,18 +387,9 @@
     return systemFontName;
   }
 
-
   /* 字体落在每篇正文上（不是 :root），所以新接上来的章要单独补一次 */
   function applyFontTo(root) {
     var stack = fontStackFor(state.fontFamily);
-    /* 字重跟字体族一起落，由 .chapter-content p 的 --reader-weight 消费。
-       黑体档 410：400 时正文竖笔约 0.076em，比番茄那类自带 Medium 的 App 细一档
-       （真机反馈「不够粗」）；500 粗过了头（「粗了点」），450、420 也都还差半分。
-       四档墨量实测 400 : 410 : 420 : 450 = 3198651 : 3406139 : 3507805 : 3802334，
-       410 只比系统默认重一档（约 6.5% 墨量），笔画均值 3.93 → 4.12px。
-       楷体档必须回 400 —— 打包的楷体只声明了 400 一片，写 500 会被合成加粗、笔画发糊。
-       --reader-bold 是给 CSS 列宽算式用的开关：410 一样走合成加粗（advance 与 420/450/500
-       同档），不预留的话 13 字会被挤成 12 字。楷体档不膨胀，所以是 0。 */
     var isKai = state.fontFamily === 'kai';
     var weight = isKai ? '400' : '410';
     (root || document).querySelectorAll('.chapter-content').forEach(function (el) {
@@ -494,22 +399,11 @@
     });
   }
 
-
   function fontStackFor(family) {
     if (family === 'kai') {
-      /* 自带楷体优先；万一字体没加载成功，退回系统的楷/宋，最后才是 serif。
-         KAI_REST 是 GB2312 一级字的兜底片：浏览器只在 KAI_FAMILY 缺该字形时
-         才会去下载它（约 630KB），主片有字就永远不碰。
-         位置必须紧跟主片 —— 放到系统楷体后面就等于永远轮不到。 */
       return '"' + KAI_FAMILY + '","' + KAI_REST_FAMILY + '","Kaiti SC","STKaiti","KaiTi","楷体","Noto Serif CJK SC",serif';
     }
     if (family === 'system') {
-      /* 不能点名叫 Roboto / Segoe UI：装了主题字体的 ROM 替换的是「默认字体族」，
-         一旦显式写 Roboto，浏览器会优先命中 Roboto，系统字体就被挡在外面。
-         所以只在拿到系统字体名时点名它，否则直接交给 system-ui / sans-serif。
-         点名之前先验证这个字体真的存在 —— 壳给的名字可能是 Java 侧的叫法，
-         WebView 里并不存在，那样点名等于白点，最后还是渲染成默认字体，
-         而界面上写着「已跟随」，用户只会觉得功能没生效。 */
       var name = detectSystemFontName();
       return (name && fontAvailable(name)) ? '"' + name + '",system-ui,sans-serif' : SYSTEM_STACK;
     }
@@ -537,19 +431,7 @@
     });
   }
 
-
   function fontHintText() {
-    /* 平时不显示提示；只有选中「系统」时才用一句话说清现状，而且要能据此判断。
-       不把技术噪音丢给读者看 —— 上一版把壳返回的原文直接写成「不是网页能用的格式」，
-       读者只会以为这个开关坏了。
-         拿到名字 + 网页里能渲染 + 与「黑体」不同 → 真的跟随了
-         拿到名字 + 网页里能渲染 + 与「黑体」相同 → 手机没给网页换字体
-         名字渲染不出来 → 那是 App 那边的叫法，网页里没有这个字体
-         壳只给通用族名（sans-serif）→ 只知道「默认无衬线」，叫不出名字
-         壳根本没有这个方法 → App 太旧
-       真机上最后两种情况最常见：荣耀 / 华为的主题字体只对原生界面生效，WebView
-       读的是系统字体配置文件，看不到主题字体 —— 这一条网页端无解，只能靠壳把
-       字体文件或字体家族名交出来（见 app/FONT-BRIDGE.md）。 */
     if (state.fontFamily === 'custom') return userFontName ? '已用导入的字体：' + userFontName : '';
     if (state.fontFamily !== 'system') return '';
     var name = detectSystemFontName();
@@ -564,11 +446,6 @@
     if (systemFontRaw) return '手机给的字体名不可用（' + systemFontRaw + '），已用默认黑体';
     return '手机没有提供字体名，已用默认黑体';
   }
-
-
-  /* ===== 导入字体：存取 =====
-     用 IndexedDB 而不是 localStorage：localStorage 只能放字符串，
-     一个中文字体 10–20MB，转 base64 再塞进去会翻成 27MB，Chrome 直接抛配额错误。 */
 
   function idbFontOpen() {
     return new Promise(function (res, rej) {
@@ -624,7 +501,6 @@
     return idbFontRun('readwrite', function (store) { store['delete'](FONT_REC); });
   }
 
-
   function readFileBuffer(file) {
     /* 老 WebView 没有 Blob.arrayBuffer()，退到 FileReader */
     if (file.arrayBuffer) return file.arrayBuffer();
@@ -667,7 +543,6 @@
     });
   }
 
-
   function onFontFileChosen(ev) {
     var input = ev.target;
     var file = input && input.files && input.files[0];
@@ -688,7 +563,6 @@
       showToast('这个字体装不上，换一个试试');
     });
   }
-
 
   /* 打开章节时把上次导入的字体装回来。记录没了（换设备 / 清过缓存 / 隐私模式）
      就老老实实退回黑体，不能把读者留在一个指向不存在字体的字体栈上。 */
@@ -714,7 +588,6 @@
     return userFontLoading;
   }
 
-
   window.pickFontFile = function () {
     if (shellPickerUnsupported()) {
       showToast('这版 App 还不支持选文件，先用手机浏览器打开本站试试');
@@ -723,7 +596,6 @@
     var input = document.getElementById('fontFileInput');
     if (input) input.click();
   };
-
 
   window.clearFontFile = function () {
     idbFontDel().then(function () {}, function () {}).then(function () {
@@ -738,7 +610,6 @@
       showToast('已移除导入的字体');
     });
   };
-
 
   function refreshImportRow() {
     var btn = document.getElementById('fontImportBtn');
@@ -756,7 +627,6 @@
     }
   }
 
-
   function refreshFontButtons() {
     var wrap = document.getElementById('fontFamilyChoices');
     if (!wrap) return;
@@ -765,7 +635,6 @@
       btns[i].classList.toggle('is-on', btns[i].getAttribute('data-font') === state.fontFamily);
     }
   }
-
 
   function applyFontFamily(family) {
     /* 老版本存过 'serif'，这里兜底回黑体，避免空字体栈 */
@@ -784,7 +653,6 @@
     refreshFontButtons();
   }
 
-
   window.setFontFamily = function (family) {
     keepPositionWhile(function() { applyFontFamily(family); });
   };
@@ -796,7 +664,6 @@
     if (idx < 0) idx = 0;
     applyFontFamily(CYCLE_FAMILIES[(idx + 1) % CYCLE_FAMILIES.length]);
   };
-
 
   /* ===== 宽屏阅读（桌面端生效） ===== */
 
@@ -811,12 +678,6 @@
     var label = document.getElementById('readWidthLabel');
     if (label) label.textContent = mode === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关';
   }
-
-
-  /* ===== 行距 / 段距 =====
-     只落 data 属性，具体差量在 css/style.css 的 [data-lh] / [data-para] 里；
-     主题各自的基准行距不受影响（信笺本来就比晴窗松一点）。
-     改动会让整章重排，所以走 keepPositionWhile —— 读者应该还停在刚才那一句。 */
 
   function syncChoiceButtons(attr, value) {
     var btns = document.querySelectorAll('button[' + attr + ']');
@@ -849,13 +710,11 @@
     keepPositionWhile(function () { applyParaGap(mode); });
   };
 
-
   window.toggleReadWidth = function() {
     keepPositionWhile(function() {
       applyReadWidth(state.readWidth === 'wide' ? 'normal' : 'wide');
     });
   };
-
 
   /* ===== 首次手势提示（仅触屏设备，显示一次） ===== */
 
@@ -872,7 +731,6 @@
     setTimeout(function() { hint.classList.remove('show'); }, 5200);
     setTimeout(function() { if (hint.parentNode) hint.parentNode.removeChild(hint); }, 6200);
   }
-
 
   /* ===== THEME ===== */
 
@@ -892,36 +750,11 @@
     if (nightLabel) nightLabel.textContent = theme === 'dark' ? '日读' : '夜读';
   }
 
-
   window.setTheme = function(theme) { applyTheme(theme); };
-
 
   window.toggleNightMode = function() {
     applyTheme(state.theme === 'dark' ? 'wheat' : 'dark');
   };
-
-
-  /* ===== PAGE TRANSITION：已停用（本文件不再调用 PageTransition.init） =====
-   *
-   * 章节页原来在这里 init 过一次（mount 到 .reading-wrapper、delegate: true、
-   * hashScroll: true、entryText: 'random'）。用户要求「进入阅读页不要有明显的卡顿，
-   * 可以不要动画」后整段摘掉，函数本体也一并删除 —— 留一个没人调用的函数，
-   * 下一个人会以为「只是忘了接线」，重新调一次就把这 1.2s 的等待带回来。
-   *
-   * 实测（headless Chrome + CDP，390×844，首页点 .date-item 进 chapter-01）：
-   *   点下去 → 真正开始导航      481ms（上一页 exitDelay 430ms）
-   *   章节页遮罩盖住正文直到     708ms（enterHold 170 + 淡出 190 + 五层 JS 初始化）
-   *   而章节页自身 FCP 112ms、长任务 0 个 —— 阅读页不慢，慢的全是这两段等待。
-   *
-   * 停用后需要保住的行为（别顺手「优化」掉）：
-   *   · 目录/正文里的章节链接仍由 initChapterSwap() 的捕获阶段接管 → 换成
-   *     「换章不换页」（swapTo）或章节流接续，那才是阅读页真正的零等待路径。
-   *     它原来抢的正是 transition.js 的整页转场，现在照样要抢：不抢就会整页跳转，
-   *     白屏 + 丢滚动位置，比动画更糟。
-   *   · 同页 #锚点 退回浏览器原生跳转（原来由 hashScroll 做平滑滚动）。有意不补：
-   *     阅读页的锚点跳转都带「关闭面板」动作，原生跳转更直接，也不会再引入一帧延迟。
-   */
-
 
   /* ===== BARS ===== */
 
@@ -934,7 +767,6 @@
     startAutoClose();
   }
 
-
   function hideBars() {
     state.barsVisible = false;
     state.settingsVisible = false;
@@ -945,17 +777,14 @@
     if (bot) { bot.classList.remove('visible'); bot.classList.remove('settings-open'); }
   }
 
-
   function startAutoClose() {
     stopAutoClose();
     state.autoCloseTimer = setTimeout(function() { if (state.barsVisible) hideBars(); }, 3000);
   }
 
-
   function stopAutoClose() {
     if (state.autoCloseTimer) { clearTimeout(state.autoCloseTimer); state.autoCloseTimer = null; }
   }
-
 
   /* ===== TAP AREA (上下滚动) ===== */
 
@@ -963,18 +792,6 @@
     var tap = document.getElementById('readerTapArea');
     if (!tap) return;
     tap.innerHTML = '<button type="button" class="reader-tap-zone top" aria-label="向上翻页"></button><button type="button" class="reader-tap-zone middle" aria-label="显示工具栏"></button><button type="button" class="reader-tap-zone bottom" aria-label="向下翻页"></button>';
-
-    /* ---- 让正文里的按钮能被点到 ----
-
-       这一层是 fixed 全屏、z-index 100，永远压在正文之上；三个分区又都
-       pointer-events:auto，等于把整个视口切成了三块「翻页感应区」。
-       于是摘句按钮、余韵卡的「分享这一章」、章末收束卡的催更/回目录，
-       点下去先落到这一层，正文那边永远收不到 click —— 用 element.click()
-       测不出来，只有按真实坐标点才会露。
-
-       解法：真正分派之前先问一句「我下面是谁」。临时把分区让开一层取
-       elementFromPoint（分区自己是 pointer-events:auto，只把父层设成 none
-       没用，子元素会重新启用命中），是可交互元素就把这次点击交还给它。 */
 
     var HIT = 'a[href], button, input, label, select, textarea, [role="button"], summary, .quote-mark';
 
@@ -1037,7 +854,6 @@
     });
   }
 
-
   /* ===== SWIPE (左右切章) ===== */
 
   function initSwipe() {
@@ -1064,19 +880,6 @@
       }
     }, { passive: true });
   }
-
-
-  /* ===== 换章不换页 =====
-     点「下一章」/ 左右轻扫 / 键盘换章时不再整页跳转，而是：取下一章的
-     `.chapter-content` 与余韵卡 → 原地替换 → replaceState 改 URL → 同步章节 id、
-     标题、上下章链接、目录高亮 → 恢复到这一章上次读到的位置。
-
-     为什么不是「无限流」（两章接进同一条滚动）：进度与锚点都按整页
-     `scrollHeight` 计算、安卓返回键是「退出阅读」，一旦接成一条流，这两件事
-     都要重做，38 项断言也得跟着改。换页保留「一章一页」的心智模型，拿到的是
-     「没有白屏、不等那 500ms 网络、不重放转场」。
-
-     任何一步失败都退回整页跳转 —— 至少这一章能读到。 */
 
   var swapping = false;
 
@@ -1118,11 +921,6 @@
     if (dir && dir.classList.contains('visible')) populateDirectory();
   }
 
-
-  /* ===== 取章 =====
-     同一次加载里同一章只取一次：预取和「真的要接上」共用同一个 Promise，
-     这样滚到章末时通常已经在缓存里，接续不等待网络。 */
-
   var chapterDocs = {};
 
   function fetchChapterDoc(file) {
@@ -1143,11 +941,6 @@
     return chapterDocs[file];
   }
 
-
-  /* ===== 换章不换页（单块时的兜底） =====
-     链条里没有目标章、且当前只有一个块时用它：取回整章原地替换，无白屏。
-     多块时不能用它 —— 替换会把已经接好的链整条毁掉。 */
-
   function swapTo(file, hash, after) {
     if (!file || swapping) return false;
     if (file === getCurrentFileName()) return false;
@@ -1165,10 +958,6 @@
         saveProgress(undefined, true);
 
         var curContent = document.querySelector('.chapter-content');
-        /* ⚠ 块的 data-file 必须跟着换。engine.syncBlockChapter() 就是靠它判断
-           「探测线进了哪一章」；只换正文不换它，读者滚一下就把 URL 与章节 id
-           退回上一章（正文还是新的），进度也会写到错的那个章名下。
-           目录从第 1 章直接跳第 5 章走的就是这条路径。 */
         var section = curContent && curContent.closest ? curContent.closest('.chapter-block') : null;
         curContent.parentNode.replaceChild(document.importNode(nextContent, true), curContent);
         if (section) section.setAttribute('data-file', file);
@@ -1215,11 +1004,6 @@
 
     return true;
   }
-
-
-  /* ===== 章节流：往下滚就接上下一章 =====
-     章末的「一章一句」是接缝：滚过它，接着是下一章的标题。
-     底部工具栏那对链接、键盘 ←→、左右轻扫都走同一条链路（navigateToChapter）。 */
 
   var flowAppending = {};
   var flowPrepending = {};
@@ -1320,23 +1104,8 @@
     return section;
   }
 
-
-  /* ===== 章末收束卡：只长在最后一章 =====
-
-     三件事：这本书现在多长、最后一章什么时候更的、以及两个出口（催更 / 回目录）。
-
-     为什么用 JS 现搭而不是写进 chapter-0N.html：
-       无限流下「最后一章」是动态的 —— 可能首屏就是它，也可能滚到才接上来；
-       往回接块、换章、改 chapters.js 都会让链尾换人。写死在 HTML 里就得到处同步，
-       而章节页本身还是生成物（不许手改）。所以统一走 syncCoda()：
-       先摘掉所有旧的，再看链尾还是不是最后一章，是就补一张。 */
-
   var NUDGE_KEY = 'reader-nudge';        /* { count, at } 本机记账，全书一个，不按章记 */
   var FINISHED_KEY = 'reader-finished';  /* { at, chapters } 读完的标记 */
-  /* 作者的 QQ 号 —— 只决定「写给作者」唤端落到哪一屏：
-       留空  → QQ 主界面（mqq://）。读者落地后自己去搜作者，站点不暴露任何账号。
-       填号  → 直达跟作者的聊天窗口（mqqwpa://im/chat?uin=...）。
-     QQ 没有「预填消息」的公开参数，所以两种都得先把催更文案塞进剪贴板，读者再粘一次。 */
   var AUTHOR_QQ = '';
 
   function qqTarget() {
@@ -1344,12 +1113,6 @@
     return 'mqqwpa://im/chat?chat_type=wpa&uin=' + encodeURIComponent(AUTHOR_QQ)
       + '&version=1&src_type=web&web_src=oicqzone';
   }
-
-  /* ---- 催更计数：跨设备可见 ----
-
-     站点零后端，这个数字寄存在 Abacus（免注册、CORS 全开、30 次/10 秒限流）。
-     它的定位就是「装饰性计数」：任何人知道 namespace/key 都能读写，别当统计用。
-     所有请求失败都安静降级回本机计数 —— 催更按钮不能因为第三方挂了就失效。 */
 
   var NUDGE_API = 'https://abacus.jasoncameron.dev';
   var NUDGE_NS = 'zephyrw.site';
@@ -1506,12 +1269,6 @@
     });
 
     var say = box.querySelector('.coda-say');
-    /* 复制文案 → 唤起 QQ。href 本身就是 scheme，所以 JS 万一没跑起来，直接点也还能唤端
-       （只是不复制文案）。跳没跳成只能靠页面有没有失焦/切后台来猜：1.6 秒还稳稳在前台，
-       就八成是被拦了（微信内置浏览器、没装 QQ、或壳里没接外部协议）。
-
-       唤端用隐藏 iframe 而不是 location.href：桌面浏览器遇到没注册的协议时，
-       location 赋值可能把整篇小说顶成「无法打开页面」，而 iframe 失败只是静默无事发生。 */
     say.addEventListener('click', function (e) {
       e.preventDefault();
       var leftPage = false;
@@ -1565,10 +1322,6 @@
     anchor.parentNode.insertBefore(buildCoda(last), anchor.nextSibling);
   }
 
-
-  /* 把下一章接到链条末尾。
-     返回 true 表示「确实有下一章，已接上或正在接」——自动滚屏据此决定要不要停。
-     then(section) 在接上之后调用，用于「跳过去」这种需要落位的场景。 */
   function appendNext(then) {
     if (!flowEnabled()) return false;
     var file = nextFileOf(lastBlockFile());
@@ -1597,11 +1350,6 @@
     return true;
   }
 
-
-  /* 把上一章插到链条开头（往上接续）。
-     往上方插内容会把整篇推下去，所以插入前记下「正在读的那一块」在视口里的位置，
-     插完把差值补回滚动位置 —— 读者眼前那一行必须留在原地，否则就是「跳一下」。
-     settle(section) 在补偿之后调用，用于「跳到上一章开头」这种需要主动落位的场景。 */
   function prependPrev(settle) {
     if (!flowEnabled()) return false;
     var file = prevFileOf(firstBlockFile());
@@ -1647,7 +1395,6 @@
     return true;
   }
 
-
   function initFlow() {
     if (!document.querySelector('.chapter-content')) return;
 
@@ -1688,9 +1435,6 @@
         var goingUp = y < lastY - 2;
         lastY = y;
 
-        /* 光「位置变小」不算上滑：加载时的滚动恢复、地址栏收起、滚动条取整
-           都会让 y 变小一下，那会平白无故把上一章拉进来。
-           必须同时有「真的往上滑」的手势（滚轮向上 / 手指往下拖 / ↑ PageUp）。 */
         if (goingUp && y < PREPEND_AHEAD && Date.now() - lastUpGesture < 900 &&
             prevFileOf(firstBlockFile())) {
           prependPrev();
@@ -1713,7 +1457,6 @@
     });
   }
 
-
   /* engine 的探测线跨进新块时回调：把「当前章」同步到 URL、标题、顶栏、上下章链接。
      只动界面以外的东西，绝不碰滚动位置 —— 读者正在往下读，不能把他拽回去。 */
   function onChapterEntered(file) {
@@ -1726,7 +1469,6 @@
     syncChapterChrome(file);
     LY.store.recordFootprints();
   }
-
 
   /** 换到某一章。after(block) 在该章真的就位之后回调 —— 搜索要靠它拿到新块去上高亮。
    *  现有调用点（initChapterSwap 等）只传两个参数，行为一字不变。 */
@@ -1756,7 +1498,6 @@
     return true;
   }
 
-
   function navigateToChapter(dir) {
     var list = window.CHAPTERS || [];
     var target = list[chapterIndex(getCurrentFileName()) + (dir > 0 ? 1 : -1)];
@@ -1771,11 +1512,6 @@
     prependPrev(function (section) { scrollToBlock(section); });
   }
 
-
-  /* 正文流里的「下一章」、目录项、摘句簿的「回到这一页」都是普通链接，
-     这里用捕获阶段抢先接管：不接管就整页跳转 —— 白屏、丢滚动位置、链条重建。
-     （这段原本是为了抢在 transition.js 的整页转场之前；过渡已停用，但接管本身
-     仍然是「换章不换页」的唯一入口，不能一起删。） */
   function initChapterSwap() {
     document.addEventListener('click', function(e) {
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -1809,7 +1545,6 @@
     }, true);
   }
 
-
   function updateProgressFill(pct) {
     pct = clampProgress(pct);
     var line = document.querySelector('.reading-progress-line');
@@ -1817,7 +1552,6 @@
     if (line) line.style.width = pct + '%';
     if (fill) fill.style.width = pct + '%';
   }
-
 
   /* ===== 键盘：Escape 逐层关闭（设置 -> 摘句簿 -> 目录 -> 工具栏） ===== */
 
@@ -1838,12 +1572,6 @@
     });
   }
 
-
-  /* ===== 键盘：← → 换章，D 目录，T 夜读 =====
-     桌面/外接键盘才有，和「左右轻扫切章」走同一条链路（点 .prev-ch / .next-ch），
-     不另开一套导航，免得两条路径行为分叉。空格与 PageUp/PageDown 交给浏览器默认，
-     不拦；面板打开时完全不响应，避免一边看目录一边被翻页。 */
-
   function anyPanelOpen() {
     var ids = ['settingsOverlay', 'quotesOverlay', 'dirOverlay', 'dataOverlay', 'searchOverlay'];
     for (var i = 0; i < ids.length; i++) {
@@ -1852,26 +1580,6 @@
     }
     return false;
   }
-
-
-  /* ===== 面板 = 底部抽屉：开合与下拉关闭 =====
-
-     五个面板（目录 / 摘句簿 / 设置 / 搜索 / 阅读数据）共用同一套壳：几何与动效在
-     css/style.css 的「面板通用：底部抽屉」一段，这里只管两件事 ——
-       ① openSheet / closeSheet：开与合，并且把拖动留下的内联样式清干净；
-       ② initSheetDrag：下拉关闭的手势。
-
-     ⚠ 这个手势最容易做错的一条：**只有当面板内容滚到顶部（scrollTop <= 0）、
-       且手指往下拖时才接管**。不满足这条，读者在设置里想往上翻内容，会被当成
-       「往下拉关掉面板」。三道关全在 move() 里写着：内容到顶 / 位移向下超过
-       SHEET_LOCK_PX / 竖直方向占优（横着划归左右轻扫换章，不许抢）。
-
-     ⚠ 输入框里不许接管：备份面板的 textarea 要能长按拖选文字（搜索框同理）。
-
-     ⚠ 减弱动态效果（prefers-reduced-motion: reduce）：**保留手势、去掉动画** ——
-       不跟手（拖动期间面板不位移）、不做滑出/回弹（位移或速度够就直接关）。
-       理由：这批读者要的是「别晃」，不是「别能用」；而 CSS 里那条全局
-       `transition-duration: .01ms !important` 已经让显隐本身变成瞬间的。 */
 
   var SHEET_CLOSE_PX = 96;          /* 松手时位移超过 96px → 关 */
   var SHEET_CLOSE_VELOCITY = 0.5;   /* 或者速度超过 0.5px/ms（甩一下）→ 关 */
@@ -1888,11 +1596,9 @@
     }
   }
 
-
   function sheetPanelOf(ov) {
     return ov ? ov.querySelector('.modal-panel') : null;
   }
-
 
   /* 清掉拖动/回弹留下的内联 transition 与 transform：不清的话下次打开会带着
      上一手的位移（这是「第二次打开面板时位置不对」的唯一成因） */
@@ -1903,7 +1609,6 @@
     panel.style.transform = '';
   }
 
-
   function openSheet(ov) {
     if (!ov) return;
     clearSheetStyles(ov);
@@ -1911,17 +1616,12 @@
     document.body.style.overflow = 'hidden';
   }
 
-
-  /* ⚠ 顺序不能反：先摘 visible 再清内联 transform。反过来的话，清内联的那一帧
-     `.modal-overlay.visible .modal-panel { transform: translateY(0) }` 会先生效 ——
-     已经滑到 100% 的面板会闪回原位、再滑下去一次。 */
   function closeSheet(ov) {
     if (!ov) return;
     ov.classList.remove('visible');
     clearSheetStyles(ov);
     document.body.style.overflow = '';
   }
-
 
   /* 没拖过阈值 → 回弹到位（带一段短 transition，落位后把内联样式还给 CSS） */
   function sheetSnapBack(ov) {
@@ -1936,10 +1636,6 @@
     }, 240);
   }
 
-
-  /* 拖过阈值 → 顺着手指滑出去，滑完再走面板自己的 close 函数。
-     一定要走原 close 函数：它的收尾一个都不能漏 —— body 滚动锁、搜索的防抖
-     定时器、自动滚屏的恢复、状态条的自动收起，全都长在那儿。 */
   function sheetSlideOut(ov, closer) {
     var panel = sheetPanelOf(ov);
     var finish = function() {
@@ -1954,7 +1650,6 @@
     setTimeout(finish, SHEET_OUT_MS + 20);
   }
 
-
   /* 下拉关闭。closer 传该面板自己的 close 函数（见上面 sheetSlideOut 的说明）。 */
   function initSheetDrag(ov, closer) {
     if (!ov || ov.__sheetGesture) return;
@@ -1967,9 +1662,6 @@
 
     function scrollBodyOf() { return ov.querySelector('.modal-body'); }
 
-    /* 内容滚到顶了吗？五个面板各只有一个滚动容器 .modal-body（搜索面板上面那条
-       输入行与汇总行都是 flex-shrink:0，不参与滚动），所以口径取它即可。
-       判据用 <= 0 而不是 === 0：iOS 的顶部回弹会把 scrollTop 变成负数。 */
     function atSheetTop() {
       var body = scrollBodyOf();
       if (!body) return true;
@@ -1996,10 +1688,6 @@
       var dx = x - start.x;
 
       if (!drag) {
-        /* ---- 接管前的三道关，缺一条都别抢 ----
-           ① 内容必须在顶部：列表滚到中间时要能正常往下翻；
-           ② 必须是往下拖、且超过起手阈值：否则是点按抖动或往上翻内容；
-           ③ 竖直方向占优：横着划属于「左右轻扫换章」（initSwipe 那条链），不抢 */
         if (!start.atTop) return false;
         if (dy <= SHEET_LOCK_PX) return false;
         if (Math.abs(dx) > dy) return false;
@@ -2064,11 +1752,6 @@
       end();
     });
 
-    /* ---- touch 事件：两个用途 ----
-       ① 没有 PointerEvent 的老 WebView 上做兜底判定；
-       ② touchmove 是**唯一**能拦住浏览器自己滚动/回弹/下拉刷新的通道，而且必须
-          非 passive。触摸时 pointerdown 先到，所以这里的 touchstart 只在还没有
-          start 时才起手，不会和上面重复记一笔。 */
     panel.addEventListener('touchstart', function(e) {
       if (inEditable(e.target)) return;
       var t = e.touches && e.touches[0];
@@ -2096,12 +1779,10 @@
     });
   }
 
-
   /* 键盘与轻扫走同一条链路：能换代就换代，换不了才整页跳转，边界给一句提示 */
   function goChapter(dir) {
     navigateToChapter(dir);
   }
-
 
   function initKeyboardNav() {
     document.addEventListener('keydown', function(e) {
@@ -2143,7 +1824,6 @@
     });
   }
 
-
   /* ===== DIRECTORY PANEL ===== */
 
   function initDirectoryPanel() {
@@ -2167,7 +1847,6 @@
     initSheetDrag(ov, function() { closeDirectory(); });
     populateDirectory();
   }
-
 
   function populateDirectory() {
     var list = document.getElementById('dirList');
@@ -2209,25 +1888,21 @@
     list.innerHTML = html;
   }
 
-
   window.openDirectory = function() {
     populateDirectory();
     openSheet(document.getElementById('dirOverlay'));
     if (state.barsVisible) hideBars();
   };
 
-
   window.closeDirectory = function() {
     closeSheet(document.getElementById('dirOverlay'));
   };
-
 
   function initQuoteCollecting() {
     decorateParagraphs();
     initQuotesPanel();
     initToast();
   }
-
 
   /* 摘句落点的 id 必须带章名：无限流下页面里躺着好几章，
      只按段号会在块与块之间撞车，「回到这一页」就会跳到别的章去。 */
@@ -2243,7 +1918,6 @@
     var chapter = (window.CHAPTERS || [])[chapterIndex(file)];
     return chapter ? chapter.title : document.title;
   }
-
 
   function decorateParagraphs(root) {
     var contents = (root || document).querySelectorAll('.chapter-content');
@@ -2276,7 +1950,6 @@
     });
   }
 
-
   function initQuotesPanel() {
     if (document.getElementById('quotesOverlay')) return;
     var ov = document.createElement('div');
@@ -2299,18 +1972,15 @@
     initSheetDrag(ov, function() { closeQuotes(); });
   }
 
-
   window.openQuotes = function() {
     renderQuotesPanel();
     openSheet(document.getElementById('quotesOverlay'));
     if (state.barsVisible) hideBars();
   };
 
-
   window.closeQuotes = function() {
     closeSheet(document.getElementById('quotesOverlay'));
   };
-
 
   function renderQuotesPanel() {
     var list = document.getElementById('quotesList');
@@ -2333,7 +2003,6 @@
     }).join('');
   }
 
-
   window.copyQuote = function(id) {
     var quote = getStoredQuotes().find(function(item) { return item.id === id; });
     if (!quote) return;
@@ -2349,7 +2018,6 @@
     }
   };
 
-
   window.removeQuote = function(id) {
     var quotes = getStoredQuotes().filter(function(item) { return item.id !== id; });
     saveStoredQuotes(quotes);
@@ -2357,7 +2025,6 @@
     renderQuotesPanel();
     showToast('已将文字送回，等待您的下一次目光');
   };
-
 
   /* ===== 摘句导出（Markdown 下载，把句子还给读者） ===== */
 
@@ -2384,7 +2051,6 @@
     showToast('摘句簿已导出');
   };
 
-
   /* ===== 章末分享 ===== */
 
   window.shareChapter = function(from) {
@@ -2395,10 +2061,6 @@
     var chapter = (window.CHAPTERS || [])[chapterIndex(file)];
     var title = chapter ? chapter.title : document.title;
     var url = new URL(file, window.location.href).href;
-    /* 壳内优先走原生分享（js/native-bridge.js 暴露的 LinyuanApp.share）。
-       浏览器里 LinyuanApp 不存在，直接落到下面的 Web Share / 复制链接分支。
-       注意顺序：native-bridge 会在壳内补一个 navigator.share，所以这条判断
-       必须放在 navigator.share 之前，否则壳内拿到的是二手代理。 */
     var bridge = window.LinyuanApp;
     if (bridge && typeof bridge.share === 'function') {
       try {
@@ -2422,7 +2084,6 @@
       showToast('请手动复制地址栏链接');
     }
   };
-
 
   function toggleQuote(p) {
     var text = (p.textContent || '').trim();
@@ -2454,7 +2115,6 @@
     showToast('已收进摘句簿');
   }
 
-
   function refreshParagraphQuoteState(p) {
     var btn = p.querySelector('.quote-mark');
     if (!btn) return;
@@ -2465,18 +2125,15 @@
     p.id = quoteAnchorId(p.dataset.chapterFile || getCurrentFileName(), p.dataset.quoteIndex || '0');
   }
 
-
   function refreshAllParagraphQuoteStates() {
     document.querySelectorAll('.collectable-paragraph').forEach(refreshParagraphQuoteState);
   }
-
 
   function initToast() {
     if (document.getElementById('readerToast')) return;
     var toast = LY.dom.el('div', { id: 'readerToast', class: 'reader-toast' });
     (document.querySelector('.reading-wrapper') || document.body).appendChild(toast);
   }
-
 
   function showToast(text) {
     var toast = document.getElementById('readerToast');
@@ -2487,16 +2144,13 @@
     showToast.timer = setTimeout(function() { toast.classList.remove('visible'); }, 1600);
   }
 
-
   function escapeHtml(text) {
     return LY.dom.escapeHtml(text);
   }
 
-
   function escapeJs(text) {
     return String(text).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   }
-
 
   /* ===== SETTINGS PANEL ===== */
 
@@ -2593,19 +2247,10 @@
     refreshImportRow();
   }
 
-
-  /* ===== 远程开关 → 界面可见性 =====
-     开关只藏按钮是不够的（用户可能从旧页面点进来），所以每个入口函数里都有
-     isOn 守卫；这里负责把入口本身也拿掉 —— 点到一个死按钮比没有按钮更糟。 */
   function applyFeatureVisibility() {
     var autoBtn = document.querySelector('button[onclick*="toggleAutoScroll"]');
     if (autoBtn) autoBtn.style.display = LY.flags.isOn('autoscroll') ? '' : 'none';
 
-    /* ⚠ 这一行**必须在下面那个 `if (!ov) return;` 之前**。
-       那个 return 是「设置面板还没建过就先不同步」的早退：搜索按钮长在静态 HTML
-       的工具栏里（不在设置面板里），一旦写到早退之后，面板从未打开过的页面上
-       远程开关对搜索入口就永久无效 —— 而 remote 开关恰恰是这个功能出事时的
-       唯一止血路径。 */
     var searchBtn = document.querySelector('button[onclick*="openSearch"]');
     if (searchBtn) searchBtn.style.display = LY.flags.isOn('search') ? '' : 'none';
 
@@ -2642,34 +2287,9 @@
     if (state.barsVisible) { stopAutoClose(); startAutoClose(); }
   };
 
-
   window.closeSettings = function() {
     closeSheet(document.getElementById('settingsOverlay'));
   };
-
-
-  /* ===== 全书搜索 =====
-
-     范围：CHAPTERS 里 7 章的正文段落（人物页、金句、余韵卡、印章都不在内）。
-     索引形态：**不落盘**。第一次打开面板时从章节页现抽，复用 fetchChapterDoc：
-       · 那 7 页本来就在 SW 的 PRECACHE 里 → 离线同样取得到，于是「首次拉取 /
-         失败降级 / 版本比对 / 就绪态」这四条链路一条都不用新写；
-       · 索引就是读者手上那份 HTML，因此不可能出现「搜到了、跳过去没那句话」；
-       · 代价只是首次打开等 7 次 fetch（实测 7.4ms，全部命中 SW 缓存）。
-
-     ⚠ 段落口径（本文件最容易静默出错的地方）：
-       索引收 `.chapter-content` 下**全部** <p>，0 基、按 DOM 顺序、**不过滤空段**。
-       它必须与 engine.contentParagraphs() 完全同口径 —— 落点是把 {i, o} 直接喂给
-       engine.scrollToAnchorIn()，错一段就整体错位，而且页面上不会有任何报错。
-       页面里还存在第二套编号：decorateParagraphs() 的 data-quote-index 是
-       「非空段落」的 1 基编号。今天 405 段一个空段都没有，两套编号数值上恰好
-       只差 1、看着像同一套；一旦有人写进 <p>&nbsp;</p> 它们立刻分家。
-       所以这里禁止任何 .filter()，e2e 另有三条断言把对应关系钉死。
-
-     匹配：1:1 字符折叠（全角→半角、ASCII 小写，**长度守恒**）+ indexOf 子串。
-     不用 Intl.Segmenter：搜索要回答的是「这段字里有没有这串字」，分词会制造
-     「梧桐树 vs 梧桐 + 树」这类歧义，还要多一层「切完再拼回原文」的偏移换算。
-     折叠必须长度守恒 —— 命中的偏移要原样用在**未折叠**的原文上（截上下文、上高亮）。 */
 
   var SEARCH_DEBOUNCE = 150;        /* 边打边出结果的停顿（PRD 2.2） */
   var SEARCH_SNIPPET_BEFORE = 13;   /* 命中词前保留的字数（PRD 2.3：前后各 12–15 字） */
@@ -2692,7 +2312,6 @@
     hit: null           /* 已上的高亮：{ onScroll } —— 非空即表示「身上有标记」 */
   };
 
-
   /* ---- 折叠：1:1 逐码元映射，长度与入参完全相同 ---- */
 
   function foldChar(ch) {
@@ -2711,7 +2330,6 @@
     for (var i = 0; i < s.length; i++) out += foldChar(s.charAt(i));
     return out;
   }
-
 
   /* ---- 索引 ---- */
 
@@ -2775,7 +2393,6 @@
     return searchState.building;
   }
 
-
   /* ---- 查询 ---- */
 
   /** 查询词：折叠后 trim，按空白切，AND 语义。返回折叠过的词（用于比对）。 */
@@ -2829,7 +2446,6 @@
     return result;
   }
 
-
   /* ---- 片段与高亮记号（列表与正文共用 .search-hit 一套样式） ---- */
 
   /** 在一段窗口文本里把所有查询词包成 <mark class="search-hit">。
@@ -2878,7 +2494,6 @@
     return (start > 0 ? '…' : '') + markTerms(win, terms) + (end < text.length ? '…' : '');
   }
 
-
   /* ---- 结果排布：章序 → 章内出现顺序，同段最多 2 条，总量 30 条 ---- */
 
   function planResults(result) {
@@ -2922,7 +2537,6 @@
     return plan;
   }
 
-
   /* ---- 面板 ---- */
 
   function searchInputEl() { return document.getElementById('searchInput'); }
@@ -2938,15 +2552,6 @@
       : '';
   }
 
-  /* 索引还没准备好时的三种说法（第三态是 PRD 没写、设计补的）：
-       · 正在建       → 正在准备全书正文…
-       · 建失败了 + 离线 → 离线 · 全书正文还没准备好，联网后会自动补齐（会自动重试一次）
-       · 建失败了 + 在线 → 没能取到正文，关掉面板再开一次试试
-     ⚠ 三句都是**读者可见文案**，一律说「正文」不说「索引」—— 读者不知道索引是什么。
-     改这三句只需要改这里一处（cls 与文案都从本函数出），但**别把这三句钉进 e2e 断言**：
-     文案是最容易被作者改一次的东西，钉进断言后改个字就红一次，最后会变成「不敢改文案」。
-     断言只钉状态（有提示节点 / 结果区是否为空），不钉那串汉字。
-     语气规矩照 PRD 2.4：内容没问题，只是还没备好，一律不写「失败 / 出错」。 */
   function pendingNote() {
     if (!searchState.failed) {
       return { cls: 'search-pending', text: '正在准备全书正文…' };
@@ -3116,7 +2721,6 @@
     refreshSearchPanel();
   }
 
-
   window.openSearch = function(initialQuery) {
     if (!LY.flags.isOn('search')) { showToast('搜索暂时关闭'); return; }
     initSearchPanel();
@@ -3143,7 +2747,6 @@
     ensureSearchIndex().then(refreshSearchPanel, refreshSearchPanel);
   };
 
-
   window.closeSearch = function() {
     var ov = document.getElementById('searchOverlay');
     if (ov) closeSheet(ov);
@@ -3155,10 +2758,6 @@
     if (state.barsVisible) startAutoClose();
   };
 
-
-  /** 摘掉正文里所有命中标记，并把被 splitText 切开的文本节点合回去。
-   *  只管正文（.chapter-content），列表里的 <mark> 不受影响。
-   *  三个时机调用：触碰正文 / 滚开约两屏 / 再开面板（PRD 2.6.4）。 */
   function clearHit() {
     var marks = document.querySelectorAll('.chapter-content mark.search-hit');
     for (var i = 0; i < marks.length; i++) {
@@ -3174,17 +2773,6 @@
     }
     searchState.hit = null;
   }
-
-
-  /* ===== 落点与高亮 =====
-
-     落点比率与 engine 的默认值同一个数（1/3 视口）—— 命中段落停在视口上方三分之一，
-     读者才看得到这句的上文，而不是把它顶在第一行（PRD 2.6.2）。
-
-     高亮**不用索引里的偏移**去切 DOM：正文可能已经被阅读辅助整段重建过
-     （renderOneContent 会在开「直角引号」时把 “” 换成「」，开「对话高亮」时把
-     引号内容包进 <span class="dlg">）。所以改成「在落地后的真实文本里重找第 k 次」：
-     找得到就上标记，找不到就只落位、不上高亮，安静降级。 */
 
   var SEARCH_LANDING_RATIO = 1 / 3;
 
@@ -3311,12 +2899,6 @@
     }, true);
   }
 
-
-  /** 落到某一块里的第 i 段，并给命中词上标记。
-   *  @param {Element|null} block 目标章节块
-   *  @param {object} item 命中项 {i, occ, terms, file}
-   *  @param {boolean} keepRestoring true = 正在走 engine 的 landing（不要抢「用户已滚动」标记，
-   *         否则 commitLanding 会被 finish() 跳过，位置记忆就不跟着走了） */
   function landInBlock(block, item, keepRestoring) {
     if (!block || !item) return false;
     clearHit();
@@ -3328,11 +2910,6 @@
     return true;
   }
 
-
-  /** 点一条结果：三分支收敛到同一条落位路径。
-   *  A. 目标块已在滚动链里 → 直接落位
-   *  B. 只有一块、目标不在链上 → 换章不换页，落位交给 engine 的一次性 landing
-   *  C. 链里已挂多章、目标不在链上 → 整页跳转，用一个一次性的会话意图在新页面接上 */
   function jumpToHit(item) {
     if (!item || typeof item.i !== 'number') return;
     var file = item.file;
@@ -3367,7 +2944,6 @@
     window.location.href = new URL(file, window.location.href).href;
   }
 
-
   /** 整页跳转落地后：init() 里读一次意图（读完即删），交给 engine 的 landing 落位，
    *  并把待上高亮的命中项留在 searchState 里，等 init() 末尾补标记。 */
   function readJumpIntent() {
@@ -3393,26 +2969,12 @@
     landInBlock(block, item, true);
   }
 
-
-  /* ===== 阅读数据备份 =====
-     本站是本地优先：进度、摘句、足迹、设置全都只存在这台机器的 localStorage，
-     换手机、清缓存、重装 App 就是全丢。所以给两个出口：
-       备份 —— 把 reader-* 键打包成一段 JSON，可复制、可存文件
-       恢复 —— 把那段 JSON 原样写回
-     为什么用文本框而不是直接触发下载：Android WebView 里 a[download] 基本
-     不会真的下载（没有 DownloadListener），静默失败比没做更糟。 */
-
   var dataMode = 'export';
 
   var dataConfirmUntil = 0;
 
-  /* 导出面板里「字体读完了没」。collectReaderDataAsync() 要开 IndexedDB，
-     可能比读者点按钮还慢。文本框里先放一份旧格式的可复制内容兜底，
-     就绪后原地换成带 bridge/fonts 的完整备份；两个导出操作都以这里为准，
-     绝不把「没有字体的半成品」当成最终备份交出去。 */
   var exportReadyFlag = true;
   var exportReady = Promise.resolve();
-
 
   function formatDuration(sec) {
     if (!sec) return '0 分钟';
@@ -3423,7 +2985,6 @@
     var m = min % 60;
     return m ? h + ' 小时 ' + m + ' 分钟' : h + ' 小时';
   }
-
 
   function openDataModal(mode) {
     if (!LY.flags.isOn('backup')) { showToast('数据备份暂时关闭'); return; }
@@ -3525,9 +3086,7 @@
     if (mode === 'import') setTimeout(function() { ta.focus(); }, 220);
   }
 
-
   window.openDataModal = openDataModal;
-
 
   window.closeDataModal = function() {
     var ov = document.getElementById('dataOverlay');
@@ -3535,7 +3094,6 @@
     closeSheet(ov);
     if (state.barsVisible) startAutoClose();
   };
-
 
   window.dataPrimaryAction = function() {
     if (dataMode === 'export') {
@@ -3577,7 +3135,6 @@
     setTimeout(function() { window.location.reload(); }, 700);
   };
 
-
   window.dataDownload = function() {
     /* 等 exportReady 是为了「存到手机」拿到的必然是带 fonts[] 的完整备份。
        绝大多数时候字体早就读完了，走同步分支，保留 a.click() 的用户手势。 */
@@ -3601,9 +3158,7 @@
     exportReady.then(doDownload);
   };
 
-
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
-
 
   function copyText(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -3621,16 +3176,6 @@
       ok ? resolve() : reject();
     });
   }
-
-
-  /* ===== 阅读辅助（做法借鉴 Readest）=====
-     四项互相独立，全部可在设置里开关，默认遵守「不打扰」：
-       dialogue     对话高亮：成对引号里的说话内容套一层淡色底（默认关）
-       cornerQuotes 直角引号：弯引号 “” → 直角引号「」（默认关）
-       keepAwake    阅读常亮：阅读页不让屏幕自动熄灭（默认开）
-       remainTime   底部显示剩余阅读时间（默认开）
-     所有内容改动都从 contentSnapshot 重新渲染，因此任意开关组合都能反复切，
-     不会出现「开过一次再关就回不去」。 */
 
   var readingAids = {
     dialogue: localStorage.getItem('reader-dialogue') === '1',
@@ -3721,7 +3266,6 @@
     article.innerHTML = holder.innerHTML;
   }
 
-
   function applyKeepAwake() {
     var on = !!readingAids.keepAwake;
     var bridge = window.LinyuanApp;
@@ -3741,7 +3285,6 @@
       wakeSentinel = null;
     }
   }
-
 
   function releaseKeepAwake() {
     var bridge = window.LinyuanApp;
@@ -3772,13 +3315,11 @@
     el.textContent = '\u00b7 ' + (minutes < 1 ? '<1' : Math.round(minutes)) + ' \u5206';
   }
 
-
   function aidLabel(key) {
     var names = { dialogue: '对话高亮', cornerQuotes: '直角引号', keepAwake: '阅读常亮', remainTime: '剩余时间' };
     var on = readingAids[key];
     return names[key] + ' \u00b7 ' + (on ? '开' : '关');
   }
-
 
   function refreshAidButtons() {
     var keys = ['dialogue', 'cornerQuotes', 'keepAwake', 'remainTime'];
@@ -3790,7 +3331,6 @@
     });
   }
 
-
   window.toggleReadingAid = function (key) {
     if (!(key in readingAids)) return;
     if (!LY.flags.isOn('readingAids')) { showToast('阅读辅助暂时关闭'); return; }
@@ -3801,7 +3341,6 @@
     if (key === 'remainTime') updateRemainTime();
     refreshAidButtons();
   };
-
 
   function initReadingAids() {
     captureContent();
@@ -3815,9 +3354,6 @@
     window.addEventListener('pagehide', releaseKeepAwake);
   }
 
-  /* ===== 对外暴露给 engine 的入口 =====
-     engine 不认识面板，也不该认识；它需要「告诉界面进度变了 / 收工具栏 /
-     弹个提示」时，都从这里进来。 */
   LY.ui = {
     init: init,
     syncProgress: updateProgressFill,

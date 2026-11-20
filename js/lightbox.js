@@ -1,32 +1,5 @@
-/**
- * js/lightbox.js — 同学录立绘灯箱
- *
- * 功能：人物卡里的真实立绘可点击 → 全屏查看；双击在 1x↔2.5x 间切换、双指捏合
- *       支持 1x–3x 连续缩放；缩放后可拖动平移；点遮罩 / 关闭按钮 / Esc 关闭，
- *       三种方式都走同一套 0.25s 淡出（去掉 .visible 即由 CSS 过渡完成）。
- *
- * 设计约束（来自本轮需求，改动前先读这几条）：
- *   1. 入口必须是 <button type="button" data-lightbox-src data-lightbox-name>。
- *      不用 <a href>：页面切换过渡层（js/transition.js）会接管 a[href] 点击并先播
- *      一段转场再跳转，表现为「打开灯箱却先播一段动画」。按钮没有 href，天然不在
- *      它的接管范围内（它只 query a[href]）。该过渡层目前已全站停用，但这里仍按
- *      「按钮而非链接」实现 —— 灯箱是弹层不是导航，换成 <a href> 会顺手多出一个
- *      可被浏览器/壳处理的跳转语义，将来重启过渡时又会立刻踩回同一个坑。
- *   2. 弹层复用 css/style.css 的通用基建：.modal-overlay / .modal-backdrop /
- *      .modal-close 与 .visible 开关、z-index 400（高于 tab-bar 的 100，低于
- *      .page-transition 的 9999 —— 后者 pointer-events 永久为 none，不冲突）。
- *      刻意不复用 .modal-panel：那是 370px 白底圆角面板，灯箱要的是全屏舞台，
- *      硬套会把立绘关进小卡片里。
- *   3. 姓氏占位卡（.char-photo.initial）没有 data-lightbox-src，点不到，
- *      也不加任何可点样式 —— 「点了没反应」比「看起来不能点」更不容易误解。
- *   4. 初始显示尺寸 = min(适配合适, 原图像素尺寸)，见 measure() 注释：
- *      512×512 源图铺满手机屏需要约 1.5~2 倍拉伸，会发糊；宁可留边也不拉伸。
- *   5. 无常驻动画：打开/关闭各一次 0.25s 过渡、双击/回弹一次 0.3s transform；
- *      捏合与拖动期间取消过渡保证 1:1 跟手。
- *
- * 依赖：无。非 ES module，普通 <script> 引入（ES5 写法，与 reader.js 一致，
- * 照顾老 WebView）。挂 window.PortraitLightbox，供调试与壳调用。
- */
+/* js/lightbox.js — 同学录立绘灯箱
+   设计说明、历史与踩坑记录见 _design/notes/lightbox.js.md（原文按行号归档）。 */
 (function (global) {
   'use strict';
 
@@ -66,13 +39,6 @@
   /* 换图令牌：母版解码比读者手快时，上一轮的 swap 不能顶掉下一轮的图 */
   var swapToken = 0;
   var pinchEndAt = 0;
-  /* 两套时间闸，语义不同、互不打架：
-     pinchEndAt + PINCH_TAP_GUARD_MS(400ms)：捏合结束后忽略「单击」，防止松手
-       尾焰被误判成双击缩放开关（QA Round 1 口径的 400ms guard）。
-     clickGuardUntil：「空白区点击关闭」的闸。三个来源——① open() 后 350ms：
-       挡掉「打开灯箱的那一次点击」的延迟合成 click（触摸→鼠标兼容事件可能晚于
-       DOM 变化派发，落到新出现的遮罩/frame 空白区上，会把刚打开的灯箱立刻关掉）；
-        ② 捏合/拖动移动期间持续 +500ms：松手尾焰的 click 不触发关闭。 */
   var clickGuardUntil = 0;
 
   /* ------------------------------------------------------------ 小工具 */
@@ -171,9 +137,6 @@
     frame.addEventListener('lostpointercapture', endPointer);
     frame.addEventListener('wheel', onWheel, { passive: false });
 
-    /* 点立绘之外的空白区也关闭：桌面下 frame 几乎铺满舞台，只靠 stage 的 16px
-       边沟可点太小，用户点一大片深色空白区理应关掉。点在图片上不关（双击放大
-       还要用）；clickGuardUntil 窗口内不关（打开尾焰 + 手势尾焰）。 */
     frame.addEventListener('click', function (e) {
       if (!state.open) return;
       if (e.target !== frame) return;              /* 点在图片上 → 不关 */
@@ -205,9 +168,6 @@
       if (!src) return;
       /* button 本来就没有默认动作，preventDefault 只是双保险 */
       e.preventDefault();
-      /* 卡片上的同文件图片通常已解码：把它的自然尺寸当「宽高比提示」传给灯箱，
-         让 measure() 在灯箱图还没解码的这几毫秒里也能算出正确的非等比占位尺寸
-         （v3 立绘是 1024×898/954 非方形，没有提示会先按正方形显示再跳变）。 */
       var hint = null;
       var cardImg = btn.querySelector('img');
       if (cardImg && cardImg.naturalWidth && cardImg.naturalHeight) {
@@ -228,18 +188,11 @@
     if (nameEl) nameEl.textContent = name || '';
     image.alt = name || '';
 
-    /* 换人时**不能**直接把 img.src 换成新母版：<img> 会继续显示上一张已解码的位图，
-       读者先看到上一个人的立绘、等新图解码完才跳变（2026-10-28 线上反馈）。
-       所以先摆「同一个人的缩略图」（卡片上那张，已解码、同人同比例），没有就用透明像素，
-       母版解码完成后再原地换上 —— 那个瞬间位图已经在内存里，看不出接缝。 */
     var cardImg = trigger && trigger.querySelector ? trigger.querySelector('img') : null;
     var thumb = cardImg ? (cardImg.currentSrc || cardImg.src || '') : '';
     var hasThumb = !!thumb && thumb !== src;
     image.src = hasThumb ? thumb : BLANK_PX;
 
-    /* 先锁滚动再度量：桌面 Chrome 的经典滚动条会占掉布局视口宽度，
-       锁掉之后视口才变到最终尺寸（安卓 WebView 是 overlay 滚动条，无此差异，
-       但顺序对了两边都不会错）。度量必须发生在锁定之后。 */
     document.body.style.overflow = 'hidden';
     overlay.classList.add('visible');
     overlay.setAttribute('aria-hidden', 'false');
@@ -309,21 +262,6 @@
   }
 
   /* ------------------------------------------------------ 尺寸与变换 */
-  /**
-   * 度量「初始显示尺寸」（scale=1 时图片占多少 CSS px）。
-   * 封顶为原图像素尺寸：铺满屏幕需要拉伸源像素（会发糊），桌面 1:1 显示反而最锐利。
-   * 放大交给用户主动的双击 / 捏合 —— 那是有意识的细节查看，糊是预期代价。
-   *
-   * 用 offsetWidth/offsetHeight（布局盒）而不是 getBoundingClientRect（变化后
-   * 的视觉盒）：.lightbox-stage 入场时带 scale(0.94)→1 的过渡，open() 是同步
-   * 紧接着加 .visible 的，那一刻视觉盒还缩着 6%——用视觉盒会把图片量小 6%，
-   * 而 250ms 过渡结束后夹取边界又按稳定后的尺寸算，两者不一致。布局盒不受
-   * transform 影响，任何时刻都是终值。
-   *
-   * @param {Object=} hint 宽高比提示 {w, h}（来自卡片上同文件已解码的 img）。
-   *   灯箱图刚设 src、尚未解码时用它算占位尺寸；解码完成后 load 事件会按真实
-   *   像素再度量。都没有时兜底按 512×512 正方形（本站旧立绘规格）。
-   */
   function measure(hint) {
     if (!image) return;
     var natW = image.naturalWidth || (hint && hint.w) || 0;
@@ -373,13 +311,6 @@
     applyTransform(animate);
   }
 
-  /**
-   * 以屏幕坐标 (clientX, clientY) 为锚点缩放到 newScale：锚点下的画面保持不动。
-   * 推导：基准坐标系（图片中心为原点、未缩放）里的点 p 在屏幕上的位置是
-   *   screen = center + s * p + t
-   * 先由当前状态反解 p，再令新状态下同一个 p 仍落在锚点上：
-   *   t' = anchor - center - s' * p
-   */
   function zoomTo(newScale, clientX, clientY, animate) {
     newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale));
     var rect = frame.getBoundingClientRect();
@@ -417,9 +348,6 @@
       return;
     }
 
-    /* 单指：既是拖动候选，也是单击候选 —— 两者不互斥，靠 pointerup 时的位移
-       容差区分。早先版本在这里按 scale>1 直接判成拖动，结果放大后永远无法
-       再用双击缩回去（单击候选根本没被记录），现在合并成同一路径。 */
     mode = 'single';
     down = { t: Date.now(), x: e.clientX, y: e.clientY, moved: false };
     drag = { x: e.clientX, y: e.clientY };
@@ -487,11 +415,6 @@
     }
   }
 
-  /**
-   * 单击 / 双击判定（鼠标与触摸共用，不依赖浏览器 dblclick —— 那个在部分
-   * WebView 上会和捏合手势互相误触，这里自己算才可控）。
-   * 与捏合互斥：捏合刚结束 400ms 内的单击直接忽略。
-   */
   function handleTap(t) {
     if (Date.now() - pinchEndAt < PINCH_TAP_GUARD_MS) return;
     var now = Date.now();

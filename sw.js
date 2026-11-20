@@ -193,8 +193,16 @@
  * 满亮的两段式」改成单峰对称渐隐（22% → 50% 最亮 → 78%），亮度 0.92 → 0.55，
  * 并把首页骨架高度从 300 收到 240（5 行排到 232，容器不再留 68px 空白被光带照亮）。
  * 只改视觉参数，机制不变。`?v=` 升到 146，照例 +1。
+ *
+ * v95（2026-11-20 · 性能三批）：① 全站摘掉 transition.js 引用（模块早已停用，
+ * 每页白背 7.1KB）② 图标/分享图重压（192: 45→25KB、512: 250→127KB、
+ * apple-touch: 41→22KB）③ PRECACHE 从 81 项 969KB 收到 52 项 433KB：
+ * 只留壳 + 首屏内容，3 张 1024 立绘 / 树 s1–s5 / 18 个人物详细页 / og-cover
+ * 改为运行时按需（cacheFirst 自动写回）④ 中长注释搬到 _design/notes/，
+ * CSS gzip 48.3→29.0KB、reader.ui.js 52.2→39.6KB。
+ * 每页首访字节：章节页 209→约 135KB，首页 170→约 120KB。
  */
-var CACHE = 'linyuan-v94';
+var CACHE = 'linyuan-v95';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
@@ -234,38 +242,41 @@ var NETWORK_FIRST = ['/js/chapters.js'];
  */
 var NETWORK_TIMEOUT = 500;
 
+/**
+ * 预缓存清单 = 「壳」，不是「全站」。
+ *
+ * 2026-11-20 重构（作者批准，直接动因：三天发了 5 版，老读者每版都重下近 1 MB）：
+ * 原来 81 项 / 969 KB，而 precacheBatch 对每一条都发真实网络请求（install 时
+ * cache:'reload' 绕 HTTP 缓存），所以**每次 CACHE +1 都是全量重下**。现在按
+ * 「离线还读不读得到东西」分成三层：
+ *
+ *   预缓存（下面这张表）  壳 + 马上要用的内容：首页 / 书架 / 同学录 /
+ *                        17 张列表缩略图 / 15 章正文 / CSS / 全部 JS / 字体 /
+ *                        封面 / 纸张 / 树的第一帧          ≈ 452 KB
+ *   运行时按需（cacheFirst 自动写回，看过就有）
+ *                        3 张 1024 立绘（324 KB）、树 s1–s5（124 KB）、
+ *                        18 个人物详细页（27 KB）
+ *   完全不缓存            og-cover.jpg（只给社交抓取，站内从不显示）
+ *
+ * ⚠ 章节正文**刻意留在预缓存里**：断网可读是这个 App 的立身之本，而 15 章合计
+ *   只有 67 KB（本轮总量的 15%）。真要再省，删掉这一段即可，代价是断网只能读
+ *   看过的章（看过的会由 cacheFirst 写回）。
+ * ⚠ 移出清单 ≠ 下线：cacheFirst 未命中会走网络并写回，第二次打开就有。
+ * ⚠ 预缓存里只放「已在仓库、路径正确」的文件 —— 漏一条会让 install 少一项，
+ *   tools/check-precache.mjs 会逐条核对存在性。
+ */
 var PRECACHE = [
   '/',
   '/favicon.png',
   '/manifest.json',
-  '/assets/og-cover.jpg',
+  /* 封面与纸面：书架、阅读页首屏就用 */
   '/assets/cover.webp',
   '/assets/cover-thumb.webp',
   '/assets/paper.webp',
-  /* 人物立绘 1024 母版（3 张共 316.4KB，用户 2026-10 定稿版：徽章统一为圆形
-     金色校徽、右下角水印以底部裁切物理消除，故高矮为 898/954/898 非方形）。
-     灯箱全屏与 3x 捏合的清晰度全靠它。512 旧版（portrait-{key}.webp）已删除。
-     ⚠ v18→v19 必须升 CACHE 名：文件名与 7e3dc92 那次误部署的旧图相同，
-     不换名 activate 不会删旧缓存，用户会一直吃到 v18 里的错图。
-     → 为什么预缓存里只有这 3 位主角的母版：列表页早就全量改用 128×150 缩略图
-     （见下方 portrait-*-thumb.webp 一段），母版只剩两个消费者 —— 详细页大图与
-     灯箱全屏/3x 捏合。三位主角是门面，首访就要经得起放大，故保留（316.4KB 是
-     刻意付的清晰度代价）；其余 14 人的母版改为运行时按需拉取（cacheFirst 会
-     写回缓存），立绘部分的预缓存从 2276KB 降到约 387KB。 */
-  '/assets/portrait-linshu-1024.webp',
-  '/assets/portrait-nanheng-1024.webp',
-  '/assets/portrait-jiangbuqiu-1024.webp',
-  /* 梧桐阶段图（6 张共 153.4KB）：首页进度带的核心意象。
-     装上后切页零网络、断网也长得出树。 */
+  /* 梧桐只预缓存「未萌」这一帧；其余 5 帧由首页脚本按进度按需设置 src */
   '/assets/tree-bare.webp',
-  '/assets/tree-s1.webp',
-  '/assets/tree-s2.webp',
-  '/assets/tree-s3.webp',
-  '/assets/tree-s4.webp',
-  '/assets/tree-s5.webp',
   '/assets/fonts/zcool-xiaowei-subset.woff2',
   '/css/style.css',
-  '/js/transition.js',
   '/js/reader.flags.js',
   '/js/reader.dom.js',
   '/js/reader.store.js',
@@ -274,9 +285,8 @@ var PRECACHE = [
   '/js/reader.js',
   '/js/chapters.js',
   '/js/theme.js',
-  /* 原生壳能力补丁（v1.9.0 起从 APK 里的 BRIDGE_SHIM_JS 下沉到站点）。
-     必须预缓存：它是 <head> 里的渲染路径脚本，弱网时不该等网络；
-     且壳内的剪贴板 / 分享 / 导出全靠它，缺了等于这三个功能消失。 */
+  /* 原生壳能力补丁（v1.9.0 起从 APK 的 BRIDGE_SHIM_JS 下沉到站点）：
+     <head> 里的渲染路径脚本，剪贴板 / 分享 / 导出全靠它，缺了等于功能消失。 */
   '/js/native-bridge.js',
   '/js/announce.js',
   /* 跳转即时反馈：首页/书架/章节页的 <head> 里 defer 引用，弱网必命中 */
@@ -296,14 +306,8 @@ var PRECACHE = [
   '/novel/chapter-10.html',
   '/novel/chapter-11.html',
   '/novel/characters.html',
-  '/assets/portrait-shenruoqi-thumb.webp',
-  '/novel/character-shenruoqi.html',
-  /* 同学录列表页立绘缩略图（128×150，17 张合计约 70KB）。
-     列表页 .char-photo 只有 48×56，object-fit: cover + object-position: 50% 28%
-     裁切后缩放而成（tools/make-portrait-thumbs.py，与浏览器渲染语义逐像素对齐）。
-     原先这里躺着 17 张 1024 母版（2276KB，占整个 PRECACHE 的 71%），首访为
-     48px 的格子付 2.2MB —— 现在只付 70KB。母版按需拉取，见上方三位主角的说明。
-     注意是 17 张全量：三位主角的列表卡片同样显示缩略图，别漏了他们的。 */
+  /* 同学录列表页的 17 张缩略图（128×150，合计约 70 KB）：
+     列表首屏就是它们的网格，缺一张就是一个空框。母版按需取。 */
   '/assets/portrait-linshu-thumb.webp',
   '/assets/portrait-nanheng-thumb.webp',
   '/assets/portrait-jiangbuqiu-thumb.webp',
@@ -321,23 +325,6 @@ var PRECACHE = [
   '/assets/portrait-jiangzhenmo-thumb.webp',
   '/assets/portrait-linxihe-thumb.webp',
   '/assets/portrait-yeyulan-thumb.webp',
-  '/novel/character-linshu.html',
-  '/novel/character-nanheng.html',
-  '/novel/character-jiangbuqiu.html',
-  '/novel/character-baiyuhuan.html',
-  '/novel/character-ningzunjiu.html',
-  '/novel/character-liyan.html',
-  '/novel/character-yangmenghan.html',
-  '/novel/character-taoyaoyao.html',
-  '/novel/character-guchiyan.html',
-  '/novel/character-baiyu.html',
-  '/novel/character-yeyuan.html',
-  '/novel/character-linwangshu.html',
-  '/novel/character-yeyulan.html',
-  '/novel/character-xiaozhuo.html',
-  '/novel/character-jiangzhenmo.html',
-  '/novel/character-sujiwen.html',
-  '/novel/character-linxihe.html',
 ];
 
 /**

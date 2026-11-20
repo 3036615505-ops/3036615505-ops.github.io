@@ -104,7 +104,6 @@ const needed = [
      截图当图标），而生成模板（new-chapter.js / make-characters.mjs 的 headBlock）
      是「下次一生成就丢」的高危路径，这里用全页面清单兜住。 */
   ['/assets/apple-touch-icon.png', ALL_PAGES],
-  ['/js/transition.js', ['index.html', 'novel/index.html', 'novel/chapter-01.html', 'novel/chapter-02.html']],
   ['/js/reader.js', ['novel/chapter-01.html', 'novel/chapter-02.html']],
   ['/js/chapters.js', ['index.html', 'novel/index.html', 'novel/chapter-01.html', 'novel/chapter-02.html']],
   ['/js/lightbox.js', ['novel/characters.html']]

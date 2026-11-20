@@ -1,69 +1,7 @@
-/* ────────────────────────────────────────────────────────────
-   分区目录 · 只读导航，不含任何样式，可以整块删掉。
-
-   行号为「插入本目录之后」的实测值。增删区块后重核对一遍：
-     grep -n "^/\* =====" css/style.css
-
-   一、地基：字体 / 动效 / 令牌 / 基础交互
-     字体（ZCOOL 标题字 + 楷体主片·兜底片） ............   60
-     动画关键帧 ........................................   90
-     页面切换动画（模块已停用，样式保留） ..............  123
-     书本 3D 翻开过渡（同上，样式保留） ................  283
-     CSS 变量：浅色 / 深色两套令牌 .....................  557
-     重置 ..............................................  720
-     点击高亮（App 化的关键一行） ......................  723
-     「App 化」交互细节（实测反馈后补） ................  736
-     梧桐叶装饰（纯 CSS） ..............................  777
-
-   二、页面主体：首页 / 书架 / 阅读页 / 章节流
-     首页（页头 / 进度带 / 继续阅读卡 / 光阴目录 / tab） ..  898
-     小说详情页（含书架页脚「检查更新」） .............. 1479
-     阅读页 ............................................ 2031
-     章节流：往下滚接上下一章 .......................... 2271
-
-   三、弹层（底部抽屉）：目录 / 摘句 / 设置 / 搜索 / 备份
-     面板通用：底部抽屉（几何 / 动效 / 拖动把手） ...... 2597
-     目录抽屉 .......................................... 2722
-     设置抽屉 .......................................... 2840
-     阅读数据备份抽屉 .................................. 3039
-
-   四、主题与桌面端
-     桌面端对齐 ........................................ 3114
-     减弱动态效果（系统偏好） .......................... 3186
-     全站深色：硬编码浅色表面覆盖 ...................... 3202
-
-   五、改版组件大块（2026-10-21 起）
-     本块起点：首页页头 / 梧桐进度带 / 继续阅读卡 ...... 3396
-     光阴目录 .......................................... 3568
-     底部 tab bar ...................................... 3725
-     同学录：人物卡 / 分组 / 顶栏分类入口 / 详细页 ..... 3805
-     章节页：日期落款 + 角印 ........................... 4109
-     剪贴本页 .......................................... 4158
-
-   六、沉浸阅读与收尾补丁
-     沉浸阅读：底部固定状态条 .......................... 4262
-     沉浸模式的固定章节条（番茄同款） .................. 4343
-     同学录立绘灯箱（js/lightbox.js） .................. 4385
-     自动滚动悬浮条（js/reader.js） .................... 4585
-     阅读辅助（js/reader.js） .......................... 4636
-     新章节更新横幅（js/announce.js） .................. 4665
-     章末收束卡（只出现在最后一章） .................... 4739
-     阅读页底色补缝（防「底部断层」） .................. 4878
-     「点击翻页」层的按下反馈 .......................... 4887
-     站内跳转的「正在打开」细线（js/nav-feedback.js） .. 4897
-     全书搜索（js/reader.ui.js） ....................... 4951
-
-   原则：本文件不拆。拆分的改动面是 29 个页面 + 2 个生成器模板 + PRECACHE，
-   而这个项目没有构建步骤能把它们合回去（见 docs/REPO-AUDIT.md §3.5①）。
-   ──────────────────────────────────────────────────────────── */
+/* 《临渊羡鱼》站点样式表 —— 令牌 / 布局 / 组件 / v5–v9 视觉层
+   设计说明、历史与踩坑记录见 _design/notes/style.css.md（原文按行号归档）。 */
 
 /* ===== 字体 ===== */
-/* ZCOOL XiaoWei 自托管精确子集（替代 Google Fonts，国内可达）。
-   只收真正用这个字体的短标题文字：站名 / 书封 / 分组名 / 小传·设定 / 人物首字，
-   外加人物名、章节标题等以后会进标题的字。生成器与体积护栏见 tools/make-zcool-subset.py。
-   2026-11-11：201,752 B → 20,984 B（171 字形），首屏最大单点 13.5s → 1.4s @15KB/s。
-   ⚠ 此字体在 sw.js 的 PRECACHE 里、URL 不带 ?f=：改字节必须把 CACHE 名 +1，
-     否则老读者会一直吃旧字体。check-precache.mjs 按原路径解析条目，别给它加查询串。 */
 @font-face {
   font-family: 'ZCOOL XiaoWei';
   font-style: normal;
@@ -71,11 +9,6 @@
   font-display: swap;
   src: url('../assets/fonts/zcool-xiaowei-subset.woff2') format('woff2');
 }
-/* 阅读页「楷体」：霞鹜文楷 Lite 子集（OFL 1.1，可自由再分发）。
-   拆成两片：主片只收正文已用字（342.5KB，选楷体必下）；
-   兜底片收 GB2312 一级字里主片没有的那部分（558.1KB）。
-   正文用 "LinyuanKai","LinyuanKaiRest" 的栈 —— 浏览器只在主片缺字形时才去取兜底片，
-   所以正常阅读永远只付主片，而新章用到新的常用字也不会变成豆腐块。 */
 @font-face {
   font-family: 'LinyuanKai';
   font-style: normal;
@@ -152,9 +85,6 @@
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   z-index: 9999;
-  /* 只做视觉：任何时候都不接收指针事件。
-     改前这里在 .active 下是 pointer-events:auto，入场遮罩停留的整段时间里
-     （实测 632~650ms）全屏点击都被吃掉，表现为「切页后点哪儿都没反应」。 */
   pointer-events: none;
   background: radial-gradient(circle at 50% 38%, rgba(255,255,255,0.55), transparent 34%), var(--site-bg);
   opacity: 0;
@@ -209,10 +139,6 @@
   animation: leafSway 1.2s ease-in-out infinite;
 }
 
-/* 环绕叶片的两个动画（loadingPulse + 5×loadingLeafOrbit）原来**没有作用域**，
-   每个页面从加载起就有 6 个无限动画在跑，而遮罩 opacity:0 根本看不见 —— 纯烧电。
-   和 .transition-inner svg 的 leafSway / leafDraw 一样限定在 .active 下，
-   只在真正 loading（遮罩显示）时才跑，视觉表现不变。 */
 .transition-leaves {
   position: absolute;
   inset: 0;
@@ -285,30 +211,10 @@
   animation: leafDraw 0.4s ease-out 0.4s forwards;
 }
 
-/* ===== 书本 3D 翻开过渡（替代早先的「叶子遮罩」）=====
-   视觉参照番茄小说点开一本书：封面带着书页厚度立起来，绕书脊（Y 轴）翻开，
-   翻过去露出纸张，再露出正文。跨整页跳转只能拆成「出场翻到 90°」+「入场继续翻走」
-   两段（页面跳转会销毁 DOM，做不了真共享元素），用 sessionStorage 标记衔接，
-   视觉上连成一次翻页。
-   动画只用 transform / opacity（合成层），不用 layout 属性 —— 进阅读页时
-   阅读器五层 JS 正在初始化，重排会把翻书拖成幻灯片。 */
-
 .page-transition {
   /* 舞台化：hero 封面要立在暖色场地上，背景不再是那层「脏雾」渐变 */
   background: var(--site-bg);
 }
-
-/* ---- 3D 书：中央立起 → 封面绕书脊翻开 → 内页放大铺满全屏 ----
-   运动序列对齐番茄小说「点开一本书」：一本书 → 翻开 → 放大 → 进入。
-   结构参照 CodeMyUI/book-opening-animation 与 scastiel 的 3D 书教程：
-   透视在舞台 .book-stage 上，书本 .book 只管放大，封面 .book-cover 只管翻开。
-
-   起点不是点击的条目 —— 书架/目录是文字列表，从一行字上长出封面很怪；
-   书固定立在屏幕中央，翻开与放大的运动本身就是叙事。
-
-   变换全部落在 transform/opacity（合成层）。绝不用 background-color 动画
-   （每帧重绘整屏，踩过）也不用 preserve-3d + backface-visibility 双面
-   （无 GPU / headless 下背面剔除失效，翻过去仍露封面，踩过）。 */
 
 .book-stage {
   /* 透视放舞台上：书自己如果也带 perspective，封面翻开时的近大远小会和
@@ -376,9 +282,6 @@
   opacity: 0;
 }
 
-/* 内页：**不参与视觉**，保留结构只是为了将来「翻开露出正文」留口子。
-   现在铺满全屏的是封面图本身（用户要的「封面放大」）——
-   曾把内页做成铺满的空白纸，看起来就是「一个奇怪的空白页面」（用户否过两次）。 */
 .book-page {
   position: absolute;
   inset: 0;
@@ -388,14 +291,6 @@
   opacity: 0;
 }
 
-/* ---- 出场：立起 → 像书一样翻开 → 封面放大铺满 ----
-   运动序列：一本书立在中央（看得见书口厚度）→ 封面像翻开书那样抬起一角 →
-   整本书带着封面放大到铺满全屏 → 跳转 → 封面淡出揭示正文。
-   铺满全屏的是**封面图本身**，不是内页的空白纸（那个看起来像坏页面）。 */
-
-/* 书整体：立起 → 放大到铺满。
-   前段放慢（30% 才到 0.72）让「一本书立在那儿」被看见；
-   中段是「封面放大」的主戏；末段才冲到铺满倍数（3.8 × 58vw 远超手机视口）。 */
 @keyframes bookRise {
   0% {
     transform: scale(0.38) translateY(8%) rotateY(14deg);
@@ -417,9 +312,6 @@
   }
 }
 
-/* 封面：像翻开书那样绕书脊抬起（不是翻走消失）。
-   抬起角让「这是一本书」立得住，随后跟着书一起放大 —— 封面图铺满的就是它。
-   全程 opacity: 1，末尾不淡出；淡出放在入场那一步。 */
 @keyframes coverOpen {
   0%   { transform: rotateY(0deg); }
   30%  { transform: rotateY(-6deg); }
@@ -454,10 +346,6 @@
   opacity: 0;
 }
 
-/* ---- 入场：铺满的封面淡出，揭示正文 ----
-   出场末态是「封面图铺满全屏」，入场就接着淡出封面 ——
-   像从封面走进书里。封面仍在放大末态（scale 3.8 的继承由 .book 的
-   transform 保持），这里只做 opacity。 */
 @keyframes coverEnter {
   0%   { opacity: 1; }
   100% { opacity: 0; }
@@ -565,42 +453,13 @@
   --bg-card: #ffffff;
   --bg-warm: #f5efe4;
   --text: #3d3228;
-  /* 次级文字：10~13px 的小字在浅色卡片上原来只有 2.1~2.3:1（WCAG 正文要求 4.5:1），
-     这里整体压深到 4.5:1 以上。三级层次仍然保持单调递进：
-       相对亮度  text 0.034  <  secondary 0.120  <  muted 0.140
-     （原来 muted 是 #b5a695、亮度 0.393，比 secondary 还亮，只是靠浅底才看得见）。
-     --accent / --accent-hover 故意不动：它们当「描边/图标/填充底色」都没问题，
-     只有当小字文字色时仍不足 4.5，属于另一类问题（金色文字），需单独确认。 */
   --text-secondary: #6e5f4f;
   --text-muted: #756654;
   --accent: #b8864e;
   --accent-hover: #9a6d3e;
-  /* ---- 金色「文字」专用色（--accent / --accent-hover 只留给装饰）----
-     WCAG 2.1 要求 24px 以下的文字对底色 ≥4.5:1，而装饰金当文字色全线不及格：
-     --accent #b8864e 压在米白卡片上只有 2.8~3.2:1（11px 小字典型 3.13），
-     --accent-hover #9a6d3e 也只有 3.96~4.2:1。按最严的底色反推本令牌取值：
-       最差底 = 绿色阅读主题的 --reading-bg #d8e4d3（.chapter-bottom-nav 的
-       上一章/下一章链接就漂在这上面）→ 需 ≥4.5:1。
-     #855a2b：该底上 4.57:1；--bg-warm #f5efe4（.char-tag/.leaf-pill）上 5.1:1；
-     白底（.char-photo.initial 的姓氏大字）上约 5.9:1。全部达标且仍是一支金。
-     只把「文字用途」的金色换到本令牌；边框/图标/渐变/底色仍用 --accent 一家，
-     观感不变 —— 文字比原来略深，装饰分毫未动。 */
   --accent-text: #855a2b;
   --accent-light: rgba(184,134,78,0.08);
-  /* ---- 命中词底色（阅读器内全章搜索）----
-     高亮必须双通道（底色 + 字重），因为小字与夜读主题下只换颜色对比不够。
-     单独一支令牌而不是复用 --accent-light：后者是 8% 的极淡底（给按钮/卡片用），
-     压在绿色阅读主题 #d8e4d3 上几乎看不出来。这里取 30%，四套主题共用；
-     深色主题在下面单独覆盖（深底上 30% 会发灰）。 */
   --hit-bg: rgba(196, 162, 78, 0.30);
-  /* ---- 填充按钮专用底色（白字必须 ≥4.5:1）----
-     --accent 是「强调色」，用来做描边、图标、强调文字都没问题，但它太亮：
-     白字压 #b8864e 只有 3.20:1、压深色主题的 #d4a050 只有 2.35:1，
-     所以凡是「金底白字」的主行动按钮/徽标都必须改用这一对值，别再直接写 --accent。
-       白字 on #8f6636 = 5.09:1
-       白字 on #7a5529 = 6.65:1（渐变深端 / :active）
-     两主题共用同一对值：深色下白字同样需要 4.5:1，且 #8f6636 与深色卡片
-     (#221f18) 仍有 3.23:1 的辨识度，按钮不会糊进背景。 */
   --accent-fill: #8f6636;
   --accent-fill-deep: #7a5529;
   --border: #e8e0d4;
@@ -608,9 +467,6 @@
   --shadow: 0 1px 3px rgba(60, 40, 20, 0.05);
   --shadow-hover: 0 4px 16px rgba(60, 40, 20, 0.1);
   --site-bg: linear-gradient(180deg, #fbf7ef 0%, #f2eadc 46%, #ece0cd 100%);
-  /* 底部 tab 栏的底色。原来用近白 rgba(255,253,248,.94)，可页面渐变滚到底
-     已经是 #ece0cd，两者一撞就是一条横带（读者说的「断层」）。
-     取页面底部的同族色，并留成三元组方便和透明度组合。 */
   --tabbar-tint: 240, 230, 213;
   --card-warm: rgba(255, 252, 246, 0.88);
   --card-warm-solid: #fffaf3;
@@ -667,12 +523,6 @@
   --reader-shadow: 0 12px 34px rgba(32, 62, 28, 0.10);
 }
 
-/* ⚠ 四套主题的选择器一律写成 :root[data-theme="..."]，不要图省事写成 [data-theme="..."]：
-   设置面板里的主题预览圆圈（reader.ui.js 生成）也带 data-theme 属性（data-theme="dark"
-   那颗夜读圆圈）。不限在 :root 上时，深色主题那一整批令牌会顺着圆圈泄进它的子树 ——
-   实测夜读圆圈的 .theme-label 在浅色面板上拿到深色令牌的 --text-muted #ab9d81，
-   对比度只有 2.62:1。本文件的 data-theme 只由 theme.js / reader.ui.js 设置在
-   <html> 上，限定 :root 后行为不变、泄漏消失。 */
 :root[data-theme="dark"] {
   /* 阅读页 */
   --reading-bg: #181715;
@@ -687,19 +537,10 @@
   --bg-card: #221f18;
   --bg-warm: #1b1913;
   --text: #e9decb;
-  /* 深色下的小字亮度：原来 --text-secondary:#b5a68c / --text-muted:#8d7f68 是照
-     「深色审美」定的，实测在深色表面上只有 3.79~4.43:1（10~13px 正文要求 4.5:1）。
-     这里只调深色令牌、不动浅色，并按原来的三级层次等比抬亮，保证
-     text(0.73) : secondary(0.50) : muted(0.34) 的相对亮度阶梯仍然均匀
-     （相邻两级对比 1.42 / 1.39，浅色下是 1.35 左右）。 */
   --text-secondary: #c9ba9c;
   --text-muted: #ab9d81;
   --accent: #d4a050;
   --accent-hover: #e2b268;
-  /* 深色下的金色文字：底色换成了一众深色面，达标方向与浅色相反 —— 文字金要
-     更亮才够。取 #e2b268（即深色 --accent-hover）：实测在最亮的深色面
-     --reader-surface-soft #2D2B27 上仍有 7.27:1，人物卡/标签/引文 8.2~9.0:1。
-     装饰（边框/图标/渐变）继续用 --accent #d4a050，不受影响。 */
   --accent-text: #e2b268;
   --accent-light: rgba(212,160,80,0.12);
   /* 深色下的命中底色：深底上 30% 会发灰，压到 22% 才不脏 */
@@ -725,31 +566,10 @@
 /* ===== 重置 ===== */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-/* ===== 点击高亮（App 化关键一行）=====
-   Android WebView 触摸可点击元素时会画一层系统默认的半透明蓝灰（tap highlight），
-   在浏览器里无伤大雅，但包装成 App 后就是用户看到的「一块蓝条」，和整站米色/金色
-   体系完全不搭。这里对所有可交互元素全局关掉。
-   注意：可访问性不依赖它 —— 本规则不碰焦点环，键盘用户仍看得到焦点
-   （少数组件有自定义 :focus-visible，其余走浏览器默认焦点环）；
-   按下反馈由各组件自己的 :active 金色淡底负责，都不是这层系统蓝。
-   历史上只有 .reader-tap-zone / .font-import-btn / .font-import-clear / .char-photo-btn
-   四个组件各自声明过，tab 栏、面板按钮、章节导航、链接等全部漏出系统蓝。 */
 a, button, input, label, select, textarea, summary, [role="button"] {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* ===== 「App 化」交互细节（2026-10-25 实测反馈后补）=====
-   现象：App 里点按钮，第一下干净，再点却冒蓝条。三个候选逐一排除后确认是
-   **连点触发的文字选中**：Chrome/WebView 把快速两次点击同一段文字当成双击选词，
-   选中态在 <button>/<a> 上常回落成系统默认蓝，而 ::selection 的金色罩不住它。
-   下面三条一起堵，且都不影响键盘可达性与正文摘句：
-     1. user-select: none —— 只加在「界面 chrome」（按钮/页签/表单/导航），
-        章节正文 .chapter-content 不在此列，读者照样能选中句子存摘句；
-     2. -webkit-touch-callout: none —— 长按按钮不再弹系统「复制/分享」菜单
-        （正文不加，读者长按复制句子仍可用）；
-     3. :focus:not(:focus-visible) 去掉指针焦点环 —— 触屏/鼠标点出来的焦点不画圈，
-        键盘导航的焦点环（:focus-visible）原样保留，可访问性不受损。
-        老 WebView 不支持 :focus-visible 时整条规则被丢弃，退化为默认焦点环，安全。 */
 button, input, label, select, textarea, summary, [role="button"],
 .tab-item, .notice-go, .notice-close, .char-more, .back-btn {
   -webkit-user-select: none;
@@ -1041,10 +861,6 @@ a { color: inherit; text-decoration: none; }
   padding: 30px 0 26px;
   transition: opacity 0.55s ease, transform 0.55s ease;
   width: 100%;
-  /* 金句长短差得多（2 行到 5 行）。不定高的话卡片每 5 秒变一次高，下面整段内容
-     跟着上下跳。精确高度由 index.html 里那段「量最高的一条」的代码算出来后写到
-     minHeight 上（不同机型行数不同，写死 px 必然在某个宽度上错一档）；
-     这里的 200px 只是脚本没跑起来时的兜底，同时保证短句在框内垂直居中。 */
   min-height: 200px;
   display: flex;
   flex-direction: column;
@@ -1793,10 +1609,6 @@ a { color: inherit; text-decoration: none; }
   transition: width 0.5s ease;
 }
 
-/* 总览中的章节进度缩略
-   章数会一直涨，所以缝隙与圆角由 JS 按章数写进 --seg-gap / --seg-radius 收缩：
-   12 章以内 6px、24 章以内 4px、48 章以内 2px、再往上 1px。
-   固定 6px 时约 50 章就会「缝隙总和 > 卡片宽度」，整行被撑破。 */
 .overview-chapter-row {
   display: flex;
   gap: var(--seg-gap, 6px);
@@ -1856,10 +1668,6 @@ a { color: inherit; text-decoration: none; }
   gap: 14px;
 }
 
-/* ---- 书架页脚「检查更新」 ----
-   只在 App 壳里真正可用（走原生桥强制检查）；浏览器里点它会显示
-   「请在 App 内使用此功能」。刻意用最小的视觉权重（11px 细下划线、--text-muted），
-   不跟目录、tab bar 抢注意力。 */
 .app-update-row {
   padding: 6px 18px 30px;
   text-align: center;
@@ -1878,9 +1686,6 @@ a { color: inherit; text-decoration: none; }
   opacity: 0.55;
 }
 
-/* 首页页脚下方：版本号 · 检查更新。
-   页脚本身上下留白较大（34/42px），这里用负外边距把它收进页脚的下留白里，
-   避免出现「页脚 — 空白 — 入口」两段独立留白。 */
 .home-footer + .app-update-row {
   display: flex;
   align-items: center;
@@ -2162,9 +1967,6 @@ body.reading-page {
 }
 
 /* 阅读内容 */
-/* 行距与段距：主题定基准（--reader-lh-base / --reader-para-base），
-   读者用 data-lh / data-para 做 ±差量。用差量而不是绝对值，是为了让四套主题
-   各自的行距口感不被统一抹平（信笺本来比晴窗松一点）。 */
 :root {
   --reader-lh-base: 2.0;
   --reader-para-base: 22px;
@@ -2178,32 +1980,12 @@ body.reading-page {
 :root[data-para="loose"] { --para-delta: 10px; }
 
 .chapter-content {
-  /* 每行字数。中文行长是排版里最影响观感的一个量，之前它是个隐变量：
-     左右各 20px 固定内边距，360 / 393 / 430 宽的手机分别排出 14、15、16 字一行，
-     同一章在不同机器上呼吸感完全不同，而且越宽的屏排得越挤。
-     现在列宽由字号反推——13 × (字号 + 字距)，多出来的宽度一律变成两侧留白，
-     所以任何机型、任何字号档位都是每行 13 字，正文仍然居中。
-     要调整行长，只改这一个数（13 改 14、改 12 都行），别去动 padding。 */
   --reader-cpl: 13;
   /* 字距。padding 的算式里要用到它，所以先提成变量，避免两处各写一份、改一处忘一处 */
   --reader-tracking: 0.4px;
-  /* 合成加粗的增宽比例。系统字体没有 Medium（多数 Android ROM 只有 400 与 700）时，
-     浏览器会把 400 描边加粗成 500，advance 跟着变宽 —— WebKit 实测 +1.3%
-     （单字 22.500 → 22.787px），Chromium 约 1%–2%。13 个字因此多出 3.7px，
-     正好把第 13 个字挤到下一行，实测整章从「13 字 150 行」掉成「12 字 156 行」。
-     所以列宽必须按字重预留这份膨胀：--reader-bold 是开关（由 applyFontTo 按档位写），
-     乘上 --reader-bold-bloat 才是实际比例。取 3%，覆盖各平台的合成加粗区间。 */
   --reader-bold: 1;
   --reader-bold-bloat: 0.03;
 
-  /* 顶部留出状态栏/刘海高度：沉浸模式隐藏状态栏后 env() 归零，正文自然贴顶。
-     左右取 max(20px, 上面算出的留白)：算式给出的留白小于 20px 说明屏幕窄到
-     放不下 13 字，此时退回 20px 的固定边距，宁可少排一个字也不挤到贴边。
-     算式里 -1px 是给亚像素舍入留的容差：正好卡在边界上时，浏览器可能少算半个像素
-     而把第 13 个字甩到下一行，白白排成 12 字。
-     字宽那一项要乘 (1 + 加粗膨胀)：楷体档 --reader-bold 为 0，列宽回到纯粹的
-     13 × (字号 + 字距)；黑体档为 1，多留一份合成加粗的余量。余量在 400 真字重下
-     会摊进去变成约 0.7px 的额外字距，肉眼几乎看不出，比掉字要好。 */
   padding: calc(24px + env(safe-area-inset-top, 0px))
            max(20px, calc((100% - var(--reader-cpl) * (var(--font-size-base) * (1 + var(--reader-bold) * var(--reader-bold-bloat)) + var(--reader-tracking)) - 1px) / 2))
            calc(48px + 28px);
@@ -2229,28 +2011,9 @@ body.reading-page {
 .chapter-content p {
   text-indent: 2em;
   margin-bottom: calc(var(--reader-para-base) + var(--para-delta));
-  /* 两端对齐：中文靠字间均分剩余空间把右端拉齐，末行不受影响（justify 不处理最后一行）。
-     不写这一行时，段落回落到默认左对齐，每行在「排得下的最后一个字」处断行；
-     再叠加断行禁忌（行首不能是 ，。」、行尾不能是 “（）与楷体标点自身的右侧留白，
-     右边缘会参差到一两字宽 —— 这是 2026-11-10 作者反馈的排版问题，不是字体缺陷。 */
   text-align: justify;
-  /* 长西文/数字串整体换行，不在词中间切碎。原来是 word-break: break-all —— 中文本来就能
-     逐字断行，那个声明只对西文生效，却会让 iPhone / 2000 这类串被切成两半；
-     切碎之后 justify 还要把它们拉满整行，字距会异常松。overflow-wrap: anywhere
-     只在「整词放不下」时才断开，比 break-all 保守，也比默认值多一层兜底。 */
   overflow-wrap: anywhere;
-  /* 字重由字体档位决定（reader.ui.js 的 applyFontTo 写这个变量）：
-     黑体档 410 —— 400 时正文竖笔约 0.076em，比常见阅读 App（思源黑体 Medium
-     约 0.105em）细一档，真机反馈「不够粗」；500 又粗过了头，450 / 420 也各差半分，
-     最后收到 410（屏幕渲染实测墨量 400 : 410 : 420 : 450 = 3198651 : 3406139 :
-     3507805 : 3802334）；
-     楷体档 400 —— 打包的楷体只声明了 400 一片，写 500 会被合成加粗、笔画发糊。
-     没有变量时（未执行脚本、旧缓存）落到 410，与默认黑体档一致。 */
   font-weight: var(--reader-weight, 410);
-  /* 这里曾经用 content-visibility: auto + contain-intrinsic-size: 2em 省渲染，
-     但它让「没进过视口的段落」高度只是估算值：跳进章节中间时整章高度是假的，
-     进度百分比、底部页码、剩余时间全部跟着偏，位置恢复也会一路漂。
-     一章不过几十段、几千字，全量排版本来就是毫秒级的事 —— 性能收益抵不上正确性。 */
 }
 
 .chapter-content blockquote {
@@ -2315,11 +2078,6 @@ body.reading-page {
   line-height: 1.9;
   color: var(--text-secondary);
 }
-
-/* ===== 章节流：往下滚接上下一章 =====
-   正文流里不再有「上一章 / 下一章」那一对（那对按钮会在无障碍树和 Tab
-   顺序里多出四个无意义的停留点）。章末的「一章一句」就是接缝：
-   滚过它 → 一段呼吸的留白 → 下一章标题。 */
 
 .reading-flow {
   display: block;
@@ -2505,13 +2263,6 @@ body.reading-page {
   opacity: 0.92;
 }
 
-/* 工具栏六项时的窄屏补偿（T02 · 搜索入口带来的第 6 项）
-   `.reader-menu-row` 是 `padding: 8px 6px 14px`，左右各 6px 在窄屏会把等分吃掉：
-   实测 **320px 下 6 项每项只有 47.0px**（低于 48 的触控下限），把左右内边距收到 2px
-   后是 **48.33px**。390px（58.7px）等其他档位本来就达标，**这一条只管 ≤340px**，
-   别把上面的 padding 直接改小 —— 那会把宽屏下工具栏的呼吸感一起去掉。
-   与本文件末尾那段「全书搜索」样式同属一次改动，但职责不同：这里管工具栏的宽度预算，
-   那里管搜索面板长什么样，review 时请分开看。 */
 @media (max-width: 340px) {
   .reader-menu-row {
     padding-left: 2px;
@@ -2641,20 +2392,6 @@ body.reading-page {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
-
-/* ===== 面板通用：底部抽屉（目录 / 摘句簿 / 设置 / 搜索 / 阅读数据）=====
-   五个面板都由 js/reader.ui.js 动态建出来，共用这一套壳。形态是**底部抽屉**
-   （不是居中弹窗）：贴住视口底边、左右占满（桌面 420px 居中，与阅读区同一条中线）、
-   上圆角 22px / 下圆角 0；进场 translateY(100%) → 0，退场反向，遮罩淡入淡出。
-
-   ⚠ 两条别再改回去：
-     · `align-items: flex-end` 是「贴底」的全部实现，改回 center 就变回居中弹窗；
-     · `.modal-overlay` 的 `overflow: hidden` 是必须的 —— 收起来时面板整体在视口
-       下方 100%，不裁剪的话它会撑出页面的可滚动区域（滚到底多出一片空白，
-       正是 HANDOVER「底部断层」那类症状）。
-
-   下拉关闭的手势在 js/reader.ui.js 的 initSheetDrag()（拦在 ui 层，engine / store
-   一行未动）。顶部 .modal-grabber 只是装饰横条，告诉读者「这东西能往下拖」。 */
 
 .modal-overlay {
   position: fixed;
@@ -2885,9 +2622,6 @@ body.reading-page {
   color: var(--accent-text);
   background: rgba(184,134,78,0.14);
 }
-/* ===== 设置抽屉 =====
-   宽度 / 圆角 / 阴影一律继承 .modal-panel（五个面板同一套几何，别再各自覆盖：
-   这里曾经写死 `min(92vw, 380px)` + 24px 圆角，改成抽屉后会露出左右两条缝）。 */
 
 .settings-modal .modal-header {
   padding: 18px 20px 14px;
@@ -3035,9 +2769,6 @@ body.reading-page {
   color: var(--text-muted);
 }
 
-/* 字体区最下面那行「导入自己的字体」。
-   故意做成虚线小按钮，不跟上面那排主按钮抢注意力 —— 这是少数人的需求，
-   但也是唯一能把读者手机上的字体真正带进网页的路（系统字体在 WebView 里拿不到）。 */
 .font-import-row {
   display: flex;
   align-items: center;
@@ -3249,13 +2980,6 @@ body.reading-page {
 
 /* ===== 全站深色：硬编码浅色表面覆盖 ===== */
 
-/* .phone-frame 本体：这是首页/同学录/剪贴本所有正文的最终底色。
-   浅色版在这里盖了一层暖白纱（rgba(255,252,246,.70)…），深色版以前**没有覆盖**，
-   于是 body 的深夜渐变被一层暖白纱盖住 → 表面仍是亮的，而文字跟着 --text 变成
-   近白的 #e9decb → 实测对比度 1.14~1.47:1（首页标题、光阴目录章节名、
-   同学录标题、剪贴本标题全部几乎不可见）。
-   这里按同样的三段结构反过来盖一层暖深纱：上端略浅、下端更深，
-   与 --site-bg(#1b1812→#16130d→#100e09) 以及 .home-hero 的深色渐变同一色系。 */
 :root[data-theme="dark"] .phone-frame {
   background: linear-gradient(180deg,
     rgba(38, 33, 24, 0.62) 0%,
@@ -3378,9 +3102,6 @@ body.reading-page {
 .home-link-row { margin: 0 16px 22px; }
 
 /* ===== 摘句簿导出按钮 ===== */
-/* 金底白字必须用 --accent-fill 一对值（白字 on #8f6636 = 5.09:1）。
-   原先写的是 --accent #b8864e，白字压上去只有 3.20:1 —— 摘句弹窗在章节页才能
-   打开，默认那 4 个审计页面看不到它，所以漏网了一轮。 */
 .modal-export {
   margin-left: auto;
   margin-right: 6px;
@@ -3436,10 +3157,6 @@ body.reading-page {
 .book-cover-text {
   text-shadow: 0 1px 10px rgba(20, 12, 4, 0.45);
 }
-
-/* ============================================================
-   改版组件（2026-10-21）：窗台首页 / 光阴目录 / tab bar / 同学录 / 落款与印
-   ============================================================ */
 
 /* ---- 首页页头 ---- */
 .home-header {
@@ -3618,10 +3335,6 @@ body.reading-page {
   padding: 16px 18px 0;
 }
 
-/* 首屏预留高度：目录由 JS 填充，空态高度为 0，填入后会顶动页脚（CLS）。
-   单条 .date-item 实测约 41.5px（12+10 内边距 + 13px 衬线行高），年份条约 38px
-   （14 上内边距 + 22px 年份 + 细分隔线）。3 章 + 1 条年份 ≈ 165px，这里取 168px
-   留字体差异余量。章节继续增加时仍会有一行左右的位移，属可接受范围。 */
 #dateList {
   min-height: 168px;
 }
@@ -3643,10 +3356,6 @@ body.reading-page {
   color: var(--accent-text);
 }
 
-/* 学年学期分隔条：日期跨年/跨学期会重名，这里按「学年 + 学期」分段，
-   标签形如「二〇二二 · 高一上」，居中、两边细线收束。
-   刻意压到 12.5px（章节行 13px、日期 11px）——它是分节符，不是标题，
-   字号一大就会跟章节标题抢注意力。 */
 .date-year {
   display: flex;
   align-items: center;
@@ -3710,12 +3419,6 @@ body.reading-page {
 }
 
 .date-item-date {
-  /* 单日最长是「九月二十七」5 个字，11px 下约 55px，所以 66px 够用，禁止折行。
-     曾经为「九月一日–二十七」这种区间句式放到 96px，结果多出 30px 空白，
-     把章节名推到整行正中（左留白 121px、右留白 95px），看着像标题居中了。
-     现在多日期改成一格一跳的轮播，一格只显示一个日期，宽度收回到 66px；
-     只有系统开了「减少动效」退回区间写法时才加 .is-range 临时放到 96px。
-     固定宽度是为了让各行标题左边缘对齐，宁可单日留白也别让列宽随内容跳。 */
   flex-shrink: 0;
   width: 66px;
   font-size: 11px;
@@ -3742,9 +3445,6 @@ body.reading-page {
   color: var(--text);
 }
 
-/* 一章写了多天时（第一章 九月一日 → 九月十七），日期列做小幅轮播：
-   每 4 秒「跳」一下，比塞成「九月一日–十七」省列宽，也更有日子在走的意思。
-   只动 opacity/transform，不触发布局。 */
 .date-rotator {
   display: inline-block;
 }
@@ -3804,11 +3504,6 @@ body.reading-page {
 .tab-item {
   flex: 1;
   text-align: center;
-  /* 用 --text-secondary 而不是 --text-muted：11px 小字压在半透明 tab 栏上，
-     实测底色是 #f1e6d6（暖白纱叠在页面暖底上），--text-muted #756654 只有
-     4.49:1，恰好差 0.01 不达标（对比度审计报 12 项，全是四个 tab 的文字）。
-     #6e5f4f 在同一底色上约 5.0:1，达 4.5 门槛；与激活态的金色仍是两档层次。
-     —— 2026-10-27，Windows 端同步 Mac 改动后跑审计发现。 */
   color: var(--text-secondary);
   text-decoration: none;
 }
@@ -3828,9 +3523,6 @@ body.reading-page {
 }
 
 .tab-page-body {
-  /* 这里不留 padding：body 的内边距区只有 --site-bg 那层深色渐变，
-     而正文底色是 .phone-frame 上的暖白纱 —— 留白落在 body 上，页面最底部
-     就会露出窄窄一条深色，读者看到的就是「断层」。 */
   padding-bottom: 0;
 }
 
@@ -3992,10 +3684,6 @@ body.reading-page {
   margin-top: 4px;
 }
 
-/* ---- 同学录：顶栏里的分类入口（新叶 / 青枝 / 乔木）----
-   分组标题只在该组开头出现，人在组内就没法换组。顶栏本来就是 sticky，
-   所以把入口放在它右侧：一直在屏幕上，又不用额外加一条会压住卡片的横条。
-   纯文字、无底、无边框、无数字；当前组用金色 + 短下划线。 */
 .char-tabs {
   margin-left: auto;
   display: flex;
@@ -4022,11 +3710,6 @@ body.reading-page {
   opacity: 0.6;
 }
 
-/* ---- 同学录：分组标题本身就是「跳到本组」的按钮 ----
-   作者否掉了额外的按钮条 + 人数角标（2026-10-28）：多出来的白条会压住卡片，
-   数字也没必要。所以按钮就长在原有的字样上，视觉与之前保持一致，
-   只是多了一点按压反馈。点一下 = 把本组标题顶到视口上方（顶栏下面），
-   分组标题在屏幕下沿只露一半时特别好用。 */
 .char-group-label {
   scroll-margin-top: 72px;      /* 让开 sticky 顶栏（实测 61px）+ 一点呼吸 */
   -webkit-tap-highlight-color: transparent;
@@ -4040,11 +3723,6 @@ body.reading-page {
   .char-group-label:active { opacity: 1; }
 }
 
-/* ---- 同学录卡片：整卡可点进详细页 ----
-   做法是把 .char-more 的 ::after 撑满整张卡片当热区（比给 section 绑 JS 轻，
-   也不用把卡片改成 <a> —— 卡里的立绘按钮是 <button>，嵌进 <a> 不合法）。
-   立绘按钮要留在最上面，所以 .char-photo 提了 z-index；
-   点别处 = 点热区，按下时 .char-more 会变淡，作为整卡的按压反馈。 */
 .char-more {
   display: inline-flex;
   align-items: center;
@@ -4307,9 +3985,6 @@ body.reading-page {
   line-height: 1.9;
 }
 
-/* ===== 沉浸阅读：底部固定状态条 =====
-   参考番茄小说的处理：整条固定、不透明、不随正文滚动，
-   正文滚到它下面会被盖住；左侧是章节内位置，右侧是时间与电量。 */
 #readerStatus {
   position: fixed;
   left: 0;
@@ -4388,9 +4063,6 @@ body.app-immersive .reader-topbar {
   padding-top: 10px;
 }
 
-/* ===== 沉浸模式的固定章节条（番茄同款） =====
-   与页面同底色、完全不透明，是一条「固定页」而不是半透明浮层：
-   正文滚动时从它下方穿过并被完整遮住，不会出现文字与条子互相透出来的情况。 */
 body.app-immersive #readerTopbar:not(.visible) {
   transform: none;
   /* 贴边通栏：留着圆角和 12px 边距的话，四周缝隙会漏出下面的正文 */
@@ -4429,12 +4101,6 @@ body.app-immersive .chapter-content {
 }
 
 :root[data-theme="dark"] #readerStatus { opacity: 0.55; }
-
-/* ===== 同学录立绘灯箱（js/lightbox.js） =====
-   复用弹窗通用基建（.modal-overlay / .modal-backdrop / .modal-close / .visible），
-   不另造 z-index 与过渡体系；.modal-panel 是 370px 白底面板，灯箱要全屏舞台，
-   所以舞台部分用 .lightbox-* 自理。深浅两主题共用同一套暖白文字 + 深色遮罩
-   配色（遮罩永远是深的，不需要按主题分叉）。 */
 
 /* 真实立绘整块是可点击按钮（<button> 无 href，transition.js 不会接管）。
    按钮重置照 .reader-tap-zone 的既有写法。 */
@@ -4491,9 +4157,6 @@ body.app-immersive .chapter-content {
   opacity: 1;
 }
 
-/* ---- 遮罩：比通用弹窗的 0.46 更深，立绘要压暗环境 ----
-   实测口径：0.84×#20160c 叠在最亮的页面底色（浅色主题 #fbf7ef）上约为 #423626，
-   暖白说明文字对比 ≥5.9:1，浅/深主题都过 4.5:1（复跑 tools/contrast-audit.mjs）。 */
 .lightbox-overlay {
   flex-direction: column;
   align-items: stretch;
@@ -4503,12 +4166,6 @@ body.app-immersive .chapter-content {
   background: rgba(32, 22, 12, 0.84);
 }
 
-/* ---- 舞台：整屏 flex 列，上图下文 ----
-   z-index 压过遮罩；关闭按钮 z-index 再压一层（浮在立绘右上角）。
-   pointer-events:none：stage 是 overlay 里唯一的 in-flow flex 子元素、必然铺满
-   全场，若不豁免会把 .modal-backdrop 的命中区全盖住（视觉透明但命中测试不过去，
-   表现为「点深色区域毫无反应」——QA Round 1 的缺陷）。真正要交互的子区
-   （.lightbox-frame 手势区）自行 pointer-events:auto 恢复。 */
 .lightbox-stage {
   position: relative;
   z-index: 1;
@@ -4529,12 +4186,6 @@ body.app-immersive .chapter-content {
   transform: scale(1);
 }
 
-/* ---- 图片容器：度量基准 + 手势接管区 ----
-   overflow:hidden 把放大后探出的部分裁掉（不遮说明文字）；
-   touch-action:none 把捏合 / 拖动从浏览器手势里抢过来交给 JS。
-   pointer-events:auto 只挂在 .visible（打开）状态下：父级 .lightbox-stage 是
-   none，本元素若无条件 auto，关闭时那层隐形 frame 会重新变得可命中，变成一块
-   盖住全页的点击护盾（人物卡在它下面，全点不到）——QA Round 2 抓到的第二个坑。 */
 .lightbox-frame {
   flex: 1;
   min-height: 0;
@@ -4573,11 +4224,6 @@ body.app-immersive .chapter-content {
   padding-top: 14px;
 }
 
-/* ---- 说明文字：人物名 + 一行手势提示 ----
-   固定暖白配色，不跟主题令牌走——遮罩永远是深的，两个主题下同一套值。
-   未打开时自身 opacity:0（而不是只靠父级 .lightbox-stage 的 0）：元素自身的
-   computed opacity 为 0 才算真正的「不可见」，对比度审计（tools/contrast-audit.mjs）
-   也只认这一条，否则关闭状态下的静态文案会被误报成未达标。 */
 .lightbox-name {
   display: block;
   font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
@@ -4630,9 +4276,6 @@ body.app-immersive .chapter-content {
   background: rgba(30, 21, 12, 0.75);
 }
 
-/* ===== 自动滚动悬浮条（js/reader.js） =====
-   仅在自动滚动进行时出现；置于底部状态栏上方、弹层（z400）之下。
-   工具栏显示必然伴随一次触摸 → 自动滚动已停，因此不会与底部工具栏重叠。 */
 #autoScrollPill {
   position: fixed;
   right: 14px;
@@ -4681,10 +4324,6 @@ body.app-immersive .chapter-content {
 #autoScrollPill .auto-pp { font-size: 11px; letter-spacing: -1px; }
 #autoScrollPill .auto-stop { font-size: 12px; opacity: 0.8; }
 
-/* ===== 阅读辅助（js/reader.js）=====
-   对话高亮：只给「」/“” 内的说话内容加淡底，不改变字号与行高，
-   所以开与关之间正文高度完全一致，不会引起滚动位置跳动。
-   底色用主题金调的低透明度，夜间再抬高一点保证能看出来。 */
 .chapter-content .dlg {
   background: rgba(201, 162, 84, 0.16);
   border-radius: 3px;
@@ -4710,11 +4349,6 @@ body.app-immersive .chapter-content {
   font-variant-numeric: tabular-nums;
 }
 
-/* ===== 新章节更新横幅（js/announce.js）=====
-   位置：贴在底部 tab 栏上方（fixed + bottom 抬到 tab 高度之上），不遮挡导航。
-   颜色：底用 --bg-card + --border，文字用 --text / --accent-text，
-   全部满足 WCAG 4.5:1（本文件由 tools/contrast-audit.mjs 一并审计）。
-   动效：translateY + opacity 两帧过渡；prefers-reduced-motion 时直接显示不动画。 */
 .notice-bar {
   position: fixed;
   left: 12px;
@@ -4784,14 +4418,7 @@ body.app-immersive .chapter-content {
   .notice-bar { transition: none; }
 }
 
-/* ===== 章末收束卡（只出现在最后一章） =====
-   气质要和「这一章的风」区分：余韵卡是一张暖纸卡片，收束卡是书末的版权页 ——
-   不要底、不要阴影，只靠一道细线和留白收尾。 */
 .chapter-coda {
-  /* 底部留白必须用 padding，不能用 margin：
-     margin 会穿过 .chapter-block / #readingFlow / .reading-wrapper 一路塌陷到外面，
-     容器高度不含它，滚到底就露一条 body 底色的缝（body 是渐变、阅读区是纯色，
-     色差正好成了一道「断层」）。 */
   margin: 0 20px;
   padding: 30px 0 calc(48px + var(--safe-bottom));
   text-align: center;
@@ -4923,34 +4550,16 @@ body.app-immersive .chapter-content {
   border-color: var(--accent-hover);
 }
 
-/* ===== 阅读页底色补缝 =====
-   body 用 --site-bg（线性渐变，首页/目录要那层光），阅读容器用 --reading-bg（纯色）。
-   两者不是同一个值，任何露出 body 的缝隙都会变成一条色带 —— 阅读页直接把 body
-   也铺成阅读色，哪怕以后再有 1px 的漏底也看不出来。
-   类名由 reader.ui.js 在初始化时打到 body 上（章节页是生成物，不手改）。 */
 body.is-reading {
   background: var(--reading-bg);
 }
 
-/* ===== 「点击翻页」层的按下反馈 =====
-   这一层 fixed 全屏盖在正文上，正文按钮的点击要靠转发（见 reader.ui.js 的
-   elementUnder）。转发出来的 click 不会触发 :active，所以按下时临时打这个属性
-   让被点到的元素自己缩一下，手感和直点一致。 */
 [data-press] {
   transform: scale(0.97);
   opacity: 0.86;
   transition: transform 0.12s ease, opacity 0.12s ease;
 }
 
-/* ===== 站内跳转的「正在打开」细线（js/nav-feedback.js）=====
-   页面过渡动画停用后，从按下链接到新页画出正文之间有一段 0.3~0.9s 的
-   完全静止（4G 实测 TTFB 524ms + 首绘 884ms）。这段时间里屏幕上没有任何
-   变化，读者会当成「点空了 / 卡住了」。
-   这条 2px 线在按下的那一帧就亮起来，明确表示「在打开」：
-     · 不拦点击（pointer-events: none），不加任何导航延迟，不遮正文；
-     · 延迟 60ms 才淡入 —— 命中缓存的那次跳转（约 100ms）根本看不见它，
-       不会闪一下又消失；
-     · 新页一开始解析，旧文档就没了，线自然跟着消失，不需要收尾逻辑。 */
 .nav-opening-bar {
   position: fixed;
   top: 0;
@@ -4995,15 +4604,6 @@ body.is-reading {
   .nav-opening-bar.is-on { opacity: 0.75; }
   .date-item { transition: none; }
 }
-
-/* ===== 全书搜索（js/reader.ui.js 的「全书搜索」一段）=====
-   面板**完全复用** .modal-overlay / .modal-backdrop / .modal-panel / .modal-close /
-   .modal-body 这套基建（与目录、设置、摘句同一条路径）：遮罩深浅、圆角、阴影、
-   z-index、进出场过渡、Esc 逐层关闭、滚动锁全部继承，这里一行都不重造。
-   本段只加「内容长什么样」：输入行、汇总行、章名、结果项、空态/等待态、折叠行。
-
-   为什么写在文件末尾：顶部分区目录里的行号是「插入本目录之后」的实测值，
-   插在中间会让后面几百条行号一起漂。新增段落一律追加在末尾，再补一行目录。 */
 
 .search-modal {
   max-height: 76vh;
@@ -5100,9 +4700,6 @@ body.is-reading {
   word-break: break-word;
 }
 
-/* 命中词：双通道（底色 + 字重）。列表里与正文里是**同一套**样式 ——
-   读者点进去看到的那一处，和刚才列表里看到的是同一个记号。
-   color 不覆盖（inherit）：高亮不该让字本身变难读。 */
 .search-hit {
   background: var(--hit-bg);
   box-shadow: 0 0 0 2px var(--hit-bg);
@@ -5127,20 +4724,6 @@ body.is-reading {
   line-height: 1.7;
   color: var(--text-muted);
 }
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   v5 视觉精修层 —— 2026-11-11，作者四屏逐屏通过后上线（试验版）
-   ───────────────────────────────────────────────────────────────────────────
-   ★ 这是「试验层」：所有精修集中在这一段，上面任何原有规则都没改。
-   ★ 回退：整段删除，或 `git revert <本次 commit>` —— 站点立刻回到原外观。
-   ★ 真机确认保留后，再把下面的值合并回各自组件的原始规则里。
-
-   六项（提案样张 _design/ui-rebuild/visual-proposal-v5.html）：
-     ① 明度三台阶  ② 1px 发丝线  ③ 对齐网格  ④ 柔到没形状的阴影
-     ⑤ 干净字阶    ⑥ 短动效（400 → 200ms）
-   底线：色相 / 圆角体系 / 楷体 / 结构全保留；不做窗口隐喻、不加英文 mono 标签。
-   装饰两项（叶形图标、章末朱印）线上本就存在，本层不新增也不删除。
-   ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
   /* ① 明度：压平三段渐变，卡片由纯白改柔白，stage→page→surface 落差明确但更柔 */
@@ -5224,24 +4807,6 @@ body.is-reading {
   .chapter-section, .chapter-content { animation: none; }
   .rc-btn:active, .date-item:active { transform: none; }
 }
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   v6 视觉层 —— 2026-11-11「梧桐叙事线 + 扉页首屏」试验版
-   ───────────────────────────────────────────────────────────────────────────
-   ★ 与 v5 同样的「试验层」：全部改动只在这一段，上面任何原有规则一行没改，
-     HTML / JS / 生成器模板 / PRECACHE 清单一个字节没动。
-     ★ 回退 = 整段删除 → npm run bump --write → CACHE +1 → 全量回归。
-   ★ 样张：_design/ui-rebuild/visual-proposal-v6.html（按「全书」档落地）。
-   ★ 作者裁定：「进度即树」不做 —— .rc-bar / #treeBand 完全不动，百分比进度条保留。
-   ★ 样张是仿真，线上真实 DOM 不同，故用纯 CSS 适配：
-       首页扉页   → .home-header 伪元素排印（保留 #leafPillText 的 JS 绑定）
-       阅读页书眉 → 挂在 .chapter-content h1::before，每章自动带，不碰 13 字版心
-       同学录扉页 → 用页面已有的 .char-hero（「一页页翻过去 / 都是他们」）升级排印
-       章节行叶形 → 线上本来就是三态叶形 SVG（已读/在读/未读），不改，避免丢状态
-   ★ 新增小字统一 12px（沿用 v5 已确认字阶）；只用系统宋体栈，
-     不碰 ZCOOL 子集（「卷 / 同学录 / 都是他们」不在那 171 字形里，用了会回落）。
-   ★ 三枚装饰图形用 CSS 变量存 data-URL，夜读只换颜色变量，不加外链、不加字体。
-   ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
   /* mask 只取 alpha，所以同一份带色 SVG 既能直接当背景，也能当装饰形状上当前景色 */
@@ -5417,33 +4982,6 @@ body.is-reading {
 
 /* v6 层结束 ─────────────────────────────────────────────────────────────── */
 
-
-/* ============================================================================
-   v7 视觉对齐层（第一批：页面边缘 + 卡片内边距 + 嵌套缩进）
-   ----------------------------------------------------------------------------
-   起因：v5 精修层的「左边缘统一 24px」只覆盖了首页与章节页余韵卡，
-        其余页面仍是各写各的 —— 书架 16、人物页 14、剪贴本 18、
-        同学录卡片 30 / 分组标签 54（嵌套 padding 累积）。
-
-   做法：只统一三件事，不换风格、不动结构 —
-         ① 页面边缘   --gutter   24px（一级容器的 margin / padding-inline）
-         ② 卡片内边距 --card-pad 24px（卡片类元素，原 20/22）
-         ③ 嵌套缩进   --indent   8px（卡片内列表，不再逐层累加）
-
-   冻结区（这些「不齐」是设计，不是 bug，一律不碰）：
-         · 阅读正文 .chapter-content x=44 —— 13 字版心 + 字重 410
-         · 书架书名 / 人物页姓名 x=147 / 121 —— 被封面横向推开
-         · .reader-bottombar x=12 —— 固定工具栏
-         · .detail-header / .tab-bar 全宽 —— sticky 与底部导航
-         · .modal-panel 圆角 22px —— e2e 几何断言
-         · 三态叶形 SVG —— 已读/在读/未读的状态语义
-         · 章末余韵卡 .chapter-afterglow 24 / 卡头 49 —— 已对齐
-
-   待办（第二批，本轮不做）：圆角 14/16/18 收编为 12/20、字阶 10/11px 升到 12px。
-
-   回退：整段删除即可，v5 / v6 层与上面所有原有规则零改动。
-   ============================================================================ */
-
 :root {
   --gutter: 24px;    /* 页面边缘：一级容器距屏幕两侧 */
   --card-pad: 24px;  /* 卡片内边距：卡片内容距卡片边缘 */
@@ -5522,30 +5060,6 @@ body.is-reading {
 }
 
 /* v7 层结束 ─────────────────────────────────────────────────────────────── */
-
-
-/* ============================================================================
-   v8 视觉收编层（第二批：圆角裸值 + 字阶下限）
-   ----------------------------------------------------------------------------
-   背景：v5 层已把令牌定成 --radius: 12px / --radius-lg: 20px，
-        但组件里还散着一批**没走令牌的裸值**（14 / 16 / 18px），
-        以及 10 / 11px 的元数据小字。这一层把它们收编干净。
-
-   ① 圆角：裸值 → 12（小卡/列表项/输入）或 20（大卡/主按钮/浮动栏）
-   ② 字阶：10 / 11px → 12px（元数据、徽章、工具栏、tab 标签）
-
-   不动（有意保留）：
-         · .modal-panel 22px —— e2e 断言 borderTopLeftRadius/BottomLeft = 22px/0px
-         · .character-card 实际渲染 8px —— 与左侧 3px 强调竖条配套的紧圆角，
-           不是「漏掉的中间值」；改成 20 会与竖条打架
-         · .detail-cover 12px —— 已经对了
-         · .chapter-afterglow 20px —— 走的是 var(--radius-lg)，已对
-         · .book-cover 的 3px 8px 8px 3px —— 书脊造型，不是通用圆角
-         · 12.5px 年份分节符、22px 阅读正文 —— 视觉/版心需要，冻结
-         · 999px 胶囊与 50% 头像 —— 语义值
-
-   回退：整段删除即可，v5 / v6 / v7 层与所有原有规则零改动。
-   ============================================================================ */
 
 /* ---------- ① 圆角：14 / 16 / 18px 裸值收编 ---------- */
 
@@ -5640,24 +5154,6 @@ body.is-reading {
 }
 
 /* v8 层结束 ─────────────────────────────────────────────────────────────── */
-
-
-
-
-/* ============================================================================
-   v9 扫光骨架屏（JS 渲染容器在内容到达前的占位）
-   ----------------------------------------------------------------------------
-   为什么落在这三个容器上：全站目录 / 人物 / 正文都是同步渲染（实测「CSS 到位 →
-   内容出现」空窗 0ms），唯一真实的空白是 #dateList / #chapterList / #quotesList
-   —— 它们由 body 末尾的脚本填充，脚本下载执行前就是空容器。
-
-   为什么用 :empty：容器在 HTML 里写成 `...id="dateList"></div>`（无空白子节点），
-   脚本一填 innerHTML，:empty 立刻不成立 —— 骨架连同扫光整体消失，
-   **零 JS、零 HTML 改动、零生命周期管理**，失败时（脚本没跑起来）也能优雅退化。
-
-   扫光只动 transform：不碰 left / background-position，不触发重排重绘，
-   只走合成层；will-change 提前提层，避免首帧抖动。
-   ============================================================================ */
 
 :root {
   --sk-tone: rgba(61, 50, 40, 0.075);

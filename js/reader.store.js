@@ -1,18 +1,9 @@
 // @ts-check
-/**
- * 存储层 —— 所有 localStorage 读写的唯一入口
- *
- * 这个文件不认识 DOM，也不认识滚动。它只保证三件事：
- *   1. 键名与格式集中在这一个地方（加字段不会漏改某一处）
- *   2. 读到旧数据时补齐形状（normalizeFootprints）
- *   3. 能整体导出 / 导入（备份恢复、换设备迁移）
- *
- * 依赖：无。被 reader.engine.js 与 reader.ui.js 使用。
- */
+/* 阅读数据存取 —— 进度、书签、摘句、设置持久化
+   设计说明、历史与踩坑记录见 _design/notes/reader.store.js.md（原文按行号归档）。 */
 (function() {
   'use strict';
   var LY = window.LY || (/** @type {any} */ (window.LY = {}));
-
 
   function idFromPath(path) {
     return path.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-');
@@ -20,9 +11,6 @@
 
   var chapterId = idFromPath(window.location.pathname);
 
-  /* 换章不换页时页面路径由 replaceState 改写，章节 id 必须跟着换 —— 否则
-     进度、锚点、读完标记全都还记在上一章名下。传文件名（chapter-0N.html），
-     目录沿用当前页面的目录。 */
   function setChapterId(file) {
     var path = window.location.pathname;
     var dir = path.replace(/[^\/]*$/, '');
@@ -31,14 +19,7 @@
     return chapterId;
   }
 
-
-  /* ===== 存储版本 =====
-     阅读数据全部住在 localStorage 的 reader-* 键里，是「本地优先」的唯一副本
-     —— 所以两件事必须做对：加字段时能迁移，数据能导出。
-     v1 → v2：footprints 增补 time（累计秒）与 dayTime（按天秒数）。 */
-
   var STORAGE_SCHEMA = 2;
-
 
   /** @returns {void} */
   function migrateStorage() {
@@ -50,7 +31,6 @@
     localStorage.setItem('reader-schema', String(STORAGE_SCHEMA));
   }
 
-
   /** @returns {Anchor|null} */
   function readAnchor() {
     var raw = localStorage.getItem('reader-anchor-' + chapterId);
@@ -61,14 +41,11 @@
     } catch (err) { return null; }
   }
 
-
-
   function getStoredQuotes() {
     var raw = localStorage.getItem('reader-quotes');
     if (!raw) return [];
     try { return JSON.parse(raw) || []; } catch (err) { return []; }
   }
-
 
   function saveStoredQuotes(quotes) {
     localStorage.setItem('reader-quotes', JSON.stringify(quotes));
@@ -77,7 +54,6 @@
       return data;
     });
   }
-
 
   function recordFootprints() {
     mergeFootprints(function(data) {
@@ -92,7 +68,6 @@
     });
   }
 
-
   function recordThemeUse(theme) {
     mergeFootprints(function(data) {
       if (!data.themeCounts || typeof data.themeCounts !== 'object') data.themeCounts = {};
@@ -102,14 +77,12 @@
     });
   }
 
-
   /** @param {(data: Footprints) => (Footprints|void)} mutator @returns {void} */
   function mergeFootprints(mutator) {
     var data = readFootprints();
     data = mutator(data) || data;
     localStorage.setItem('reader-footprints', JSON.stringify(normalizeFootprints(data)));
   }
-
 
   /** @returns {Footprints} */
   function readFootprints() {
@@ -133,7 +106,6 @@
     return data;
   }
 
-
   function trimDayTime(map) {
     var keys = Object.keys(map);
     if (keys.length <= 180) return;
@@ -141,29 +113,22 @@
     for (var i = 0; i < keys.length - 180; i++) delete map[keys[i]];
   }
 
-
   function getTodayToken() {
     var d = new Date();
     return [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('-');
   }
-
 
   function getCurrentFileName() {
     var path = window.location.pathname;
     return path.substring(path.lastIndexOf('/') + 1) || 'chapter-01.html';
   }
 
-
-  /** 当前章的标题。
-   *  无限流下页面里躺着好几章，直接取第一个 h1 会永远返回第一章 ——
-   *  所以有章节块时只认探测线所在那一块。 */
   function getCurrentChapterTitle() {
     var engine = window.LY && window.LY.engine;
     var block = engine && engine.currentBlock ? engine.currentBlock() : null;
     var el = (block || document).querySelector('.chapter-content h1');
     return el ? el.textContent.trim() : document.title;
   }
-
 
   var DATA_KEY_RE = /^reader-[a-z0-9-]+$/;
 
@@ -192,19 +157,6 @@
     };
   }
 
-
-  /* ===== S1：带自定义字体的导出桥（Android 全原生化 M1） =====
-     自定义字体存在 IndexedDB `linyuan-font` / `fonts` / `user`，localStorage
-     里只有文件名（reader-custom-font）；原生版又读不到 WebView 的存储域。
-     所以升级成原生 App 之前，必须把字体二进制一并导出成备份文件。
-
-     契约（IMPLEMENTATION §6.2.3）：在 collectReaderData() 的旧结构之外
-     **只追加** bridge:1 与 fonts[]，一个旧字段都不删不改 —— 旧备份文件、
-     WebView 版自身的 importReaderData()、原生侧导入器三条路径零回归。
-
-     失败降级：隐私模式 / IDB 被禁 / 记录损坏，一律返回 fonts:[]。
-     「读字体失败」绝不能变成「整个备份导出不了」。 */
-
   var EXPORT_FONT_DB = 'linyuan-font';
   var EXPORT_FONT_STORE = 'fonts';
   var EXPORT_FONT_REC = 'user';
@@ -219,9 +171,6 @@
     return 'application/octet-stream';
   }
 
-  /* ArrayBuffer → base64：按 3 的倍数分块 btoa 再拼接。
-     每块 24576 字节，除末块外不会产生 '='，直接 join 仍是合法 base64；
-     分块是为了避免 24MB 字体在 WebView 里一次性堆出 ~32MB 字符串峰值。 */
   function exportBufferToBase64(buf) {
     var bytes = ArrayBuffer.isView(buf)
       ? new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)
@@ -298,7 +247,6 @@
       return build([]);
     });
   }
-
 
   /** @param {string} text @returns {string} 出错时返回中文原因，成功返回空串 */
   function importReaderData(text) {

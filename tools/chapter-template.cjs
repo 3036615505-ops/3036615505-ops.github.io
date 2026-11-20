@@ -37,7 +37,7 @@ const NOVEL_DIR = path.join(ROOT, 'novel');
  * new-chapter.js 写盘后拿它自检，render-chapter.mjs 拿它检查已有页面。
  */
 const ASSET_SCRIPTS = [
-  'chapters.js', 'transition.js',
+  'chapters.js',
   'reader.flags.js', 'reader.dom.js', 'reader.store.js', 'reader.engine.js', 'reader.ui.js',
   'reader.js'
 ];
@@ -387,7 +387,6 @@ ${sealHtml}  </div>
   </div>
 
   <script src="../js/chapters.js?v=${assetVersion}"></script>
-  <script src="../js/transition.js?v=${assetVersion}"></script>
   <script src="../js/reader.flags.js?v=${assetVersion}"></script>
   <script src="../js/reader.dom.js?v=${assetVersion}"></script>
   <script src="../js/reader.store.js?v=${assetVersion}"></script>

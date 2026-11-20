@@ -1,13 +1,6 @@
 // @ts-check
-/**
- * 阅读引擎 —— 位置、滚动、计时、自动滚屏
- *
- * 这里只做「和排版打交道」的事：把滚动位置换算成段落 + 比例、改版式后把人
- * 放回同一句、把阅读时间记下来。所有界面更新都通过顶部 shim 交给 ui.js，
- * 这个文件不直接碰面板和样式。
- *
- * 依赖：reader.store.js（在前面）、reader.ui.js（在后面，运行时才取）
- */
+/* 阅读引擎 —— 位置、滚动、计时、自动滚屏
+   设计说明、历史与踩坑记录见 _design/notes/reader.engine.js.md（原文按行号归档）。 */
 (function() {
   'use strict';
   var LY = window.LY || (/** @type {any} */ (window.LY = {}));
@@ -38,16 +31,9 @@
     return pct;
   }
 
-
-  /* ===== 章节块 =====
-     无限流把多章接进同一条滚动，于是「当前章」不再等于「当前页面」。
-     判断依据和锚点共用一条探测线（视口上方 15%）：探测线落在哪一块，
-     那一块就是读者正在读的章。单块时它等于整页，与旧算法完全等价。 */
-
   function blocks() {
     return document.querySelectorAll('.chapter-block');
   }
-
 
   /** @returns {Element|null} */
   function currentBlock() {
@@ -60,7 +46,6 @@
     return list[0];
   }
 
-
   function getCurrentProgressPct() {
     var block = currentBlock();
     if (!block) return 0;
@@ -70,7 +55,6 @@
     if (span <= 0) return rect.top < 0 ? 100 : 0;
     return clampProgress(Math.round((-rect.top / span) * 100));
   }
-
 
   function scrollToProgress(pct) {
     pct = clampProgress(pct);
@@ -82,36 +66,20 @@
     window.scrollTo({ top: span <= 0 ? top : top + (pct / 100) * span, behavior: 'auto' });
   }
 
-
-  /* ===== 位置锚点 =====
-     只存百分比时，改字号 / 行距 / 宽度 / 字体都会让整章重新排版，
-     「47% 对应的像素位置」和「47% 对应的那句话」就分家了 —— 回来会偏半屏。
-     所以额外存「第几段 + 段内比例」：恢复时按段落定位，百分比只作兜底。
-     段落取 .chapter-content 里的 <p>，与正文结构一一对应，改版式不影响序号。 */
-
   var PROBE_RATIO = 0.15;   /* 取视口上方 15% 处的段落做锚点，避开固定章节名条 */
 
-  /* 落点比率：搜索跳转要「命中段落停在视口上方约 1/3」，比探测线略低，
-     好让读者看得到这一句的上文。它只是一个**显示**参数，不进存储 ——
-     存储里记的仍是「第 P 段位于 15% 探测线处」这个相对关系。 */
   var LANDING_RATIO = 1 / 3;
 
   var userScrolled = false; /* 用户自己滚过之后，就不再强行把我们记的位置按回去 */
 
   var restoring = false;    /* 恢复过程中不要写盘：否则会用错位的中间态覆盖好锚点 */
 
-
-  /** 某个章节块里的正文段落（0 基、全量，**不过滤空段**）。
-   *  口径必须与索引构建、（ui 侧）搜索索引完全一致，否则「第 N 段」会错位。
-   *  @param {Element|Document|null} block
-   *  @returns {NodeListOf<Element>|Array} */
   function paragraphsIn(block) {
     if (!block) return [];
     var article = block.querySelector ? block.querySelector('.chapter-content') : null;
     if (!article) return [];
     return article.querySelectorAll('p');
   }
-
 
   function contentParagraphs() {
     var block = currentBlock();
@@ -121,7 +89,6 @@
     if (!article) return [];
     return article.querySelectorAll('p');
   }
-
 
   /** @returns {Anchor|null} */
   function getCurrentAnchor() {
@@ -145,12 +112,6 @@
     return { p: getCurrentProgressPct(), i: idx, o: Math.round(off * 1000) / 1000 };
   }
 
-
-  /** 把某个块里的第 anchor.i 段放到「视口 lineRatio 处」。ratio 省略即 PROBE_RATIO。
-   *  @param {Element|Document|null} block 章节块（也可传 document —— 旧页面没有 .chapter-block）
-   *  @param {Anchor|null} anchor
-   *  @param {number} [lineRatio]
-   *  @returns {boolean} 是否真的滚了 */
   function scrollToAnchorIn(block, anchor, lineRatio) {
     if (!anchor || typeof anchor.i !== 'number' || anchor.i < 0) return false;
     var paras = paragraphsIn(block || document);
@@ -164,7 +125,6 @@
     return true;
   }
 
-
   /* 第二参数是「探测线比率」：不传时行为与旧版逐字等价（默认 PROBE_RATIO）。
      搜索跳转传 LANDING_RATIO，位置记忆那条路径一个字符都不用改。 */
   /** @param {Anchor|null} anchor @param {number} [lineRatio] @returns {boolean} */
@@ -172,17 +132,6 @@
     return scrollToAnchorIn(currentBlock() || document, anchor, lineRatio);
   }
 
-
-  /* ===== 一次性落位指令（landing）=====
-     搜索跳转要用「把命中段落放到视口 1/3」这一套落位时序，但那套时序（120/600ms、
-     fonts.ready、load、ResizeObserver）只存在于 restoreProgress 里，而它同时要
-     「先检查有没有读过」。于是引入一个**一次性指令**：
-
-       setLanding(anchor, ratio) → restoreProgress() 取走并清空 → 走它自己的重试时序
-
-     为什么不让界面直接 scrollToAnchor：换章（swapTo）内部会自己调 restoreProgress，
-     自建 setTimeout 两套时序必定打架（一套落完另一套又把人拉走）。搭同一趟车才是
-     唯一被验证过的做法。 */
   var landing = null;
 
   /** @param {Anchor} anchor @param {number} [ratio] @returns {void} */
@@ -194,14 +143,10 @@
     };
   }
 
-  /** 落位成功即「读者真的停在这里」：把新位置记成阅读进度。
-   *  复用 markUserScroll —— 一旦落位，restoreProgress 后续的定时器与
-   *  ResizeObserver 立刻让位，不会把读者从落点拽回旧位置。 */
   function commitLanding() {
     markUserScroll();
     saveProgress(undefined, true);
   }
-
 
   /* ===== READING PROGRESS ===== */
 
@@ -230,14 +175,8 @@
     // 页面隐藏/卸载时传 force=true 补最后一把，保证离开前进度是准的。
     var now = Date.now();
     if (!force && now - lastProgressSave < 320) return;
-    /* 恢复位置的过程中不许写盘 —— 连 force 也不行。
-       场景：打开章节的瞬间点了返回，pagehide 会强制保存，而此时页面还停在
-       顶部（恢复还没落位），一写就把「读到 88%」覆盖成 0。用户自己滚过就放行。 */
     if (restoring && !userScrolled) return;
 
-    /* 再兜一层：没滚动过就读到 0 —— 这不是「读者回到开头」，是页面还没恢复
-       或者刚要卸载。典型场景是「导入备份 → 自动重载」，旧页面的 pagehide 会
-       抢先写一个 0，把刚导入的进度抹掉。只有用户真的滚到顶部才允许写 0。 */
     if (!userScrolled && pct === 0 && clampProgress(localStorage.getItem('reader-pos-' + chapterId())) > 0) return;
     lastProgressSave = now;
     localStorage.setItem('reader-pos-' + chapterId(), String(pct));
@@ -254,15 +193,6 @@
     }
   }
 
-  /* 恢复位置：首帧 → 120ms → 600ms → 字体就绪 → load 各试一次，
-     并在随后几秒里盯着页面高度：懒加载图片撑开正文会把位置顶跑，
-     高度一变就按锚点重新落位。只要用户自己滚过，全部让位。
-     为什么不一次到位：正文高度取决于字体度量与图片，字体没就位时算出来的
-     段落位置会偏低，锚点会把人送到错的地方。 */
-
-  /* ===== 跨章：探测线换块了就把「当前章」换掉 =====
-     顺序不能颠倒 —— 先把上一章按上一帧的位置落盘（此时 chapterId 还是旧的），
-     再换 id，再让界面去同步标题 / URL / 顶栏。反了就是上一章的进度被写成新章的值。 */
   function syncBlockChapter() {
     var block = currentBlock();
     if (!block) return;
@@ -274,7 +204,6 @@
     blockEntryHold = true;
     if (LY.ui && LY.ui.onChapterEntered) LY.ui.onChapterEntered(file);
   }
-
 
   function restoreProgress() {
     /* 落位指令是一次性的：取走即清。有它时**不受**「没读过就返回」的限制 ——
@@ -323,9 +252,6 @@
        让进度条 / 状态条立刻跟上（再晚读者会看到页码停在上一个位置）。 */
     if (wanted) setTimeout(finish, 900);
 
-    /* 懒加载图片的坑：视口在章首时，位于恢复点**上方**的图片根本没被加载，
-       一跳过去它们才开始下载，每张撑开一点就把人往下推 —— 只靠定时器永远追不上。
-       所以直接盯 scrollHeight，变化超过 4px 就重新落位。 */
     if (window.ResizeObserver) {
       var lastH = 0;
       observer = new ResizeObserver(function() {
@@ -339,7 +265,6 @@
     /* 兜底收尾：网络慢也给足 5 秒；之后不再干预 */
     setTimeout(finish, 5000);
   }
-
 
   function initReadingProgress() {
     refreshProgressControls(clampProgress(localStorage.getItem('reader-pos-' + chapterId())));
@@ -412,12 +337,10 @@
     });
   }
 
-
   function markUserScroll() {
     userScrolled = true;
     restoring = false;
   }
-
 
   /* 换章不换页时用：新章还没被「用户自己滚过」，恢复逻辑应该重新接管 */
   function resetUserScroll() {
@@ -425,14 +348,7 @@
     restoring = false;
   }
 
-
-  /* ===== 阅读时长 =====
-     只在阅读页计时，且只算「页面可见」的时间：切后台、锁屏期间不计。
-     15s 打一次点，攒满 60s 才落盘 —— 即每分钟最多一次同步写盘，
-     和滚动写进度错开，不会在滚动时卡帧。 */
-
   var readingTime = { last: 0, pending: 0, timer: 0 };
-
 
   function initReadingTime() {
     readingTime.last = Date.now();
@@ -444,7 +360,6 @@
     window.addEventListener('pagehide', function() { tickReadingTime(); flushReadingTime(); });
   }
 
-
   function tickReadingTime() {
     var now = Date.now();
     var delta = now - readingTime.last;
@@ -454,7 +369,6 @@
     readingTime.pending += Math.round(delta / 1000);
     if (readingTime.pending >= 60) flushReadingTime();
   }
-
 
   function flushReadingTime() {
     var sec = readingTime.pending;
@@ -471,15 +385,9 @@
 
   /* 只留最近 180 天：老数据对「连续天数」没用，但会把 localStorage 撑大 */
 
-  /* ===== 自动滚动（自动下滑翻页） =====
-     rAF 逐帧滚动，速度按时间计算（与帧率无关）；速度 10 档存 localStorage。
-     停止条件：点屏幕（touchstart/mousedown，悬浮条除外）、点悬浮条 ✕、到章末。
-     打开任何面板/工具栏也必然经过一次触摸 → 自动停止，与站点交互一致。 */
-
   var autoScroll = { active: false, paused: false, level: 5, raf: 0, lastT: 0, pos: 0 };
 
   var AS_SPEEDS = [8, 15, 24, 35, 48, 64, 84, 108, 136, 170]; /* px/s */
-
 
   function loadAutoSpeed() {
     var v = parseInt(localStorage.getItem('reader-autoscroll-speed') || '5', 10);
@@ -489,7 +397,6 @@
   function saveAutoSpeed() {
     localStorage.setItem('reader-autoscroll-speed', String(autoScroll.level));
   }
-
 
   function autoScrollStep(t) {
     if (!autoScroll.active || autoScroll.paused) return;
@@ -519,7 +426,6 @@
     autoScroll.raf = requestAnimationFrame(autoScrollStep);
   }
 
-
   function startAutoScroll() {
     if (autoScroll.active) return;
     loadAutoSpeed();
@@ -530,7 +436,6 @@
     autoScroll.raf = requestAnimationFrame(autoScrollStep);
   }
 
-
   function stopAutoScroll(reachedEnd) {
     if (!autoScroll.active) return;
     autoScroll.active = false; autoScroll.paused = false;
@@ -538,7 +443,6 @@
     updateAutoUI();
     if (reachedEnd) showToast('已到本章末尾');
   }
-
 
   function pauseAutoScroll(paused) {
     if (!autoScroll.active) return;
@@ -549,13 +453,11 @@
     updateAutoUI();
   }
 
-
   function nudgeAutoScroll(delta) {
     autoScroll.level = Math.min(10, Math.max(1, autoScroll.level + delta));
     saveAutoSpeed();
     updateAutoUI();
   }
-
 
   function updateAutoUI() {
     var label = document.getElementById('autoScrollLabel');
@@ -568,7 +470,6 @@
     var pp = pill.querySelector('.auto-pp');
     if (pp) pp.textContent = autoScroll.paused ? '\u25B6' : '\u275A\u275A';
   }
-
 
   function ensureAutoPill() {
     if (document.getElementById('autoScrollPill')) return;
@@ -592,7 +493,6 @@
       else if (act === 'stop') stopAutoScroll(false);
     });
   }
-
 
   window.toggleAutoScroll = function() {
     if (autoScroll.active) {

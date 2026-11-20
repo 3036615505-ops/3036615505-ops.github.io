@@ -1,33 +1,5 @@
-/**
- * js/native-bridge.js — Android 壳（site.zephyrw.linyuan）能力补丁
- *
- * 为什么存在这个文件：
- *   WebView 不是 Chrome。TWA 时代由 Chrome 代劳的三件事，在自建 WebView 容器里
- *   全部缺失，站点侧的调用看起来成功、实际什么都没发生：
- *
- *   1. `navigator.clipboard.writeText` 长期返回 NotAllowedError
- *      → 「复制摘句 / 分享章节 / 摘句簿复制」静默失败；
- *   2. WebView 没有 DownloadListener 时会静默丢弃 `blob:` + `<a download>`
- *      → 「导出 Markdown」看起来成功、实际什么都没存；
- *   3. WebView 不实现 Web Share API（`navigator.share` 恒为 undefined）
- *      → 「分享章节」永远走不到系统分享面板。
- *
- * 这段逻辑原本写在壳的 Java 字符串 BRIDGE_SHIM_JS 里，靠
- * `WebViewClient.onPageFinished → evaluateJavascript` 注入。那样做的问题是：
- * 每改一行 JS 都要重新打 APK，且注入时机依赖 onPageFinished（页面脚本早已执行，
- * 首帧就调 clipboard 的路径仍然吃亏）。v1.9.0 起下沉到站点，逻辑等价迁移，
- * 只是改成随页面自身加载、在任何业务脚本之前执行。
- *
- * 运行环境约定：
- *   - 只在壳内生效（`window.LinyuanApp` 由 `addJavascriptInterface` 暴露）；
- *   - 浏览器里 `window.LinyuanApp` 是 undefined，下面第一个 return 直接退出，
- *     不定义任何全局变量、不改写任何行为，对普通浏览器零影响。
- *
- * 维护约定：
- *   - 本文件只在 `?v=` 版本号变化时才会被重新下载（SW 缓存优先），改完必须
- *     `node tools/bump-assets.mjs --write`；
- *   - 不要在这里写业务逻辑或样式，它只负责把浏览器 API 接到原生能力上。
- */
+/* js/native-bridge.js — Android 壳（site.zephyrw.linyuan）能力补丁
+   设计说明、历史与踩坑记录见 _design/notes/native-bridge.js.md（原文按行号归档）。 */
 (function () {
   var bridge = window.LinyuanApp;
   if (!bridge || typeof bridge.copy !== 'function') { return; }  // 浏览器里什么都不做
@@ -75,11 +47,6 @@
 
   /* ---------- 2. 原生分享 ---------- */
 
-  /* WebView 没有 Web Share API，所以这里主动补一个 navigator.share：
-     站点里任何 `if (navigator.share) { navigator.share({...}) }` 的写法都能直接用，
-     不需要每处调用点都知道桥的存在。壳侧桥方法签名是 share(text, url)。
-     老版本壳（v1.8.7 及以前）没有 bridge.share，此时保持「不定义 navigator.share」，
-     站点会自然退回「复制链接」分支。 */
   try {
     if (typeof bridge.share === 'function') {
       var nativeShare = function (data) {
@@ -108,10 +75,6 @@
 
   /* ---------- 3. blob 下载转交原生保存 ---------- */
 
-  /* 只在捕获阶段拦「blob: 地址 + <a download>」的点击：
-       别的下载（http/https 附件）交给壳的 DownloadListener → 系统浏览器，
-       不在这里掺和。读出 blob 文本后交给 bridge.saveText(文件名, 正文)，
-       由壳决定落到公共「下载」目录还是应用专属目录。 */
   if (!document.__linyuanDownloadHooked) {
     document.__linyuanDownloadHooked = true;
     document.addEventListener('click', function (event) {
@@ -123,9 +86,6 @@
       if (typeof bridge.saveText !== 'function') { return; }
       event.preventDefault();
       var name = anchor.getAttribute('download') || '';
-      /* S1 起 blob 落盘的不只是「导出 Markdown」，还有读者升级到原生 App 前
-         唯一的一份阅读数据备份。以前 `.catch(function(){})` 静默吞掉失败，
-         会让人以为备份好了 —— 现在必须给可见提示。 */
       function saveFailed() {
         try {
           if (window.LY && window.LY.ui && typeof window.LY.ui.toast === 'function') {
