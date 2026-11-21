@@ -2316,7 +2316,10 @@ async function measureSheet(id) {
       ty: Math.round(m.f),
       radius: cs.borderTopLeftRadius + '/' + cs.borderBottomLeftRadius,
       grabber: !!ov.querySelector('.modal-grabber'),
-      bodyOverflow: document.body.style.overflow
+      bodyOverflow: document.body.style.overflow,
+      barH: (() => { const b = document.getElementById('readerBottombar'); return b ? Math.round(b.getBoundingClientRect().height) : 0; })(),
+      barVisible: (() => { const b = document.getElementById('readerBottombar'); return !!b && b.classList.contains('visible'); })(),
+      vh: innerHeight
     };
   })()`);
 }
@@ -2325,11 +2328,12 @@ for (const s of SHEETS) {
   await evaluate(`${s.open}; 1`);
   await sleep(420);   /* 等 .3s 的滑入走完 */
   const o = await measureSheet(s.id);
-  check(`抽屉 · ${s.name}：贴底（差 ≤2px）、左右占满、上圆角 22 / 下圆角 0、打开后 transform 归零、顶部有把手`,
-    !!o && o.visible === true && Math.abs(o.bottomGap) <= 2 &&
+  check(`抽屉 · ${s.name}：停在工具栏上方（间距=工具栏高+22）、高度 ≤55vh、四角圆角 22、transform 归零、工具栏常驻`,
+    !!o && o.visible === true && Math.abs(o.bottomGap - (o.barH + 22)) <= 3 &&
+    o.h <= Math.round(o.vh * 0.55) &&
     o.left <= 1 && (o.vw - o.right) <= 1 &&
-    o.radius === '22px/0px' && o.ty === 0 && o.grabber === true &&
-    o.bodyOverflow === 'hidden',
+    o.radius === '22px/22px' && o.ty === 0 && o.grabber === true &&
+    o.bodyOverflow === 'hidden' && o.barVisible === true,
     JSON.stringify(o));
 
   await evaluate(`${s.close}; 1`);
@@ -2339,6 +2343,23 @@ for (const s of SHEETS) {
     !!c && c.visible === false && Math.abs(c.ty - c.h) <= 2 && c.bodyOverflow !== 'hidden',
     JSON.stringify(c));
 }
+
+/* 工具栏常驻的直接收益：面板开着时点另一项能直接换面板，不必先关再点 */
+await evaluate(`openDirectory(); 1`);
+await sleep(420);
+await evaluate(`openQuotes(); 1`);
+await sleep(420);
+const switched = await evaluate(`({
+  dir: document.getElementById('dirOverlay').classList.contains('visible'),
+  quotes: document.getElementById('quotesOverlay').classList.contains('visible'),
+  bar: document.getElementById('readerBottombar').classList.contains('visible'),
+  locked: document.body.style.overflow === 'hidden'
+})`);
+check('面板开着时点工具栏可直接换面板（旧面板自动收、工具栏仍在）',
+  switched.quotes === true && switched.dir === false && switched.bar === true && switched.locked === true,
+  JSON.stringify(switched));
+await evaluate(`closeQuotes(); 1`);
+await sleep(420);
 
 /* 收起的面板整体在视口下方 100%，若没有 .modal-overlay 的 overflow:hidden，
    它会撑出页面的可滚动区域（滚到底多一片空白 —— 「底部断层」那类症状）。
@@ -2360,9 +2381,10 @@ await sleep(300);
 await evaluate(`openSettings(); 1`);
 await sleep(420);
 const desk = await measureSheet('settingsOverlay');
-check('抽屉 · 桌面端：宽度 420px、水平居中（left+right=视口宽）、仍然贴底',
+check('抽屉 · 桌面端：宽度 420px、水平居中（left+right=视口宽）、同样停在工具栏上方且不超过半屏',
   !!desk && Math.abs(desk.width - 420) <= 1 &&
-  Math.abs(desk.left + desk.right - desk.vw) <= 2 && Math.abs(desk.bottomGap) <= 2,
+  Math.abs(desk.left + desk.right - desk.vw) <= 2 &&
+  Math.abs(desk.bottomGap - (desk.barH + 22)) <= 3 && desk.h <= Math.round(desk.vh * 0.55),
   JSON.stringify(desk));
 await evaluate(`closeSettings(); 1`);
 await sleep(400);

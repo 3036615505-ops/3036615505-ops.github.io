@@ -1609,11 +1609,43 @@
     panel.style.transform = '';
   }
 
+  var SHEET_IDS = ['dirOverlay', 'quotesOverlay', 'settingsOverlay', 'searchOverlay', 'dataOverlay'];
+
+  /* 面板打开时工具栏要留在原位可点：先把工具栏叫出来，再停掉 3 秒自动收起。
+     不这么做的旧行为是 openDirectory/openQuotes/openSearch 里 hideBars()，
+     用户点错面板后得先关面板、再点一次工具栏。 */
+  function keepBarsForSheet() {
+    showBars();
+    stopAutoClose();
+  }
+
+  /* 从 A 面板直接切到 B 面板：旧的先收，避免两块抽屉叠在一起、body 滚动锁重复。
+     关的时候走各自 closeX，保住它们各自的收尾（搜索清命中、数据面板清计时器等）。 */
+  function closeOtherSheets(keepId) {
+    for (var i = 0; i < SHEET_IDS.length; i++) {
+      var id = SHEET_IDS[i];
+      if (id === keepId) continue;
+      var el = document.getElementById(id);
+      if (!el || !el.classList.contains('visible')) continue;
+      if (id === 'dirOverlay') closeDirectory();
+      else if (id === 'quotesOverlay') closeQuotes();
+      else if (id === 'settingsOverlay') closeSettings();
+      else if (id === 'searchOverlay') closeSearch();
+      else if (id === 'dataOverlay') closeDataModal();
+    }
+  }
+
   function openSheet(ov) {
     if (!ov) return;
+    closeOtherSheets(ov.id);
+    /* 抽屉底边停在工具栏上方。用实测高度而不是写死 px：字号/横屏/安全区变了也不会压住工具栏。
+       12px 是两者之间的呼吸缝；工具栏自己 bottom:10px 已算在内。 */
+    var bar = document.getElementById('readerBottombar');
+    if (bar) ov.style.setProperty('--sheet-gap', (Math.round(bar.getBoundingClientRect().height) + 22) + 'px');
     clearSheetStyles(ov);
     ov.classList.add('visible');
     document.body.style.overflow = 'hidden';
+    keepBarsForSheet();
   }
 
   function closeSheet(ov) {
@@ -1621,6 +1653,8 @@
     ov.classList.remove('visible');
     clearSheetStyles(ov);
     document.body.style.overflow = '';
+    /* 面板关掉后恢复工具栏的自动收起；面板开着时由 openSheet 停掉它 */
+    if (state.barsVisible) startAutoClose();
   }
 
   /* 没拖过阈值 → 回弹到位（带一段短 transition，落位后把内联样式还给 CSS） */
@@ -1891,7 +1925,6 @@
   window.openDirectory = function() {
     populateDirectory();
     openSheet(document.getElementById('dirOverlay'));
-    if (state.barsVisible) hideBars();
   };
 
   window.closeDirectory = function() {
@@ -1975,7 +2008,6 @@
   window.openQuotes = function() {
     renderQuotesPanel();
     openSheet(document.getElementById('quotesOverlay'));
-    if (state.barsVisible) hideBars();
   };
 
   window.closeQuotes = function() {
@@ -2284,7 +2316,6 @@
     if (rw) rw.textContent = state.readWidth === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关';
     applyFeatureVisibility();
     openSheet(ov);
-    if (state.barsVisible) { stopAutoClose(); startAutoClose(); }
   };
 
   window.closeSettings = function() {
@@ -2732,7 +2763,6 @@
     if (input && typeof initialQuery === 'string' && initialQuery) input.value = initialQuery;
 
     openSheet(ov);   /* 与目录/设置/摘句同一套：清掉上一手拖动留下的内联位移 */
-    if (state.barsVisible) hideBars();
 
     /* 面板开着时自动滚屏不该继续往下走；关掉再按原状态恢复（PRD 2.1） */
     if (LY.engine && LY.engine.autoScroll && LY.engine.autoScroll.active && !LY.engine.autoScroll.paused) {
@@ -3082,7 +3112,6 @@
     }
 
     openSheet(ov);
-    if (state.barsVisible) { stopAutoClose(); }
     if (mode === 'import') setTimeout(function() { ta.focus(); }, 220);
   }
 

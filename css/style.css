@@ -2116,7 +2116,8 @@ body.reading-page {
   left: 12px;
   right: 12px;
   background: var(--reader-surface);
-  z-index: 200;
+  /* 面板打开时工具栏仍要能点：抽屉层是 400，必须压在它上面 */
+  z-index: 450;
   transform: translateY(calc(100% + 24px));
   transition: transform 0.28s ease, background 0.3s, box-shadow 0.3s;
   padding-bottom: var(--safe-bottom);
@@ -2395,7 +2396,12 @@ body.reading-page {
 
 .modal-overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  /* 底部让出工具栏的位置：抽屉停在工具栏上方，工具栏留在抽屉外面可点。
+     --sheet-gap 由 openSheet() 按工具栏实测高度写入，120px 是无 JS 时的兜底。
+     注意不是给 .modal-panel 加 margin-bottom —— 那样 translateY(100%) 收起时
+     面板顶部会留在视口里露一截；裁切边界放在这里才能整块藏到视口外。 */
+  top: 0; left: 0; right: 0;
+  bottom: var(--sheet-gap, 120px);
   z-index: 400;
   pointer-events: none;
   opacity: 0;
@@ -2420,17 +2426,15 @@ body.reading-page {
 .modal-panel {
   position: relative;
   background: var(--reader-surface);
-  border-radius: 22px 22px 0 0;
+  border-radius: 22px;     /* 底边不再贴视口，四角都圆 */
   width: 100%;
   max-width: 420px;        /* 桌面下与 .reading-wrapper（420px）同宽、同一条中线 */
-  max-height: 82vh;
+  max-height: 50vh;        /* 半屏抽屉：上方始终留给正文，列表在面板内滚动 */
   display: flex;
   flex-direction: column;
   box-shadow: 0 -10px 40px rgba(36,24,12,0.18);
   border: 1px solid var(--reader-border);
-  border-bottom: none;
-  /* 全面屏的底部手势条：留出高度，别压在最后一个按钮上（无刘海时恒为 0） */
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* 底边悬空了，下边框要补回来；安全区由 overlay 的 --sheet-gap 统一留出 */
   transform: translateY(100%);
   transition: transform 0.3s cubic-bezier(.32,.72,0,1);
   overflow: hidden;

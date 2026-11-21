@@ -201,8 +201,14 @@
  * 改为运行时按需（cacheFirst 自动写回）④ 中长注释搬到 _design/notes/，
  * CSS gzip 48.3→29.0KB、reader.ui.js 52.2→39.6KB。
  * 每页首访字节：章节页 209→约 135KB，首页 170→约 120KB。
+ *
+ * v96（2026-11-21 · 半屏抽屉 + 工具栏常驻）：面板从贴底 82vh 收到 50vh，
+ * 底边抬到工具栏上方（--sheet-gap 按工具栏实测高度算），四角全圆；
+ * 打开面板不再 hideBars，工具栏 z-index 抬到 450 压过抽屉层 400，
+ * 可以在面板开着时直接换面板。改了 style.css / reader.ui.js / 33 个 HTML
+ * 的引用（`?v=` 148），PRECACHE 里的字节变了，照例 +1。
  */
-var CACHE = 'linyuan-v95';
+var CACHE = 'linyuan-v96';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
