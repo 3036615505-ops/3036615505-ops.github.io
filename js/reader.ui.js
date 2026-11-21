@@ -1638,10 +1638,17 @@
   function openSheet(ov) {
     if (!ov) return;
     closeOtherSheets(ov.id);
+    /* 先挂 body 标记：手机上它会让抽屉与工具栏合成一块、工具栏全宽贴底，
+       这样两者之间没有缝，正文不会从缝里漏出来（样式见 style.css 的 body.sheet-open）。 */
+    document.body.classList.add('sheet-open');
     /* 抽屉底边停在工具栏上方。用实测高度而不是写死 px：字号/横屏/安全区变了也不会压住工具栏。
-       12px 是两者之间的呼吸缝；工具栏自己 bottom:10px 已算在内。 */
+       手机端零间距（直接坐在工具栏上）；桌面端工具栏仍是悬浮的，留 12px 呼吸缝 + 自身 bottom:10px。 */
     var bar = document.getElementById('readerBottombar');
-    if (bar) ov.style.setProperty('--sheet-gap', (Math.round(bar.getBoundingClientRect().height) + 22) + 'px');
+    if (bar) {
+      var gap = Math.round(bar.getBoundingClientRect().height) +
+        (window.matchMedia && window.matchMedia('(max-width: 767px)').matches ? 0 : 22);
+      ov.style.setProperty('--sheet-gap', gap + 'px');
+    }
     clearSheetStyles(ov);
     ov.classList.add('visible');
     document.body.style.overflow = 'hidden';
@@ -1653,6 +1660,8 @@
     ov.classList.remove('visible');
     clearSheetStyles(ov);
     document.body.style.overflow = '';
+    /* 没有别的抽屉还开着才撤掉「合成一块」的布局，否则先关 A 再开 B 时工具栏会跳一下 */
+    if (!anyPanelOpen()) document.body.classList.remove('sheet-open');
     /* 面板关掉后恢复工具栏的自动收起；面板开着时由 openSheet 停掉它 */
     if (state.barsVisible) startAutoClose();
   }

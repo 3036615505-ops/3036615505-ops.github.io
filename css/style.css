@@ -2447,6 +2447,38 @@ body.reading-page {
   transform: translateY(0);
 }
 
+/* 抽屉打开时，抽屉 + 工具栏合成「一块」底部面板（仅手机）：
+   ① 抽屉底边直接坐在工具栏上，中间不留缝 —— 缝里会漏出正文，视觉上很跳；
+   ② 工具栏全宽贴底，左右 12px 的留白也一并吃掉，底部不再有任何正文露出；
+   ③ 抽屉只留上圆角，下圆角归零，接缝处是一条 1px 分隔线，不是两张卡片叠着。
+   桌面端（≥768px）保持原来的悬浮样式：两侧本来就是页面底色，没有正文。 */
+@media (max-width: 767px) {
+  body.sheet-open .modal-panel {
+    max-width: none;
+    border-radius: 22px 22px 0 0;
+    border-bottom: none;
+  }
+
+  body.sheet-open .reader-bottombar {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    box-shadow: none;
+  }
+}
+
+/* 列表底部渐隐：滚动裁切不再把最后一行字从中间切开，
+   视觉上是「下面还有」，而不是「字被截断」。 */
+body.sheet-open .dir-modal .modal-body,
+body.sheet-open .quotes-modal .modal-body {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 30px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 30px), transparent 100%);
+}
+
 /* 顶部拖动把手：纯装饰，不绑任何事件（手势挂在整块面板上，不挂在这里） */
 .modal-grabber {
   flex-shrink: 0;

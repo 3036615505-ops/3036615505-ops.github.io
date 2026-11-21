@@ -2319,6 +2319,9 @@ async function measureSheet(id) {
       bodyOverflow: document.body.style.overflow,
       barH: (() => { const b = document.getElementById('readerBottombar'); return b ? Math.round(b.getBoundingClientRect().height) : 0; })(),
       barVisible: (() => { const b = document.getElementById('readerBottombar'); return !!b && b.classList.contains('visible'); })(),
+      barLeft: (() => { const b = document.getElementById('readerBottombar'); return b ? Math.round(b.getBoundingClientRect().left) : -1; })(),
+      barRight: (() => { const b = document.getElementById('readerBottombar'); return b ? Math.round(b.getBoundingClientRect().right) : -1; })(),
+      barBottomGap: (() => { const b = document.getElementById('readerBottombar'); return b ? Math.round(innerHeight - b.getBoundingClientRect().bottom) : -1; })(),
       vh: innerHeight
     };
   })()`);
@@ -2328,12 +2331,13 @@ for (const s of SHEETS) {
   await evaluate(`${s.open}; 1`);
   await sleep(420);   /* 等 .3s 的滑入走完 */
   const o = await measureSheet(s.id);
-  check(`抽屉 · ${s.name}：停在工具栏上方（间距=工具栏高+22）、高度 ≤55vh、四角圆角 22、transform 归零、工具栏常驻`,
-    !!o && o.visible === true && Math.abs(o.bottomGap - (o.barH + 22)) <= 3 &&
+  check(`抽屉 · ${s.name}：与工具栏无缝相接、高度 ≤55vh、上圆角 22 / 下圆角 0、工具栏全宽贴底、transform 归零`,
+    !!o && o.visible === true && Math.abs(o.bottomGap - o.barH) <= 2 &&
     o.h <= Math.round(o.vh * 0.55) &&
     o.left <= 1 && (o.vw - o.right) <= 1 &&
-    o.radius === '22px/22px' && o.ty === 0 && o.grabber === true &&
-    o.bodyOverflow === 'hidden' && o.barVisible === true,
+    o.radius === '22px/0px' && o.ty === 0 && o.grabber === true &&
+    o.bodyOverflow === 'hidden' && o.barVisible === true &&
+    o.barLeft <= 1 && (o.vw - o.barRight) <= 1 && o.barBottomGap <= 1,
     JSON.stringify(o));
 
   await evaluate(`${s.close}; 1`);
