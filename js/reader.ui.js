@@ -1891,11 +1891,33 @@
     populateDirectory();
   }
 
+  /* 目录里的「当前章」不能直接读 URL：无限流下页面里躺着好几章，URL 停在入口那一章，
+     而读者可能已经滚进下一章了。engine.currentBlock() 拿的是视口里那一段，
+     swapTo() 换章时会同步它身上的 data-file —— 以它为准，取不到再退回 URL。 */
+  function currentDirFile() {
+    var engine = window.LY && window.LY.engine;
+    var block = engine && typeof engine.currentBlock === 'function' ? engine.currentBlock() : null;
+    return (block && block.getAttribute && block.getAttribute('data-file')) || getCurrentFileName();
+  }
+
+  /* 把当前章滚到列表可视区的 38% 处：上面留一截已读、下面留更多待读，方向感和往下读一致。
+     用两张 rect 的差值算偏移，不用 offsetTop —— 列表的 offsetParent 是 .modal-panel，
+     按 offsetTop 会多算一个表头的高度，章越靠后偏得越多。 */
+  function scrollDirectoryToActive() {
+    var list = document.getElementById('dirList');
+    if (!list) return;
+    var active = list.querySelector('.dir-item.active');
+    if (!active) return;
+    var listRect = list.getBoundingClientRect();
+    if (!listRect.height) return;   /* 还没上屏（面板未挂载）：等打开时再定位 */
+    var delta = active.getBoundingClientRect().top - listRect.top - listRect.height * 0.38;
+    list.scrollTop = Math.max(0, list.scrollTop + delta);
+  }
+
   function populateDirectory() {
     var list = document.getElementById('dirList');
     if (!list) return;
-    var path = window.location.pathname;
-    var file = path.substring(path.lastIndexOf('/') + 1) || 'chapter-01.html';
+    var file = currentDirFile();
 
     // 按卷分组：仅当 CHAPTERS 中出现 ≥2 个不同 volume 时才渲染分组标题
     var volumes = [];
@@ -1928,12 +1950,19 @@
         html += '</span></a>';
       });
     });
+    /* 换 innerHTML 会把列表滚回顶部。面板开着时进度更新会重渲染一次，
+       不接住这个 scrollTop，读者正翻着目录就会被打回开头。 */
+    var prevTop = list.scrollTop;
     list.innerHTML = html;
+    list.scrollTop = prevTop;
   }
 
   window.openDirectory = function() {
     populateDirectory();
     openSheet(document.getElementById('dirOverlay'));
+    /* 上屏之后再定位：openSheet() 会加 body.sheet-open，手机端面板才变成全宽贴底，
+       那之前的几何不是最终的。这个函数是幂等的，多点一次不会过冲。 */
+    scrollDirectoryToActive();
   };
 
   window.closeDirectory = function() {

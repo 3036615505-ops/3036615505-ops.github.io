@@ -2530,6 +2530,65 @@ check('一节跑完：五个抽屉全部收起，body 滚动锁已释放',
   allSheetsClosed.anyVisible === false && allSheetsClosed.bodyOverflow === '',
   JSON.stringify(allSheetsClosed));
 
+/* ===== 目录锚点：打开即停在当前章 =====
+   半屏列表一次只看得见 4~5 行，11 章从头翻等于每次都要读者自己找。
+   在中间章（第 6 章）验：既滚了（scrollTop > 0），又没滚到底被裁住（scrollTop < maxScroll），
+   当前章完整落在可视区里、位置在 38% 附近。 */
+await goto(BASE + '/novel/chapter-06.html');
+await evaluate(`openDirectory(); 1`);
+await sleep(420);
+const dirAnchor = await evaluate(`(() => {
+  const list = document.getElementById('dirList');
+  const a = list.querySelector('.dir-item.active');
+  const lr = list.getBoundingClientRect();
+  if (!a) return { items: list.querySelectorAll('.dir-item').length };
+  const ar = a.getBoundingClientRect();
+  return {
+    file: a.getAttribute('href'),
+    scrollTop: Math.round(list.scrollTop),
+    maxScroll: Math.round(list.scrollHeight - list.clientHeight),
+    listH: Math.round(lr.height),
+    top: Math.round(ar.top - lr.top),
+    bottom: Math.round(ar.bottom - lr.top),
+    ratio: Math.round((ar.top - lr.top) / lr.height * 100) / 100
+  };
+})()`);
+check('目录打开即停在当前章：列表自动滚动到 38% 处，当前章完整可见',
+  dirAnchor.file === 'chapter-06.html' && dirAnchor.scrollTop > 0 &&
+  dirAnchor.scrollTop < dirAnchor.maxScroll &&
+  Math.abs(dirAnchor.ratio - 0.38) <= 0.06 &&
+  dirAnchor.top >= 0 && dirAnchor.bottom <= dirAnchor.listH,
+  JSON.stringify(dirAnchor));
+
+/* 读者手动把目录翻到最底再关掉，下次打开仍要回到当前章（不能记住上一次的手动位置） */
+const dirScrolledAway = await evaluate(`(() => {
+  const list = document.getElementById('dirList');
+  list.scrollTop = list.scrollHeight;
+  const away = Math.round(list.scrollTop);
+  closeDirectory();
+  return away;
+})()`);
+await sleep(420);
+await evaluate(`openDirectory(); 1`);
+await sleep(420);
+const dirReopened = await evaluate(`(() => {
+  const list = document.getElementById('dirList');
+  const a = list.querySelector('.dir-item.active');
+  const lr = list.getBoundingClientRect();
+  const ar = a.getBoundingClientRect();
+  return {
+    scrollTop: Math.round(list.scrollTop),
+    ratio: Math.round((ar.top - lr.top) / lr.height * 100) / 100
+  };
+})()`);
+check('目录被手动翻走后，再次打开仍锚回当前章',
+  dirScrolledAway > dirAnchor.scrollTop &&
+  Math.abs(dirReopened.scrollTop - dirAnchor.scrollTop) <= 2 &&
+  Math.abs(dirReopened.ratio - 0.38) <= 0.06,
+  JSON.stringify({ dirScrolledAway, dirReopened }));
+await evaluate(`closeDirectory(); 1`);
+await sleep(420);
+
 /* ===== S1：壳内完整导出链路 =====
    放在所有既有断言之后，因为这里要重新导航：native-bridge.js 在页面脚本
    执行前就要看见 window.LinyuanApp，装上 blob 下载拦截。注入脚本只在

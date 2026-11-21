@@ -2562,6 +2562,8 @@ body.sheet-open .quotes-modal .modal-body {
 .dir-item.active {
   color: var(--accent-text);
   background: rgba(184, 134, 78, 0.05);
+  /* 自动定位之后，当前章落在列表中间偏上，只靠淡背景不够醒目；左侧一条短竖线做锚点标记 */
+  box-shadow: inset 3px 0 0 var(--accent-text);
 }
 
 .dir-item.done {
