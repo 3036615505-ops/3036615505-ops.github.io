@@ -11,14 +11,17 @@
 # 临时跳过（不推荐）：
 #     git push --no-verify
 #
-# 检查七项：
+# 检查 9 项（数字写成阿拉伯数字：tools/check-docs.mjs 要从这一行读出项数，与 HANDOVER 核对）：
 #   1. node tools/bump-assets.mjs --check   —— 全站 HTML 的 ?v= 是否统一（混版 = 有人拿旧文件）
 #   2. node tools/bump-assets.mjs --stale   —— 资源内容变了，缓存键有没有跟着变（见下）
-#   3. node tools/check-precache.mjs        —— sw.js 的 PRECACHE 每条是否真实存在、脚本引用是否齐全
+#   3. node tools/check-precache.mjs        —— sw.js 的 PRECACHE 每条是否真实存在、脚本引用是否齐全、
+#                                              预缓存页面引用到的资源是否都在清单里（引用闭环）
 #   4. python tools/make-kai-subset.py --check —— 楷体字体子集是否覆盖当前正文用字
 #   5. node tools/manuscript-sync.mjs       —— 章节正文与 manuscript/ 源稿是否逐字一致
 #   6. node tools/check-apk.mjs             —— version.json 的 size / sha256 与安装包是否一致
 #   7. node tools/check-content.mjs         —— content/*.json 与站点是否逐字自洽（内容契约）
+#   8. node tools/check-storage-boundary.mjs —— reader.store.js 之外不许新增 localStorage 直写（棘轮）
+#   9. node tools/check-docs.mjs            —— HANDOVER.md 里的版本号 / 章数 / 行数与代码是否一致
 #
 # 第 2 项为什么必要：第 1 项只检查「HTML 里的 ?v= 是否统一」，**完全不比对文件内容**。
 # 改了 style.css 却忘了 +1 时，全站版本号依然统一 → 检查全绿 → 发版 → 老读者拿旧 CSS
@@ -45,26 +48,26 @@ fi
 failed=0
 
 echo ""
-echo "→ [1/7] 检查全站 ?v= 版本号是否统一 …"
+echo "→ [1/9] 检查全站 ?v= 版本号是否统一 …"
 if ! node tools/bump-assets.mjs --check; then
   failed=1
 fi
 
 echo ""
-echo "→ [2/7] 检查资源内容变了之后，缓存键有没有跟着变 …"
+echo "→ [2/9] 检查资源内容变了之后，缓存键有没有跟着变 …"
 # 与 [1/7] 互补：[1/7] 只看版本号是否统一，不看文件内容。
 if ! node tools/bump-assets.mjs --stale; then
   failed=1
 fi
 
 echo ""
-echo "→ [3/7] 检查 sw.js 的 PRECACHE 条目与脚本引用 …"
+echo "→ [3/9] 检查 sw.js 的 PRECACHE 条目与脚本引用 …"
 if ! node tools/check-precache.mjs; then
   failed=1
 fi
 
 echo ""
-echo "→ [4/7] 检查楷体字体是否覆盖当前正文用字 …"
+echo "→ [4/9] 检查楷体字体是否覆盖当前正文用字 …"
 PY=""
 if command -v python >/dev/null 2>&1; then PY=python
 elif command -v python3 >/dev/null 2>&1; then PY=python3; fi
@@ -77,7 +80,7 @@ else
 fi
 
 echo ""
-echo "→ [5/7] 检查章节正文与 manuscript/ 源稿是否一致 …"
+echo "→ [5/9] 检查章节正文与 manuscript/ 源稿是否一致 …"
 if [ -f tools/manuscript-sync.mjs ]; then
   if ! node tools/manuscript-sync.mjs; then
     failed=1
@@ -87,7 +90,7 @@ else
 fi
 
 echo ""
-echo "→ [6/7] 检查 app/version.json 与安装包是否一致 …"
+echo "→ [6/9] 检查 app/version.json 与安装包是否一致 …"
 if [ -f tools/check-apk.mjs ]; then
   if ! node tools/check-apk.mjs; then
     failed=1
@@ -97,13 +100,33 @@ else
 fi
 
 echo ""
-echo "→ [7/7] 检查内容契约 content/*.json 与站点是否逐字自洽 …"
+echo "→ [7/9] 检查内容契约 content/*.json 与站点是否逐字自洽 …"
 if [ -f tools/check-content.mjs ]; then
   if ! node tools/check-content.mjs; then
     failed=1
   fi
 else
   echo "   跳过（未找到 tools/check-content.mjs）"
+fi
+
+echo ""
+echo "→ [8/9] 检查 reader.store.js 之外有没有新增 localStorage 直写 …"
+if [ -f tools/check-storage-boundary.mjs ]; then
+  if ! node tools/check-storage-boundary.mjs; then
+    failed=1
+  fi
+else
+  echo "   跳过（未找到 tools/check-storage-boundary.mjs）"
+fi
+
+echo ""
+echo "→ [9/9] 检查 HANDOVER.md 里的数字与代码是否一致 …"
+if [ -f tools/check-docs.mjs ]; then
+  if ! node tools/check-docs.mjs; then
+    failed=1
+  fi
+else
+  echo "   跳过（未找到 tools/check-docs.mjs）"
 fi
 
 if [ "$failed" -ne 0 ]; then
@@ -125,6 +148,9 @@ if [ "$failed" -ne 0 ]; then
   echo "     （如 linyuan-v16 → v17，否则老用户不会重新 install）"
   echo "  ⑧ 内容契约漂移： node tools/gen-content.mjs"
   echo "     （改了正文/人物/flags 后重跑生成器；改 JSON 不升 ?v= 也不升 CACHE）"
+  echo "  ⑨ 存储边界被突破：新的读写改走 js/reader.store.js，不要自己拼键名；"
+  echo "     确属入口之外必须存在的，在提交说明里写清理由后 node tools/check-storage-boundary.mjs --write"
+  echo "  ⑩ 文档数字过期：按 check-docs 打印的「实际值」改 HANDOVER.md，不要反过来改代码去凑数字"
   echo ""
   echo "确实要绕过（不推荐）： git push --no-verify"
   echo ""

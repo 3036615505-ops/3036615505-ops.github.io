@@ -26,7 +26,6 @@
     python tools/compact-comments.py --write          # 落盘 + 写 notes
 
 ⚠ 落盘后必须：`npm run bump --write`（`?v=` +1）→ `CACHE` +1 → 全量回归。
-⚠ 别对 `js/transition.js` 跑：模块已停用、不再被任何页面引用，改它没有收益。
 """
 import os
 import re

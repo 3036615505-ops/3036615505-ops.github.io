@@ -15,9 +15,9 @@ robots.txt              爬虫规则（含 Disallow: /manuscript/）
 CNAME / favicon.png / manifest.json / .nojekyll / .well-known/
                         域名、窗口图标与平台约定，平时不用动（PWA 图标与 apple-touch-icon 在 assets/）
 
-页面（novel/，27 个文件；除书架页外全是生成物，别手改）
+页面（novel/；除书架页外全是生成物，别手改。章数、页面数见 HANDOVER「一页纸现状」）
 novel/index.html        书架（目录 + 阅读进度）
-novel/chapter-*.html    章节页（01..07 共 7 个）   ← new-chapter.js 生成
+novel/chapter-*.html    章节页（每章一个）        ← new-chapter.js 生成
 novel/characters.html   同学录列表                  ← tools/make-characters.mjs 生成
 novel/character-*.html  18 个人物详细页             ← 同上
 
@@ -30,11 +30,12 @@ manuscript/             章节源稿（原文快照，push 前与章节页逐字
 js/reader.js            入口（按顺序装配下面四层并启动）
 js/reader.ui.js         界面层（面板、主题、字体、状态条、阅读辅助）
 js/reader.engine.js     引擎（位置锚点、恢复、自动滚屏、阅读计时）
-js/reader.store.js      存储层（所有 localStorage 读写的唯一入口）
+js/reader.store.js      存储层（读写 localStorage 应当走的唯一入口；历史上还有若干处直写没收口，
+                        tools/check-storage-boundary.mjs 用棘轮守着「只减不增」）
 js/reader.dom.js        DOM 工具（el/text，替代手拼 innerHTML）
 js/reader.flags.js      远程开关客户端
 js/theme.js             主题 + Service Worker 注册
-js/transition.js        页面切换过渡（已全站停用，模块保留备用；重启方式见文件头注释）
+js/native-bridge.js     App 壳的桥接补丁（放在站点侧，改桥不用发 App 版本；详见 app/）
 js/types.d.ts           共享类型声明（只给 JSDoc / 编辑器用，不产出代码）
 
 样式与资源
@@ -46,6 +47,7 @@ README.md               本文 —— 怎么改
 HANDOVER.md             交接说明 —— 现在是什么状态、哪里埋着坑（动工前先读）
 PROJECT-OVERVIEW.md     项目全貌（对外介绍用）
 docs/CHANGELOG.md       改动流水（只追加，最新的在最上面）
+docs/SW-HISTORY.md      Service Worker 逐版变更记录（新版本在这一头追加，不写回 sw.js）
 docs/INFINITE-SCROLL.md 无限流设计的实测笔记
 docs/archive/           历史快照（停在当天，别当现状读）
 app/                    安装包与 version.json（SW 不拦截，直连网络）
@@ -53,8 +55,8 @@ app/                    安装包与 version.json（SW 不拦截，直连网络�
 工具链（不参与页面运行）
 tools/                  校验与生成脚本（`npm run` 是它们的一张索引）
 new-chapter.js          加新章节（写 manuscript/ + 生成章节页）
-.githooks/pre-push      发版前六项校验（每个 clone 需启用一次，见下）
-.github/workflows/      CI：每次 push 跑六项静态校验 + 端到端
+.githooks/pre-push      发版前九项校验（每个 clone 需启用一次，见下）
+.github/workflows/      CI：每次 push 跑十项静态校验 + 端到端
 package.json            npm run 入口（零依赖，只有 scripts）
 jsconfig.json           类型检查配置（npx -y -p typescript tsc -p jsconfig.json --noEmit）
 .editorconfig           缩进 / 换行（管键盘那侧）；.gitattributes 管仓库那侧
@@ -66,7 +68,7 @@ jsconfig.json           类型检查配置（npx -y -p typescript tsc -p jsconfi
 `sw.js` 的 `cacheFirst` 是**命中就返回缓存**。让新 CSS/JS 生效靠的是 URL 里的版本号：
 
 ```bash
-node tools/bump-assets.mjs --write   # 扫描 29 个 HTML，取最大 ?v= +1，全站统一替换
+node tools/bump-assets.mjs --write   # 扫描全站 HTML，取最大 ?v= +1，全站统一替换
 ```
 
 漏了这一步，用户最长要吃一天旧缓存（`sw.js` 里 24h 的 TTL 自愈才会兜回来），
@@ -78,16 +80,19 @@ node tools/bump-assets.mjs --write   # 扫描 29 个 HTML，取最大 ?v= +1，�
 git config core.hooksPath .githooks
 ```
 
-启用后每次 `git push` 会先跑六项：
+启用后每次 `git push` 会先跑九项：
 
 | 检查 | 脚本 | 拦住什么 |
 |---|---|---|
 | 全站 `?v=` 是否统一 | `node tools/bump-assets.mjs --check` | 有人拿到旧 CSS/JS（混版缓存） |
 | 内容变了但缓存键没变 | `node tools/bump-assets.mjs --stale` | 改了 CSS/JS 忘了 +1：老读者拿旧文件配新 HTML（`--check` 只看「是否统一」，不看内容，所以另需一项） |
-| PRECACHE 条目是否都存在、脚本引用是否齐全 | `node tools/check-precache.mjs` | SW 预缓存里放了一条 404 |
+| PRECACHE 条目是否存在、引用是否闭环 | `node tools/check-precache.mjs` | SW 预缓存里放了一条 404；或预缓存的页面引用了某个离线拿不到的资源（2026-11-24 就这样漏过一张同学录缩略图，断网时是一张空卡） |
 | 楷体子集是否覆盖正文 | `python tools/make-kai-subset.py --check` | 正文用了子集外的字（GB2312 一级字之外的生僻字）会显示成豆腐块 |
 | 章节正文与源稿是否一致 | `node tools/manuscript-sync.mjs` | 正文被误改而没人发现 |
 | 安装包与 `version.json` 是否一致 | `node tools/check-apk.mjs` | APK 与 size/sha256 清单不同步（App 内更新会装到坏包） |
+| 内容契约是否自洽 | `node tools/check-content.mjs` | `content/*.json`（Android 原生版数据源）与站点正文逐字不一致 |
+| store 之外有没有新增 localStorage 直写 | `node tools/check-storage-boundary.mjs` | 新代码绕开存储层自己拼键名；schema 升版时这些键不会迁移 |
+| HANDOVER 里的数字与代码是否一致 | `node tools/check-docs.mjs` | 交接文档里的版本号、章数、行数过期，下一个人照着错的数字干活 |
 
 任一失败会**阻止 push** 并打印修复命令；hook 只做拦截，不改你的文件。
 没装 Node 的环境会打印提示并放行（不会把 push 卡死）。
@@ -244,3 +249,15 @@ node new-chapter.js <原稿.md>                  # 从 Markdown 生成新章节�
 - 深浅两套颜色令牌都在 `css/style.css` 的 `:root` / `[data-theme="dark"]` 里，
   新增颜色请走令牌，不要在组件里写死——深色主题的坑基本都来自写死的浅色值。
 - 改 `sw.js` 的 `PRECACHE` 内容时，`CACHE` 版本号要一起 +1，否则老用户不会重新 install。
+- **会变的数字只写在 `HANDOVER.md` 的「一页纸现状」**（版本号、章数、行数、体积），
+  由 `node tools/check-docs.mjs` 守着；README 与 `PROJECT-OVERVIEW.md` 讲「怎么改」和「全貌」，
+  不写这类数字——写了没人校验，迟早过期。`sw.js` 每一版为什么升记在 `docs/SW-HISTORY.md`。
+- **存 localStorage 走 `reader.store.js`**。store 之外还剩一些历史遗留的直写，
+  `node tools/check-storage-boundary.mjs` 只许它们变少（棘轮）；确实减掉几处后用 `--write` 下调基线。
+
+## 版权与许可
+
+- **正文、人物立绘、封面**：版权归作者所有。仓库公开托管不等于授权转载。
+- **字体**：站酷小薇与楷体子集均依 SIL Open Font License 1.1 自托管，
+  许可原文见 `assets/fonts/OFL-zcool-xiaowei.txt` 与 `assets/fonts/OFL-*.txt`。
+- **代码**：仓库目前没有 LICENSE 文件。

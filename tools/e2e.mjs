@@ -1241,9 +1241,10 @@ check('新读者显示第一章、不显示进度',
 
 section('页面切换 · 过渡已停用（进阅读页零等待）');
 /* 用户要求：「算了，我不要这个动画效果了，进入阅读页不要有明显的卡顿」。
-   过渡层（js/transition.js + .page-transition / .book-*）已全站停用，但模块与 CSS
-   刻意保留（30+ 个生成页还引用着它）。所以这里全部改成**反向断言**：谁把
-   PageTransition.init() 加回来、或把静态遮罩 DOM 加回来，这几条会立刻变红。
+   过渡层 2026-10 停用，2026-11-24 连 js/transition.js 与 .page-transition / .book-*
+   样式段一起删除（归档在 docs/archive/2026-11-24-page-transition/）。这几条仍然是
+   **反向断言**：谁把 PageTransition.init() 加回来、或把静态遮罩 DOM 加回来，
+   这几条会立刻变红 —— 结论（零等待、无遮罩）没变，变的只是「模块还在不在」。
 
    改前实测（headless Chrome + CDP，390×844，点首页 .date-item 进 chapter-01）：
      点下去 → 真正开始导航  481ms（transition.js 的 exitDelay 430ms）
@@ -1259,9 +1260,9 @@ const noOvHome = await evaluate(`(() => ({
   byClass: document.querySelectorAll('.page-transition').length,
   apiLoaded: typeof (window.PageTransition || {}).init === 'function'
 }))()`);
-check('首页不再创建过渡遮罩（无 #pageTransition / .page-transition）',
-  !noOvHome.byId && noOvHome.byClass === 0,
-  JSON.stringify(noOvHome) + ' / 模块仍在=' + noOvHome.apiLoaded);
+check('首页不再创建过渡遮罩（无 #pageTransition / .page-transition，且模块未加载）',
+  !noOvHome.byId && noOvHome.byClass === 0 && !noOvHome.apiLoaded,
+  JSON.stringify(noOvHome) + ' / PageTransition 已加载=' + noOvHome.apiLoaded);
 
 /* ② 点章节链接：不播过渡 + 立即开始导航。
    等待时长由「click 时刻 → pagehide 时刻」测出来（pagehide 就是浏览器开始卸载

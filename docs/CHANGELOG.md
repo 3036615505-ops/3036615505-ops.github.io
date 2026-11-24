@@ -9,6 +9,21 @@
 > 找一条规则得先滚过一堆某天的改动记录。**流水的归属是「历史」，不是「现状」。**
 >
 > 历史条目是原样搬过来的（内容逐字未改，只在块之间统一成一个空行）。
+>
+> **2026-11-09 → 11-24 的空档**：这段时间（`?v=132→150` / `CACHE v78→v98`）没有逐条记录。
+> `CACHE` 每一版为什么升，见 `docs/SW-HISTORY.md`；其余改动看提交历史。本文件不补写。
+
+## 2026-11-24 · 仓库体检第一批：预缓存守卫闭环、删死代码、文档对齐（`?v=150→151` / `CACHE v98→v99`）
+
+| 项 | 内容 |
+|---|---|
+| 动因 | 通读仓库做了一次体检，发现三类「检查报绿但实际是错的」：① `check-precache` 只查「清单里的文件在不在」，不查「页面引到的东西在不在清单里」；② `HANDOVER` 停在 11-09（`?v=131` / v77 / 10 章），README 与 PROJECT-OVERVIEW 停在 11-01（7 章 / 29 页），实际是 11 章；③ 11-20 全站摘掉引用后，`transition.js` 与页面切换动画 CSS 成了零引用的死代码 |
+| 真因 | ① 守卫的方向是单向的：漏进清单的资源没人管。改前实测——`/assets/portrait-shenruoqi-thumb.webp` 被同学录引用却**不在 PRECACHE**，离线首次打开该缩略图会失败；`/assets/apple-touch-icon.png` 同理。② 文档里的数字是手抄的，抄完没有任何东西校验；项目原则是「同一件事只写一处」，但那一处没人守。③ 10-28 审计保留过渡代码的前提是「9 个页面在加载」，这个前提在 v95 消失后没人回头处理 |
+| 改动 | **A. 守卫闭环**：`check-precache.mjs` 新增「引用闭环」——解析 PRECACHE 内 HTML 的 script/link/img 与 CSS 的 `url()`，引用必须在 PRECACHE 或 `RUNTIME_ON_DEMAND` 白名单里；末尾带「故意红」自测（把缩略图 / JS / CSS / woff2 逐条拿掉必须被检出）。`sw.js` 补上沈若栖缩略图。**B. 删死代码**：`js/transition.js` + `style.css` 的页面切换动画段（388 行 / 8.9KB）移到 `docs/archive/2026-11-24-page-transition/`。**C. 存储边界棘轮**：新增 `tools/check-storage-boundary.mjs`，`reader.store.js` 之外直写 `localStorage` 的次数只许减少（基线 53 处，记录在 `tools/storage-boundary.json`）。**D. CI**：`verify.yml` 加 `permissions: contents: read` 与 `concurrency`（同一分支新 push 取消旧的）；pre-push 与 CI 各加 typecheck / 存储边界 / 文档数字三项。**E. 文档对齐**：`sw.js` 头部 220 行逐版记录搬到 `docs/SW-HISTORY.md`；新增 `tools/check-docs.mjs` 守 `HANDOVER` 一页纸表格的 20 个数字；README / PROJECT-OVERVIEW 去掉会变的数字；补站酷小薇的 OFL 许可原文。**F. 仓库瘦身**：`linyuan-kai.ttf`（1.73MB，只被 `make-kai-subset.py` 当输入、无页面引用）移到仓库外 `_source-assets/assets/fonts/` |
+| 版本判据 | `?v=150→151`：CSS 字节变了。`CACHE v98→v99`：PRECACHE 多 1 条且其中 HTML / CSS 的字节变了。两项都符合「PRECACHE 里的字节变没变」的判据 |
+| 验证 | 改前基线 `e2e 190/190`；改后 `verify:all` / `storage:selftest` / `check-precache` 自测 / `check-docs --self-test` / typecheck 全绿，`e2e` 复跑 `190/190`（Edge，201.0s，与改前基线项数、用时一致）。删过渡代码的验证方式：无头 Edge 逐元素比对 7 个页面（首页 / 书架 / 同学录 / 摘句 / 章节 01、11 / 人物页）的计算样式，共同键零差异 |
+| 效果边界 | 同学录的沈若栖缩略图现在进预缓存（离线首开不再缺图）；体积 +约 12KB 未压缩。删过渡代码对读者**无可见变化**（v95 起就没有页面在播它），渲染阻塞 CSS 少 8.9KB。文档数字从此有守卫：代码变了表格没跟上，push 会被拦 |
+| 未修（待拍板） | ① 全站统一 `?v=` 改按文件内容哈希（11-09 那条的遗留）——要 git 当比对基准，且与 `announce.js` 的 `maxAssetVersion()` 耦合，本机没有 git 验证不了，未动。② `style.css` 里 v5–v9 的叠层（同一选择器被后面几版反复覆盖）合并——需要作者做一次视觉复核，未动。③ 仓库没有 LICENSE 文件：正文与立绘的版权归作者，字体是 OFL；要不要给代码单独许可由作者决定。④ `docs/HANDOVER-MAC-2026-11-21.md` 写明「真值回填后删掉本卡」，回填已做，卡留着等作者确认 Mac 那轮已收尾再删。⑤ `docs/CHANGELOG.md` 与 `_design/native-app/S1-DRILL.md` 等仓库外路径的引用仍然悬空 |
 
 ## 2026-11-09 · 发版冷启动性能修复（`?v=131` / `CACHE v77` **均不变**）
 

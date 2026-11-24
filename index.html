@@ -19,14 +19,14 @@
        抢走同一条连接上的带宽（实测冷启动：cover 199ms 起、CSS 201ms 起）。
        这里改指 144x196 的 cover-thumb.webp（5.7KB），
        不再用 528x720 的 cover.webp（69.4KB）去画一个 46x62 的方块。 -->
-  <link rel="stylesheet" href="css/style.css?v=150">
+  <link rel="stylesheet" href="css/style.css?v=151">
   <link rel="preload" as="image" href="assets/cover-thumb.webp">
-  <script src="js/theme.js?v=150"></script>
-  <script src="js/native-bridge.js?v=150"></script>
+  <script src="js/theme.js?v=151"></script>
+  <script src="js/native-bridge.js?v=151"></script>
   <!-- 站内「新章节更新了」横幅（取 announce.json 与 localStorage 比对，每会话一次）。 -->
-  <script src="js/announce.js?v=150" defer></script>
+  <script src="js/announce.js?v=151" defer></script>
   <!-- 点击即反馈：按下就在顶部点亮一条细线，盖住「跳转前的空窗期」。 -->
-  <script src="js/nav-feedback.js?v=150" defer></script>
+  <script src="js/nav-feedback.js?v=151" defer></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame home-page">
@@ -126,7 +126,7 @@
        弱网下 chapters.js 没回来之前整页白屏（首屏可感知卡顿）。
        放在这里首屏骨架先画出来；但必须保持在下面依赖 CHAPTERS 的内联脚本之前
        （经典脚本按文档顺序执行，内联脚本是同步 IIFE，等不到任何异步回调）。 -->
-  <script src="js/chapters.js?v=150"></script>
+  <script src="js/chapters.js?v=151"></script>
 
   <script>
   (function() {
@@ -450,9 +450,12 @@
     //   章节页遮罩保持不透明覆盖到    708ms（enterHold 170 + 淡出 190 + 初始化）
     // 而章节页本身 FCP 112ms、零长任务 —— 阅读页不慢，慢的全是这两段等待。
     // 停用方式：只摘掉 init() 调用，遮罩元素根本不会被创建（旧的静态 <div> 也已删掉）。
-    // js/transition.js 与 css/style.css 里的 .book-* 样式**保留**：30+ 个生成页的
-    // <script> 还引用着它，删文件要重新生成全站；留着是不占运行时的「拔掉插头」。
-    // 要恢复动画：把下面这段注释放开即可（配置项与停用前完全一致）。
+    // 2026-11-24：js/transition.js 与 style.css 里的「页面切换动画」样式段已一并删除，
+    // 归档在 docs/archive/2026-11-24-page-transition/。停用当初保留它们，是因为还有
+    // 9 个页面在加载这个脚本；11-20（v95）全站摘掉引用后，它已经是零引用的死文件，
+    // 而那段样式（约 8.9 KB）仍是每个页面都要下载的渲染阻塞 CSS。
+    // 要恢复动画：从归档目录取回脚本与样式（归档文件头写了 .book-cover 同名叠加的坑，
+    // 贴回前先把那几条规则限定到 .page-transition 之下），再放开下面这段注释。
     //
     //   PageTransition.init({
     //     skipSelector: '.tab-bar',   // tab 栏同层级切换不参与过渡

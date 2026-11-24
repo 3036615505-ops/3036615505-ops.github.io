@@ -1,47 +1,56 @@
 # 交接说明（下次动工先读这份）
 
-> 最后更新：2026-11-09 · 对应 HEAD 用 `git log -1` 查
+> 最后更新：2026-11-24 · 对应 HEAD 用 `git log -1` 查
 > 写给「几天后回来、已经忘了细节的自己」。README 讲**怎么改**，这份讲**现在是什么状态、哪里埋着坑**。
 >
 > **按日期追加的改动记录不在这份文件里**，在 `docs/CHANGELOG.md`。
 > 分工只有一条判断：**「明年还成立吗？」成立 → 留在本文件；只在某天成立 → 写进 CHANGELOG。**
 > 原来两者混在一起（910 行里 408 行是历史），找一条规则得先滚过一堆某天的改动记录。
+>
+> **「一页纸现状」里的数字受 `tools/check-docs.mjs` 守卫**（pre-push / CI 都跑）：
+> 代码变了而这张表没跟上，push 会被拦。改表时跑 `node tools/check-docs.mjs --facts`
+> 照抄「实际」那一列，不要反过来改代码去凑数字。README 与 PROJECT-OVERVIEW **不写**
+> `?v=` / `linyuan-v` / 章数这类会变的数字，要数字就指向这张表。
 
 ## 一页纸现状
 
 | 项 | 值 |
 |---|---|
 | 线上 | <https://zephyrw.site>（GitHub Pages，push 即发布） |
-| 站点资源版本 | `?v=131`（全站 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
-| SW 缓存名 | `linyuan-v77` |
-| 内容契约 | `content/*.json`（manifest + 10 章 + 18 人）是 Android 原生版的数据源；由 `tools/gen-content.mjs` 从页面/数据源派生，`tools/check-content.mjs` 逐字守卫；**不进 PRECACHE、不带 `?v=`、不被任何页面引用**，改它既不升 `?v=` 也不升 `CACHE` |
-| 阅读器模块 | dom 77 行 · flags 88 · store 247 · engine 631 · ui 3760 · 入口 30 |
-| 样式 | `css/style.css` 5082 行（4 套主题令牌） |
-| 章节 | 10 章（2722 / 2257 / 1999 / 2451 / 2013 / 2184 / 2022 / 2339 / 2134 / 2463 字，按 `CHAPTERS.words`），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
+| 站点资源版本 | `?v=151`（全站 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
+| SW 缓存名 | `linyuan-v99`（逐版记录在 `docs/SW-HISTORY.md`） |
+| 内容契约 | `content/*.json`（manifest + 11 章 + 18 人）是 Android 原生版的数据源；由 `tools/gen-content.mjs` 从页面/数据源派生，`tools/check-content.mjs` 逐字守卫；**不进 PRECACHE、不带 `?v=`、不被任何页面引用**，改它既不升 `?v=` 也不升 `CACHE` |
+| 阅读器模块 | dom 57 行 · flags 71 · store 303 · engine 531 · ui 3439 · 入口 30（行数由 `tools/compact-comments.py` 压过注释，只当量级看） |
+| 样式 | `css/style.css` 4932 行（4 套主题令牌） |
+| 章节 | 11 章（3043 / 2553 / 2074 / 2451 / 2013 / 2184 / 2022 / 2339 / 2134 / 2463 / 3240 字，按 `CHAPTERS.words`），源稿在 `manuscript/`；`CHAPTERS` 带 `year`（四位数字）+ `date`/`dates`，首页光阴册按学年学期分段（标签如「二〇二二 · 高一上」，年级由 `COHORT_YEAR` 推出）；一章多日 → 日期列每 4 秒跳一格，章内日期（如第一章九月十七）插在场景切换后，不挂章末；与上一章同一天时用 `new-chapter.js --nodate`（数据照旧记日期供光阴册分组，但章节页不输出日期行） |
 | 人物 | 18 人（新叶 7 / 青枝 4 / 乔木 7）**全部有立绘**（`assets/portrait-<slug>-1024.webp`，1024×960）；列表页 `novel/characters.html` + 每人一个详细页 `novel/character-*.html`；数据在 `js/characters-data.js`，由 `tools/make-characters.mjs` 生成 |
-| 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3900 字 / 891.5KB（主片 273.1 + 兜底片 618.4）**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
-| Android 壳 | v1.9.3 / versionCode 20（v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死；v1.8.7 修系统返回键直接退出；**v1.9.0 = A 档收官，壳进入封版状态**：桥接补丁下沉到站点 `js/native-bridge.js`（以后改桥不用发版）、原生分享桥、闪屏叠层淡出、onResume 补更新检查、锁竖屏。详见 `app/BACK-HANDLING.md`） |
-| 校验 | 本地 pre-push 7 项 · CI 2 个 job · 端到端 179 项 |
+| 字体 | 黑体/系统/楷体 + **导入自己的字体**（FontFace + IndexedDB，reader.ui.js `installUserFont`，详见 `app/FONT-BRIDGE.md`）。楷体子集 = **GB2312 一级常用字 3755 + 已用字 + ASCII + 标点 = 3924 字 / 900.6KB（主片 342.5 + 兜底片 558.1）**（`tools/make-kai-subset.py` 生成；**不在 SW 预缓存**，选楷体才懒加载；URL 里的 `?f=` 是字体缓存键，换字体必须 +1；要瘦身用 `--minimal` 回到「仅已用字」约 205KB）。两套自托管字体（站酷小薇、楷体子集）的 OFL 许可原文在 `assets/fonts/OFL-*.txt`。原始 `linyuan-kai.ttf`（1.73MB）已移出仓库，母版在仓库外 `_source-assets/assets/fonts/`。系统字体在 WebView 里拿不到 ROM 主题字体，这是 ROM 限制不是 bug |
+| Android 壳 | v2.0.4 / versionCode 25（`app/version.json` 是唯一事实源，`node tools/check-apk.mjs` 守卫；v2.0.x 这几次发版的说明本文档没有记录，看提交历史。v1.9.3 及更早：v1.8.5 文件选择桥 →「导入自己的字体」在 App 里可用；v1.8.6 修更新包下载卡死；v1.8.7 修系统返回键直接退出；**v1.9.0 = A 档收官，壳进入封版状态**：桥接补丁下沉到站点 `js/native-bridge.js`（以后改桥不用发版）、原生分享桥、闪屏叠层淡出、onResume 补更新检查、锁竖屏。详见 `app/BACK-HANDLING.md`） |
+| 校验 | 本地 pre-push 9 项 · CI 2 个 job（静态 10 步 + 端到端）· 端到端 190 项 |
 
 ## 常用命令
 
 下面这些命令都有 `npm run` 入口（`package.json`：零依赖，只有 `scripts`，脚本本身仍是唯一实现；
-直接敲 `npm run` 可列出全部入口）。最常用的三条：`npm run verify`（前四项静态校验）、
-`npm run verify:all`（五项，含楷体）、`npm run e2e`（端到端）。
+直接敲 `npm run` 可列出全部入口）。最常用的三条：`npm run verify`（pre-push 跑的那一串静态校验）、
+`npm run verify:all`（再加上楷体与站酷小薇两款字体子集）、`npm run e2e`（端到端）。
 `npm run stale` 单独列：它要拿 git 的远端提交当基准，换台没有远端引用的机器会自己跳过。
 
 ```bash
-node tools/e2e.mjs                 # 179 项端到端（真浏览器，约 193 秒）
+node tools/e2e.mjs                 # 190 项端到端（真浏览器，约 200 秒）
 node tools/e2e.mjs --verbose       # 附带每项实测值
 npx -p typescript tsc -p jsconfig.json --noEmit   # 类型检查（零产出）
 node tools/bump-assets.mjs --write # 发版前必做：全站 ?v= 统一 +1
 node tools/bump-assets.mjs --check # 只检查是否混版
 node tools/bump-assets.mjs --stale # 内容变了但缓存键没变就报错并退出 1（pre-push 第 2 项）
                                    # 只改注释/纯数据时：ASSET_STALE_OK=1 显式放行
-node tools/check-precache.mjs      # SW 预缓存条目是否存在
+node tools/check-precache.mjs      # SW 预缓存：条目存在 + 引用闭环（页面引到的资源必须在 PRECACHE 或白名单里）
+node tools/check-storage-boundary.mjs           # store 之外直写 localStorage 的次数只能减不能增（棘轮）
+node tools/check-storage-boundary.mjs --write   # 确实减了之后，下调基线 tools/storage-boundary.json
 node tools/manuscript-sync.mjs     # 正文与 manuscript/ 源稿逐字比对
 node tools/check-apk.mjs           # 安装包与 version.json 的 size/sha256 是否一致
 node tools/check-apk.mjs --write   # 打完新包后重算校验值（APK 与清单同一次提交）
+node tools/check-docs.mjs          # 本文件「一页纸现状」的数字与代码是否一致
+node tools/check-docs.mjs --facts  # 改本文件时打印代码里的实际数字
 python tools/make-kai-subset.py --check            # 楷体子集是否覆盖正文
 node new-chapter.js <原稿.md>       # 加新章节（会自动写 manuscript/）
 node tools/render-chapter.mjs chapter-01   # **重新渲染已有章节**（md → 章节页，改稿用这个）
@@ -149,10 +158,10 @@ git push -u origin wip/mac-键盘
 ### 每台机器配一次
 
 ```bash
-git config core.hooksPath .githooks   # 没配则本地四项校验不跑，只剩 CI 兜底
+git config core.hooksPath .githooks   # 没配则本地九项校验不跑，只剩 CI 兜底
 ```
 
-**版本号现状**：`?v=131`（2026-11-09）。谁改谁 bump，`?v=` 与改动一起提交，不要攒——
+**版本号现状**：`?v=151`（2026-11-24）。谁改谁 bump，`?v=` 与改动一起提交，不要攒——
 攒多了中间任何一次 push 都可能带着别人的旧缓存。
 
 ## 两类改动，两种流程
@@ -162,12 +171,12 @@ git config core.hooksPath .githooks   # 没配则本地四项校验不跑，只�
 ```bash
 node tools/bump-assets.mjs --write   # ① 改 CSS/JS 必须做，否则用户吃旧缓存
 # ② PRECACHE 里的**内容**变了就要把 CACHE 版本号 +1（v76 → v77）
-git commit && git push               # ③ pre-push 会跑 4 项校验，CI 会再跑一遍
+git commit && git push               # ③ pre-push 会跑 9 项校验，CI 会再跑一遍
 ```
 
 **②的判据是「PRECACHE 里的字节变没变」，不是「改的是哪个文件」。** 最容易漏的一类：
-只改了 CSS/JS，但 `?v=` 全站 +1 会改到 10 个 `novel/chapter-0N.html` 里的
-`<link href="…style.css?v=…">` / `<script src="…?v=…">` —— 那 10 页在 PRECACHE 里，
+只改了 CSS/JS，但 `?v=` 全站 +1 会改到 11 个 `novel/chapter-NN.html` 里的
+`<link href="…style.css?v=…">` / `<script src="…?v=…">` —— 那 11 页在 PRECACHE 里，
 于是预缓存的内容变了，**CACHE 必须 +1**。2026-10-29（底部抽屉）就是这么漏过一次：
 「HTML 走网络优先所以不用升」只保证**在线**读者，不升的话预缓存那份 HTML 仍指向旧的
 `?v=`，那些键要等 TTL 自愈才换，**离线读者会长期停在「旧 HTML + 新 JS」且不会自愈**。
@@ -212,7 +221,7 @@ node new-chapter.js 原稿.md --blurb "目录页一句话" --date "九月十九"
 三道保护：**目标章节页已存在 → 中止**（不覆盖旧章）；**模板漏脚本 → 删掉半成品并报错**；`check-precache.mjs` 里还有一条 CI 检查，拿现有章节页比对模板的脚本引用，模板落后会红。
 
 人工只剩一件：把章末「这一章留下来的」占位文案换成属于这一章的话（脚本会提醒）。
-然后 commit + push，CI 跑五项校验 + 179 项端到端。
+然后 commit + push，CI 跑 10 步静态校验 + 190 项端到端。
 
 新增章节**不需要**手动升 `?v=`：章节页是新 URL，导航走网络优先；`CACHE` 由脚本升。
 
@@ -222,7 +231,7 @@ node new-chapter.js 原稿.md --blurb "目录页一句话" --date "九月十九"
 # 飞书改完稿 → 落到 manuscript/chapter-0N.md → 再重渲染页面
 node tools/render-chapter.mjs chapter-01          # 只重渲染这一章的正文
 node tools/render-chapter.mjs chapter-01 --dry-run # 先看 diff
-node tools/render-chapter.mjs --all                # 全部 10 章
+node tools/render-chapter.mjs --all                # 全部 11 章
 ```
 
 方向是 **md 是源、html 是生成物**（和 `new-chapter.js` 同一套模板：整页模板与
@@ -415,15 +424,12 @@ serif——观感一致，不是 bug。（18 人全部有立绘后，占位字�
       - `novel/index.html` 里那个写死早期叶子结构的静态 `<div id="pageTransition">`
         也删了。留着它，遮罩元素照样在 DOM 里，只是永远不会被激活 ——
         既让「进页零等待」的断言无法成立，又让结构停留在废弃版本；
-      - `js/transition.js` 与 `css/style.css` 的 `.page-transition` / `.book-*` **刻意保留**：
-        实测**引用它的只有 9 个页面** —— `index.html`、`novel/index.html`、`novel/chapter-0{1..7}.html`
-        （`grep -rln --include="*.html" "transition\.js" . | wc -l` → 9）；18 个人物页**都不引用**
-        （`tools/make-characters.mjs` 只在注释里提到它）。当初「30+ 个生成页要重新生成」这个成本
-        依据已被实测证伪，保留的理由改成**「重启过渡时的弯路结论需要它这个可执行载体」**，见下文
-        「若将来重启过渡」一节。真要删，改动面是这 9 个页面 + `new-chapter.js:339` 模板 +
-        `check-precache.mjs` 的 `needed` 白名单，并且 `?v=` 与 `CACHE` 各 +1。
-        本模块在被 `init()` 调用前不产生任何 DOM、定时器或监听，保留的代价只有一次
-        静态请求。文件头已写明「当前已停用 / 如何重新启用」；
+      - `js/transition.js` 与 `css/style.css` 的页面切换动画段（388 行）**已于 2026-11-24 删除**，
+        归档在 `docs/archive/2026-11-24-page-transition/`。10-28 那次审计保留它们的理由是
+        「还有 9 个页面在加载」；到 11-20（v95）全站已零引用，这个前提没了。
+        删除前用无头浏览器逐元素比对了 7 个页面的计算样式，零差异。
+        `novel/index.html` 的静态 `<div id="pageTransition">` 一并摘掉；
+        详见下文「若将来重启过渡」一节；
       - `js/reader.ui.js` 的 `initChapterSwap()`（捕获阶段接管章节链接）**必须留着**：
         它原来抢的正是 transition 的整页转场，现在照样要抢 —— 不抢就整页跳转，
         白屏 + 丢滚动位置，比动画更糟；
@@ -431,6 +437,9 @@ serif——观感一致，不是 bug。（18 人全部有立绘后，占位字�
         断言确认「不产生任何遮罩」；**不为此写迁移代码**（随 session 自然过期）。
 
     **若将来重启过渡，下面这些弯路结论仍然有效（停用不推翻它们）**
+      停用时的实现归档在 `docs/archive/2026-11-24-page-transition/`
+      （`transition.js.txt` + `page-transition.css.txt`）。注意归档 CSS 的 `.book-cover`
+      与书架卡片的封面类**同名**，整段贴回 `style.css` 会叠到书架上；文件头写了怎么避。
       参照 `CodeMyUI/book-opening-animation` 与 scastiel 的 3D 书（cover + pages
       的结构），FLIP 那套 hero 反演已弃用。最终序列曾是：屏幕中央立起一本带书口
       厚度的 3D 书 → 封面绕书脊抬起一角 → 整本书放大、**封面图本身**铺满全屏 →
@@ -442,7 +451,7 @@ serif——观感一致，不是 bug。（18 人全部有立绘后，占位字�
         WebView 下 backface 剔除不生效，翻过去露出的仍是封面，看着像没播。
       - **铺满全屏的必须是封面图，不是「翻过来的内页」**。内页做成空白纸（哪怕
         加假行文）看起来就是「一个奇怪的空白页面」，用户否过两次。
-        `.book-page` 现在只是留口子的空元素，永远 opacity: 0。
+        `.book-page` 当时只是留口子的空元素，永远 opacity: 0。
       - **遮挡别用 `background-color` 动画**。那是绘制属性，每帧重绘整屏，顿挫比
         旧叶子遮罩还重。纯色遮挡必须走 `opacity`（合成层）。
       - **阴影别挂在容器上**。挂在 `.book` 上的话，封面走后还剩一个带阴影的空壳卡片。
@@ -619,10 +628,10 @@ serif——观感一致，不是 bug。（18 人全部有立绘后，占位字�
 
 | 事项 | 建议时机 | 理由 |
 |---|---|---|
-| 老面板（目录/设置/摘句/备份）从 innerHTML 迁到 `el()` | 下次真要加界面时 | 纯内部质量，无用户可见收益；且 179 项断言测行为不测像素，风险兜不住 |
-| `ui.js` 再拆出 `panels.js`（纯移动） | 想拆随时可做 | 风险低，但也没收益；`ui.js` 3515 行目前还能忍 |
+| 老面板（目录/设置/摘句/备份）从 innerHTML 迁到 `el()` | 下次真要加界面时 | 纯内部质量，无用户可见收益；且 190 项断言测行为不测像素，风险兜不住 |
+| `ui.js` 再拆出 `panels.js`（纯移动） | 想拆随时可做 | 风险低，但也没收益；`ui.js` 3439 行目前还能忍 |
 | 选中文字气泡工具条（摘句/复制/搜索） | 想加功能时的首选 | 唯一“既有用户价值、又顺手带出 `el()` 迁移”的一步 |
-| 全书搜索改「预构建索引文件」 | **章节数涨到 ~20 章以上**时 | 现在 10 章是运行时现抽（复用已预缓存的章节页，约 10ms，无新资源、无新链路）。涨到几十章后「首次打开面板要等几十次 fetch」才会被感知，那时才值得落盘成 `search-index.json` —— 代价同时是：`PRECACHE` +1 条、`CACHE` +1、CI 加一条「索引段落 = 章节页段落」的漂移检查，并写进 `new-chapter.js` 收尾 |
+| 全书搜索改「预构建索引文件」 | **章节数涨到 ~20 章以上**时 | 现在 11 章是运行时现抽（复用已预缓存的章节页，约 10ms，无新资源、无新链路）。涨到几十章后「首次打开面板要等几十次 fetch」才会被感知，那时才值得落盘成 `search-index.json` —— 代价同时是：`PRECACHE` +1 条、`CACHE` +1、CI 加一条「索引段落 = 章节页段落」的漂移检查，并写进 `new-chapter.js` 收尾 |
 | 全角标点折叠只覆盖 `FF01–FF5E`（**含「，」不含「。」**） | 有读者反馈「搜不到」时 | `foldChar` 是 1:1 码元映射（长度守恒），只折 U+FF01–FF5E 全角 ASCII 区 + ASCII 大小写。实测后果：全角「，」与半角 `,` **等价命中**（两边落到同一批段落），但全角「。」(U+3002) 与半角 `.` **不等价** —— 用英文句点搜中文句号会**一无所获且不报错**。暂不改代码是权衡过的：要补就得加一张显式映射表（`。`↔`.`、`、`↔`,`、`「」`↔`""` …），且必须仍然逐字符一对一（长度守恒），等于多维护一张会漂的表；而读者用中文标点搜是常态。真要修：改 `foldChar` 一处 + 补一条 e2e（「搜 `.` 应命中含 `。` 的段落」），并把本条从「还没做」挪走 |
 | 封面重设计 | 想换封面时 | 三方向候选在**仓库外** `E:/novel-site/_perf/cover-candidates/`（3 张竖版 PNG，2026-10-25 生成）；选定后要生成三件套（528×720 封面 / 144×196 缩略 / 1200×630 分享卡）并调书名叠色。母版 JPG 已移到仓库外 `_source-assets/`，别去 git 历史里翻 |
 | 真机验证清单 | 手上有真机想收尾 A 档时 | 分享面板在国产 ROM 的表现 / 闪屏接缝色差 / v1.8.7 → v1.9.0 覆盖升级 / 切后台 >60s 回前台的更新提示时机 / **搜索的中文输入法组字**（搜狗、Gboard 的 `compositionstart`/`compositionend` 顺序与 `e.isComposing` 支持：e2e 只能用合成事件，真机上「打字过程中结果不闪、上屏即刻出结果」只能手验）—— 这些无头浏览器测不出来 |
@@ -634,10 +643,11 @@ serif——观感一致，不是 bug。（18 人全部有立绘后，占位字�
 
 ## 当前验证状态
 
-- 本地：`node tools/e2e.mjs` 179/179；pre-push 6 项通过（?v= 统一 / 内容与缓存键同步 / 预缓存 / 楷体覆盖 / 源稿一致 / 安装包校验）
+- 本地：`node tools/e2e.mjs` 190/190；pre-push 9 项通过（?v= 统一 / 内容与缓存键同步 / 预缓存 / 楷体覆盖 / 源稿一致 / 安装包校验 / 类型检查 / 存储边界 / 文档数字）
   - 本机没装 Chrome/Edge 时用 `CI=1 CHROME_BIN=<chrome-headless-shell 路径> node tools/e2e.mjs`
     （`CI=1` 才会加 `--no-sandbox`，容器/沙箱里不加必然起不来）
-  - 179 = 上一版 160 + 19（「面板改底部抽屉」小节：五个面板逐个量几何与两端 transform
+  - 190 = 179 + 11（2026-11-09 之后各版陆续新增，逐条出处看提交历史，本文档没有补记），2026-11-24 实测；
+    179 = 上一版 160 + 19（「面板改底部抽屉」小节：五个面板逐个量几何与两端 transform
     10 · 收起的抽屉不撑出滚动区 1 · 桌面 420px 居中 1 · 下拉 150px 关 1 ·
     下拉 40px 回弹 1 · 内容滚到中间不接管 1 · 点遮罩关 1 · Esc 关 1 · 搜索框仍能输入 1 ·
     收尾无残留 1），2026-10-29 加；

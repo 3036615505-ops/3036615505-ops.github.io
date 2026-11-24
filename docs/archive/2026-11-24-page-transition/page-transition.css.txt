@@ -1,0 +1,402 @@
+/* 归档于 2026-11-24 —— 原位于 css/style.css 第 61–448 行「页面切换动画」段，原样保留，不再上线。
+ *
+ * 为什么删：翻书过渡 2026-10 停用，当时脚本与样式保留，前提是「还有 9 个页面在加载」。
+ * 2026-11-20（v95）全站摘掉了 js/transition.js 的引用，之后没有任何页面或脚本
+ * 会用到这段选择器，它却仍是每个页面都要下载的渲染阻塞 CSS（约 8.9 KB）。
+ *
+ * 重启过渡时的注意点：
+ *   1. 这里的 .book / .book-stage / .book-pages / .book-page 只服务过渡层；
+ *      但 .book-cover 是全局规则，与书架的 .book-cover（原第 994 行起）同名叠加，
+ *      其中的 opacity: 0 / transform-origin / inset 一直作用在书架封面上。
+ *      要恢复这段，请把第 214 行起的那几条 .book-* 规则都限定到 .page-transition 之下，
+ *      不要原样贴回。
+ *   2. 实现见同目录 transition.js.txt。
+ */
+/* ===== 页面切换动画 ===== */
+@keyframes leafDraw {
+  0%   { stroke-dashoffset: 80; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes leafSway {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  25%      { transform: rotate(6deg) translateY(-2px); }
+  75%      { transform: rotate(-6deg) translateY(2px); }
+}
+
+@keyframes loadingLeafOrbit {
+  0%   { transform: rotate(0deg) translateY(-34px) rotate(0deg); opacity: 0.18; }
+  35%  { opacity: 0.85; }
+  100% { transform: rotate(360deg) translateY(-34px) rotate(-360deg); opacity: 0.18; }
+}
+
+@keyframes loadingPulse {
+  0%, 100% { transform: scale(1); opacity: 0.72; }
+  50%      { transform: scale(1.08); opacity: 1; }
+}
+
+.page-transition {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 38%, rgba(255,255,255,0.55), transparent 34%), var(--site-bg);
+  opacity: 0;
+  /* 0.25s → 0.18s：入场停留压到 200ms 后，淡入必须在停留期内走完，
+     否则遮罩永远到不了全不透明，看起来像一层半透明的脏雾 */
+  transition: opacity 0.18s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-transition.active {
+  opacity: 1;
+  /* 刻意不再写 pointer-events: auto —— 遮罩不该拦点击 */
+}
+
+.transition-inner {
+  width: 128px;
+  height: 128px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  position: relative;
+}
+
+.transition-inner::before {
+  content: '';
+  position: absolute;
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  background: rgba(255, 250, 242, 0.74);
+  border: 1px solid rgba(184,134,78,0.12);
+  box-shadow: 0 16px 40px rgba(76, 48, 18, 0.10);
+}
+
+.transition-inner svg {
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 6px 14px rgba(184,134,78,0.16));
+}
+
+.page-transition.active .transition-inner {
+  opacity: 1;
+}
+
+.page-transition.active .transition-inner svg {
+  animation: leafSway 1.2s ease-in-out infinite;
+}
+
+.transition-leaves {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.page-transition.active .transition-leaves {
+  animation: loadingPulse 1.8s ease-in-out infinite;
+}
+
+.transition-leaves .leaf {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 11px;
+  height: 15px;
+  margin-left: -5.5px;
+  margin-top: -7.5px;
+  border-radius: 70% 30% 70% 30%;
+  transform-origin: 50% 50%;
+  opacity: 0.76;
+  box-shadow: 0 2px 6px rgba(109,74,46,0.10);
+}
+
+.transition-leaves .gold { background: var(--leaf-gold); }
+.transition-leaves .green { background: var(--leaf-green); }
+.transition-leaves .brown { background: var(--leaf-brown); }
+.transition-leaves .gold.soft {
+  width: 9px;
+  height: 13px;
+  margin-left: -4.5px;
+  margin-top: -6.5px;
+  background: color-mix(in srgb, var(--leaf-gold) 78%, white 22%);
+}
+.transition-leaves .green.soft {
+  width: 9px;
+  height: 13px;
+  margin-left: -4.5px;
+  margin-top: -6.5px;
+  background: color-mix(in srgb, var(--leaf-green) 76%, white 24%);
+}
+
+.page-transition.active .transition-leaves .gold { animation: loadingLeafOrbit 1.85s linear infinite; }
+.page-transition.active .transition-leaves .green { animation: loadingLeafOrbit 1.85s linear -0.37s infinite; }
+.page-transition.active .transition-leaves .brown { animation: loadingLeafOrbit 1.85s linear -0.74s infinite; }
+.page-transition.active .transition-leaves .gold.soft { animation: loadingLeafOrbit 1.85s linear -1.11s infinite; }
+.page-transition.active .transition-leaves .green.soft { animation: loadingLeafOrbit 1.85s linear -1.48s infinite; }
+
+.transition-text {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  z-index: 2;
+}
+
+.page-transition.active .leaf-path {
+  stroke-dasharray: 80;
+  stroke-dashoffset: 80;
+  animation: leafDraw 0.6s ease-out 0.15s forwards;
+}
+
+.page-transition.active .leaf-vein {
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: leafDraw 0.4s ease-out 0.4s forwards;
+}
+
+.page-transition {
+  /* 舞台化：hero 封面要立在暖色场地上，背景不再是那层「脏雾」渐变 */
+  background: var(--site-bg);
+}
+
+.book-stage {
+  /* 透视放舞台上：书自己如果也带 perspective，封面翻开时的近大远小会和
+     放大叠在一起，转动看起来发飘。900px 是「拿在手里看」的距离感。 */
+  perspective: 900px;
+  perspective-origin: 50% 42%;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.book {
+  position: relative;
+  width: min(58vw, 292px);
+  aspect-ratio: 3 / 4.1;
+  /* 书的变换原点在书脊（左缘中点）：放大时像被翻开的书迎面展开 */
+  transform-origin: 12% 50%;
+  will-change: transform;
+}
+
+/* 封面：绕左缘（书脊）翻开。默认不可见，只在 flip-out 动画里露脸 ——
+   凡是靠「某个类存在时才隐藏」的写法，摘类瞬间都会漏出来（踩过）。 */
+.book-cover {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 3px 8px 8px 3px;
+  background: #2f2a24;
+  transform-origin: 0% 50%;
+  opacity: 0;
+  /* 书页厚度的阴影跟着封面走：挂 .book 上的话封面翻走后会剩个空壳卡片 */
+  box-shadow:
+    3px 2px 0 #e7dcc4,
+    6px 4px 0 #ddd0b2,
+    9px 6px 0 #d2c3a0,
+    18px 22px 44px rgba(76, 52, 28, 0.34);
+}
+
+.book-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 书口：右侧的几层纸边，给书「厚度」。翻开时它还立着，
+   放大铺满时被内页接替（一起放大并淡出），不会留下空壳。 */
+.book-pages {
+  position: absolute;
+  top: 1.2%;
+  bottom: 1.2%;
+  left: 100%;
+  width: 10px;
+  background: repeating-linear-gradient(
+    to right,
+    #efe6d2 0 2px,
+    #e4d8c0 2px 4px
+  );
+  border-radius: 0 2px 2px 0;
+  transform-origin: 0% 50%;
+  opacity: 0;
+}
+
+.book-page {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px 8px 8px 3px;
+  background: #f5efe0;
+  transform-origin: 0% 50%;
+  opacity: 0;
+}
+
+@keyframes bookRise {
+  0% {
+    transform: scale(0.38) translateY(8%) rotateY(14deg);
+    opacity: 0;
+  }
+  12% { opacity: 1; }
+  30% {
+    transform: scale(0.72) translateY(0) rotateY(8deg);
+  }
+  55% {
+    transform: scale(1.35) rotateY(3deg);
+  }
+  78% {
+    transform: scale(2.4) rotateY(0deg);
+  }
+  100% {
+    transform: scale(3.8) rotateY(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes coverOpen {
+  0%   { transform: rotateY(0deg); }
+  30%  { transform: rotateY(-6deg); }
+  55%  { transform: rotateY(-18deg); }
+  78%  { transform: rotateY(-28deg); }
+  100% { transform: rotateY(-32deg); }
+}
+
+/* 书口：书立起时露出厚度，放大后被封面自己盖住（不需要额外元素铺满） */
+@keyframes pagesShow {
+  0%, 12% { opacity: 0; }
+  26%     { opacity: 1; }
+  68%     { opacity: 1; }
+  100%    { opacity: 0; }
+}
+
+.page-transition.flip-out .book {
+  animation: bookRise 430ms cubic-bezier(0.32, 0.12, 0.2, 1) forwards;
+}
+
+.page-transition.flip-out .book-cover {
+  opacity: 1;
+  animation: coverOpen 430ms cubic-bezier(0.32, 0.12, 0.2, 1) forwards;
+}
+
+.page-transition.flip-out .book-pages {
+  animation: pagesShow 430ms ease forwards;
+}
+
+/* 内页在出场时始终不可见 —— 铺满的是封面 */
+.page-transition.flip-out .book-page {
+  opacity: 0;
+}
+
+@keyframes coverEnter {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.page-transition.flip-in .book {
+  transform: scale(3.8) rotateY(0deg);
+}
+
+.page-transition.flip-in .book-cover {
+  opacity: 1;
+  transform: rotateY(-32deg);
+  animation: coverEnter 190ms ease-in forwards;
+}
+
+/* 入场时书口/内页不该出现 */
+.page-transition.flip-in .book-pages,
+.page-transition.flip-in .book-page {
+  opacity: 0;
+}
+
+/* veil：全屏纸色兜底遮罩，负责接住跳转那一帧（opacity，合成层，不重绘）。
+   只是一块纯色，不是「一页纸」。 */
+.page-transition-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: #f0e8d6;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes veilIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes veilOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* veil 只做兜底：跳转那一帧由它接住，防止闪旧页面。
+   延后进，别盖住书本翻开的过程。 */
+.page-transition.flip-out .page-transition-veil {
+  animation: veilIn 80ms ease-out 340ms forwards;
+}
+
+.page-transition.flip-in .page-transition-veil {
+  animation: veilOut 160ms ease-in forwards;
+}
+
+/* 翻书/放大时底部小字跟随淡出，别在正文露出后还挂着 */
+.page-transition.flip-out .transition-text,
+.page-transition.flip-in .transition-text {
+  animation: bookTextFade 170ms ease forwards;
+}
+
+@keyframes bookTextFade {
+  0%, 50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* 翻书期间容器不再做 opacity 淡入淡出，否则「先出雾、再出书」多一拍延迟感 */
+.page-transition.flip-out,
+.page-transition.flip-in {
+  transition: none;
+  opacity: 1;
+  /* 容器自身透明：遮挡由 veil 负责。容器若是实底，会和 veil 一起形成
+     两层色块，翻书时像蒙了层脏纱 */
+  background: transparent;
+}
+
+/* 「减弱动态效果」：不做翻书放大，保留直来直去 */
+@media (prefers-reduced-motion: reduce) {
+  .page-transition.flip-out,
+  .page-transition.flip-in,
+  .page-transition.flip-out .book,
+  .page-transition.flip-out .book-cover,
+  .page-transition.flip-out .book-pages,
+  .page-transition.flip-out .book-page,
+  .page-transition.flip-in .book-page,
+  .page-transition.flip-out .transition-text,
+  .page-transition.flip-in .transition-text {
+    animation: none;
+    transition: none;
+  }
+  /* 没有动画时遮挡仍然要有，否则跳转那一帧会闪旧页面 */
+  .page-transition.flip-out .page-transition-veil {
+    opacity: 1;
+    animation: none;
+  }
+  /* 封面仍要盖住跳转（铺满的是封面图），否则旧页面会闪出来 */
+  .page-transition.flip-out .book-cover {
+    opacity: 1;
+  }
+  .page-transition.flip-in .book-cover {
+    opacity: 0;
+  }
+}
