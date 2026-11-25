@@ -384,7 +384,7 @@ const smoke = await evaluate(`({
   schema: localStorage.getItem('reader-schema')
 })`);
 check('阅读器初始化完成（设置面板、底部状态条已注入）', smoke.settings && smoke.status && smoke.paras > 10, JSON.stringify(smoke));
-check('存储 schema 已写入 v2', smoke.schema === '2', 'schema=' + smoke.schema);
+check('存储 schema 已写入 v3', smoke.schema === '3', 'schema=' + smoke.schema);
 
 /* 文案规则（作者 2026-10-27 定）：「一章一句」卡的卡头必须是《章节标题》，
    不再是「这一章的蝉鸣」这种自拟词。这条钉住生成器模板，别哪天顺手改回去。 */
@@ -441,6 +441,148 @@ await sleep(300);
 const quotes = await evaluate(`!!document.getElementById('quotesOverlay') && document.getElementById('quotesOverlay').classList.contains('visible')`);
 check('摘句面板可打开', quotes === true);
 await evaluate(`closeQuotes(); 1`);
+
+/* -------- 自由选句（2026-11-25） --------
+   整段收藏改成选区收藏。这一节盯五件事：
+     ① 段尾引号按钮真的没了，但段落号与锚点 id 还在（「回到这一页」靠它）；
+     ② 工具条贴在选区下方（Android 系统菜单在上面，放下面才不打架）；
+     ③ 收藏写入的是「段号 + 段内偏移」，摘句簿显示的是那一句而不是整段；
+     ④ 同章可以跨段（保存时按两段分开），跨章会被拦下；
+     ⑤ 旧记录（只有 index）仍能读成整段区间，不迁移、不改写。 */
+section('阅读页 · 自由选句');
+await evaluate(`localStorage.removeItem('reader-quotes'); location.reload(); 1`);
+await sleep(2400);
+
+const quoteInit = await evaluate(`(() => {
+  const ps = document.querySelectorAll('.chapter-content p[data-quote-index]');
+  return {
+    marks: document.querySelectorAll('.quote-mark').length,
+    paras: ps.length,
+    anchor: ps[2] ? ps[2].id : ''
+  };
+})()`);
+check('段尾引号按钮已移除，段落标记仍在',
+  quoteInit.marks === 0 && quoteInit.paras > 3 && /^quote-chapter-[0-9]+-[0-9]+$/.test(quoteInit.anchor),
+  JSON.stringify(quoteInit));
+
+const barState = await evaluate(`(async () => {
+  window.scrollTo(0, 0);
+  await new Promise(res => setTimeout(res, 160));
+  const ps = document.querySelectorAll('.chapter-content p[data-quote-index]');
+  const t = ps[2].firstChild;
+  const s = getSelection(); s.removeAllRanges();
+  const r = document.createRange(); r.setStart(t, 2); r.setEnd(t, 10);
+  s.addRange(r);
+  await new Promise(res => setTimeout(res, 280));
+  const bar = document.getElementById('quoteBar');
+  const rects = s.getRangeAt(0).getClientRects();
+  const last = rects[rects.length - 1];
+  const br = bar.getBoundingClientRect();
+  return {
+    visible: !bar.hidden,
+    label: bar.querySelector('[data-quote-act="save"]').textContent,
+    gap: Math.round(br.top - last.bottom),
+    inView: br.bottom <= innerHeight + 1
+  };
+})()`);
+check('选中一句后浮层工具条出现', barState.visible === true && barState.label.indexOf('收藏') === 0, JSON.stringify(barState));
+check('工具条贴在选区下方（让开系统菜单）', barState.gap >= 8 && barState.gap <= 16 && barState.inView, JSON.stringify(barState));
+
+const oneSaved = await evaluate(`(async () => {
+  document.querySelector('#quoteBar [data-quote-act="save"]').click();
+  await new Promise(res => setTimeout(res, 240));
+  const list = JSON.parse(localStorage.getItem('reader-quotes') || '[]');
+  const q = list[list.length - 1] || {};
+  return { n: list.length, id: q.id, file: q.chapterFile, range: q.range || null, index: q.index, text: q.text, sel: getSelection().rangeCount };
+})()`);
+check('收藏写入段号与段内偏移',
+  oneSaved.n === 1 && oneSaved.id === oneSaved.file + '::3@2-3@10' &&
+  oneSaved.range && oneSaved.range.so === 2 && oneSaved.range.eo === 10 && oneSaved.index === 3,
+  JSON.stringify(oneSaved));
+check('收藏后选区与工具条收起', oneSaved.sel === 0, JSON.stringify({ sel: oneSaved.sel }));
+
+const painted = await evaluate(`(() => ({
+  ranges: CSS.highlights && CSS.highlights.get('ly-quote') ? CSS.highlights.get('ly-quote').size : 0,
+  spans: document.querySelectorAll('span.quote-hl').length
+}))()`);
+check('收藏后底纹已绘制', painted.ranges === 1 || painted.spans === 1, JSON.stringify(painted));
+
+await evaluate(`openQuotes(); 1`);
+await sleep(300);
+const listed = await evaluate(`(() => {
+  const el = document.querySelector('#quotesList .quote-entry-text');
+  return { text: el ? el.textContent : '', n: document.querySelectorAll('#quotesList .quote-entry').length };
+})()`);
+check('摘句簿显示选中的那一句（不是整段）', listed.n === 1 && listed.text.length === 8, JSON.stringify(listed));
+await evaluate(`closeQuotes(); 1`);
+await sleep(200);
+
+const multiSel = await evaluate(`(async () => {
+  const ps = document.querySelectorAll('.chapter-content p[data-quote-index]');
+  const a = ps[3], b = ps[4];
+  const s = getSelection(); s.removeAllRanges();
+  const r = document.createRange();
+  r.setStart(a.firstChild, 0);
+  r.setEnd(b.firstChild, (b.textContent || '').length);
+  s.addRange(r);
+  await new Promise(res => setTimeout(res, 280));
+  return { visible: !document.getElementById('quoteBar').hidden };
+})()`);
+check('同章跨段选取得以成立', multiSel.visible === true, JSON.stringify(multiSel));
+
+const multiSaved = await evaluate(`(async () => {
+  document.querySelector('#quoteBar [data-quote-act="save"]').click();
+  await new Promise(res => setTimeout(res, 240));
+  const list = JSON.parse(localStorage.getItem('reader-quotes') || '[]');
+  const q = list[list.length - 1] || {};
+  return { n: list.length, text: q.text || '', range: q.range || null };
+})()`);
+check('跨段摘句按两段保存',
+  multiSaved.n === 2 && multiSaved.text.indexOf('\n\n') > 0 && multiSaved.range && multiSaved.range.e === 5,
+  JSON.stringify({ n: multiSaved.n, range: multiSaved.range }));
+
+const crossSel = await evaluate(`(async () => {
+  window.scrollTo(0, document.documentElement.scrollHeight);
+  await new Promise(res => setTimeout(res, 1500));
+  const blocks = document.querySelectorAll('.chapter-block');
+  if (blocks.length < 2) return { skipped: true };
+  const a = blocks[0].querySelector('p[data-quote-index]');
+  const b = blocks[1].querySelector('p[data-quote-index]');
+  if (!a || !b || !a.firstChild || !b.firstChild) return { skipped: true };
+  const s = getSelection(); s.removeAllRanges();
+  const r = document.createRange();
+  r.setStart(a.firstChild, 0);
+  r.setEnd(b.firstChild, Math.min(5, b.firstChild.nodeValue.length));
+  s.addRange(r);
+  await new Promise(res => setTimeout(res, 320));
+  const bar = document.getElementById('quoteBar');
+  const hint = bar.querySelector('.quote-bar-hint');
+  return {
+    skipped: false,
+    hint: hint.textContent,
+    hintShown: !hint.hidden,
+    saveHidden: bar.querySelector('[data-quote-act="save"]').hidden
+  };
+})()`);
+check('跨章选择被拦下（提示且无收藏按钮）',
+  crossSel.skipped === true || (crossSel.hint === '跨章不可摘' && crossSel.hintShown === true && crossSel.saveHidden === true),
+  JSON.stringify(crossSel));
+
+const legacy = await evaluate(`(() => {
+  const old = [{ id: 'chapter-01.html::2', text: '旧记录', chapterFile: 'chapter-01.html', chapterTitle: '第一章·临渊羡鱼', index: 2 }];
+  const r = LY.store.quoteRange(old[0]);
+  return { s: r.s, e: r.e, so: r.so, eo: r.eo };
+})()`);
+check('旧摘句记录读成整段区间', legacy.s === 2 && legacy.e === 2 && legacy.so === 0 && legacy.eo === null, JSON.stringify(legacy));
+
+const quoteFpBackup = await evaluate(`localStorage.getItem('reader-footprints')`);
+await evaluate(`(() => {
+  const v = ${JSON.stringify(quoteFpBackup)};
+  if (v == null) localStorage.removeItem('reader-footprints');
+  else localStorage.setItem('reader-footprints', v);
+  localStorage.removeItem('reader-quotes');
+  return 1;
+})()`);
 
 await evaluate(`setTheme('dark'); 1`);
 await sleep(300);
@@ -516,7 +658,7 @@ const exported = await evaluate(`(() => {
            foreign: !!(p && p.data && p.data['other-app']),
            readonly: document.getElementById('dataText').hasAttribute('readonly') };
 })()`);
-check('导出：JSON 合法、含进度键、不含无关键', exported.ok && exported.schema === 2 && exported.hasPos && !exported.foreign, JSON.stringify(exported));
+check('导出：JSON 合法、含进度键、不含无关键', exported.ok && exported.schema === 3 && exported.hasPos && !exported.foreign, JSON.stringify(exported));
 check('导出：文本框只读（防误改）', exported.readonly === true);
 
 /* ===== S1 导出桥：带自定义字体，且旧版仍能读回 ===== */
@@ -555,7 +697,7 @@ const s1Export = await evaluate(`(async () => {
   };
 })()`);
 check('S1 导出：只追加 bridge/fonts，app/schema/summary/data 一个不少',
-  s1Export.app === 'linyuan-reader' && s1Export.schema === 2 &&
+  s1Export.app === 'linyuan-reader' && s1Export.schema === 3 &&
   s1Export.hasSummary && s1Export.hasData && s1Export.exportedAt === 'string' &&
   s1Export.bridge === 1, JSON.stringify({ app: s1Export.app, schema: s1Export.schema,
     summary: s1Export.hasSummary, data: s1Export.hasData, bridge: s1Export.bridge }));

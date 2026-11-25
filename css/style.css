@@ -5480,3 +5480,93 @@ body.bars-on #readerBattery { opacity: 0; }
 .side-chars:active { background: var(--reader-surface-soft); opacity: 1; }
 
 /* v10 层结束 ─────────────────────────────────────────────────────────────── */
+
+/* ===== v11 层 · 自由选句（2026-11-25） =====
+   只加不改：删掉本段即可撤掉工具条与底纹，JS 侧需一并回退到整段收藏。
+   底纹优先走 CSS Custom Highlight API（Paint 阶段，不碰布局）；
+   .quote-hl 是旧 WebView 的包裹降级。 */
+
+:root {
+  --quote-hl: rgba(184, 134, 78, 0.22);
+  --quote-bar-bg: #2b2620;
+  --quote-bar-ink: #fcfaf5;
+}
+
+:root[data-theme="dark"] {
+  --quote-hl: rgba(212, 160, 80, 0.28);
+  --quote-bar-bg: #efe7da;
+  --quote-bar-ink: #241f19;
+}
+
+::highlight(ly-quote) {
+  background-color: var(--quote-hl);
+}
+
+.quote-hl {
+  background-color: var(--quote-hl);
+  border-radius: 2px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.quote-bar {
+  position: fixed;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--quote-bar-bg);
+  color: var(--quote-bar-ink);
+  box-shadow: 0 10px 26px rgba(20, 16, 12, 0.26);
+  transform: translateX(-50%) translateY(4px) scale(0.97);
+  opacity: 0;
+  transition: opacity 0.13s ease, transform 0.13s ease;
+  white-space: nowrap;
+}
+
+.quote-bar[hidden] { display: none; }
+
+.quote-bar.in {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.quote-bar button {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.quote-bar button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.13); }
+
+:root[data-theme="dark"] .quote-bar button:hover:not(:disabled) { background: rgba(0, 0, 0, 0.08); }
+
+.quote-bar-div {
+  width: 1px;
+  height: 16px;
+  background: currentColor;
+  opacity: 0.22;
+}
+
+.quote-bar-hint {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 12px;
+  padding: 0 10px 0 4px;
+  opacity: 0.72;
+}
+
+.quote-bar-hint[hidden] { display: none; }
+
+/* 跨段摘句要保住分段，否则两段在摘句簿里挤成一行 */
+.quote-entry-text { white-space: pre-line; }
+
+/* v11 层结束 ─────────────────────────────────────────────────────────────── */

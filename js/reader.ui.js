@@ -167,8 +167,10 @@
     initImmersive();
     initReadingAids();
     syncCoda();
-    /* 必须晚于 initReadingAids()：它会用快照重建正文，早于它上高亮等于白上 */
+    /* 必须晚于 initReadingAids()：它会用快照重建正文，早于它上高亮等于白上。
+       重建会把段落上的 data-quote-index 与锚点 id 一起冲掉，所以这里要再标一次。 */
     flushPendingHighlight();
+    decorateParagraphs();
     ready = true;
   }
 
@@ -836,7 +838,7 @@
     if (!tap) return;
     tap.innerHTML = '<button type="button" class="reader-tap-zone top" aria-label="向上翻页"></button><button type="button" class="reader-tap-zone middle" aria-label="显示工具栏"></button><button type="button" class="reader-tap-zone bottom" aria-label="向下翻页"></button>';
 
-    var HIT = 'a[href], button, input, label, select, textarea, [role="button"], summary, .quote-mark';
+    var HIT = 'a[href], button, input, label, select, textarea, [role="button"], summary';
 
     function elementUnder(x, y) {
       var zones = Array.prototype.slice.call(tap.querySelectorAll('.reader-tap-zone'));
@@ -872,8 +874,10 @@
       tap.addEventListener(type, function () { press(null); }, true);
     });
 
-    /* capture 阶段拦住：zone 自己的翻页 handler 在冒泡阶段，不会被执行到 */
+    /* capture 阶段拦住：zone 自己的翻页 handler 在冒泡阶段，不会被执行到。
+       刚选过字的那一下不要翻页 —— 读者是在收工具条，不是在翻页。 */
     tap.addEventListener('click', function (e) {
+      if (quotePending || hasTextSelection()) return;
       var target = interactiveUnder(e.clientX, e.clientY);
       if (!target) return;
       e.preventDefault();
@@ -910,6 +914,8 @@
 
     document.addEventListener('touchend', function(e) {
       if (!tracking) return; tracking = false;
+      /* 长按选词/拖手柄时手指也会抬起，这一下不能当成左右切章 */
+      if (quotePending || hasTextSelection()) return;
       var ex = e.changedTouches[0].clientX, ey = e.changedTouches[0].clientY;
       var dx = ex - sx, dy = ey - sy;
       if (Math.abs(dx) < 40 && Math.abs(dy) < 40) return;
@@ -1139,11 +1145,13 @@
     section.appendChild(document.importNode(content, true));
     if (glow) section.appendChild(document.importNode(glow, true));
 
-    decorateParagraphs(section);
-    /* 新块也要吃到阅读辅助与自定义字体，否则翻过接缝字体就变回去了 */
+    /* 新块也要吃到阅读辅助与自定义字体，否则翻过接缝字体就变回去了。
+       decorateParagraphs 必须放在 renderContentDecorations 之后：
+       后者会用快照重写 innerHTML，早标等于白标。 */
     captureContent(section);
     renderContentDecorations(section);
     applyFontTo(section);
+    decorateParagraphs(section);
     return section;
   }
 
@@ -2106,6 +2114,7 @@
   function initQuoteCollecting() {
     decorateParagraphs();
     initQuotesPanel();
+    initQuoteToolbar();
     initToast();
   }
 
@@ -2124,6 +2133,9 @@
     return chapter ? chapter.title : document.title;
   }
 
+  /* 每个非空段记下「哪一章、第几段」。段号是摘句区间、搜索落点与进度锚点的
+     共同基准，空段不占号（与渲染同口径）。
+     2026-11-25 起不再往段尾塞引号按钮：摘句改成自由选句，见 initQuoteToolbar()。 */
   function decorateParagraphs(root) {
     var contents = (root || document).querySelectorAll('.chapter-content');
     contents.forEach(function(content) {
@@ -2139,20 +2151,10 @@
         p.dataset.chapterFile = file;
         p.dataset.chapterTitle = title;
         p.classList.add('collectable-paragraph');
-        if (p.querySelector('.quote-mark')) return;
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'quote-mark';
-        btn.setAttribute('aria-label', '收藏这一句');
-        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7H5a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1H8z"/><path d="M19 7h-3a1 1 0 00-1 1v4a1 1 0 001 1h3v4l4-4V8a1 1 0 00-1-1h-3z" transform="translate(-3 0)"/></svg>';
-        btn.addEventListener('click', function(e) {
-          e.stopPropagation();
-          toggleQuote(p);
-        });
-        p.appendChild(btn);
-        refreshParagraphQuoteState(p);
+        p.id = quoteAnchorId(file, index);
       });
     });
+    paintQuotes();
   }
 
   function initQuotesPanel() {
@@ -2225,7 +2227,7 @@
   window.removeQuote = function(id) {
     var quotes = getStoredQuotes().filter(function(item) { return item.id !== id; });
     saveStoredQuotes(quotes);
-    refreshAllParagraphQuoteStates();
+    paintQuotes();
     renderQuotesPanel();
     showToast('已将文字送回，等待您的下一次目光');
   };
@@ -2289,48 +2291,371 @@
     }
   };
 
-  function toggleQuote(p) {
-    var text = (p.textContent || '').trim();
-    if (!text) return;
-    var quotes = getStoredQuotes();
-    var file = p.dataset.chapterFile || getCurrentFileName();
-    var index = p.dataset.quoteIndex || '0';
-    var id = file + '::' + index;
-    var existing = quotes.findIndex(function(item) { return item.id === id; });
-    if (existing >= 0) {
-      quotes.splice(existing, 1);
-      saveStoredQuotes(quotes);
-      refreshParagraphQuoteState(p);
-      renderQuotesPanel();
-      showToast('已将文字送回，等待您的下一次目光');
+  /* ===== 自由选句（2026-11-25） =====
+     整段收藏改成选区收藏：长按/拖选任意一句，浮层工具条贴在选区下方
+     —— Android 的长按系统菜单在选区上方，放下面才不打架。
+     区间用「段号 + 段内字符偏移」记；可以同章跨段，不能跨章：无限流下
+     页面里同时躺着好几章，跨章会让「回到这一页」失去唯一落点。 */
+
+  var quoteNative = !!(window.CSS && CSS.highlights && window.Highlight);
+  var quoteHL = 'ly-quote';
+  var quotePending = null;
+  var quoteSelTimer = 0;
+  var quoteDismissTimer = 0;
+
+  function initQuoteToolbar() {
+    if (document.getElementById('quoteBar')) return;
+    var bar = document.createElement('div');
+    bar.id = 'quoteBar';
+    bar.className = 'quote-bar';
+    bar.hidden = true;
+    bar.innerHTML = '<button type="button" data-quote-act="save">收藏</button>' +
+      '<span class="quote-bar-div" aria-hidden="true"></span>' +
+      '<button type="button" data-quote-act="copy">复制</button>' +
+      '<span class="quote-bar-hint" hidden></span>';
+    (document.querySelector('.reading-wrapper') || document.body).appendChild(bar);
+
+    /* 按住按钮时别让浏览器先把选区清掉（移动端尤其如此） */
+    bar.addEventListener('mousedown', function(e) { e.preventDefault(); });
+    bar.addEventListener('click', function(e) {
+      var btn = e.target.closest ? e.target.closest('[data-quote-act]') : null;
+      if (!btn || btn.disabled) return;
+      if (btn.getAttribute('data-quote-act') === 'save') saveSelectionQuote();
+      else copySelectionQuote();
+    });
+
+    document.addEventListener('selectionchange', function() {
+      clearTimeout(quoteSelTimer);
+      quoteSelTimer = setTimeout(onQuoteSelectionChange, 70);
+    });
+    window.addEventListener('scroll', hideQuoteBar, { passive: true });
+    window.addEventListener('resize', hideQuoteBar);
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') hideQuoteBar();
+    });
+  }
+
+  function paragraphOf(node) {
+    var el = node && node.nodeType === 1 ? node : (node && node.parentElement);
+    if (!el || !el.closest) return null;
+    return el.closest('p[data-quote-index]');
+  }
+
+  function offsetInParagraph(p, node, offset) {
+    var r = document.createRange();
+    r.selectNodeContents(p);
+    try { r.setEnd(node, offset); } catch (e) { return 0; }
+    return r.toString().length;
+  }
+
+  function collectSelectionText(sp, ep, so, eo) {
+    var ps = [];
+    sp.closest('.chapter-content').querySelectorAll('p[data-quote-index]').forEach(function(p) {
+      ps.push(p);
+    });
+    var i0 = ps.indexOf(sp);
+    var i1 = ps.indexOf(ep);
+    if (i0 < 0 || i1 < 0 || i1 < i0) return '';
+    var parts = [];
+    for (var i = i0; i <= i1; i++) {
+      var t = ps[i].textContent || '';
+      if (i === i0 && i === i1) t = t.slice(so, eo);
+      else if (i === i0) t = t.slice(so);
+      else if (i === i1) t = t.slice(0, eo);
+      t = t.trim();
+      if (t) parts.push(t);
+    }
+    return parts.join('\n\n');
+  }
+
+  function readSelection() {
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+    var range = sel.getRangeAt(0);
+    var sp = paragraphOf(range.startContainer);
+    var ep = paragraphOf(range.endContainer);
+    if (!sp || !ep) return null;
+    var sSec = sp.closest('.chapter-block');
+    var eSec = ep.closest('.chapter-block');
+    if (!sSec || !eSec) return null;
+
+    var cross = sSec !== eSec;
+    var so = Math.min(offsetInParagraph(sp, range.startContainer, range.startOffset), (sp.textContent || '').length);
+    var eo = Math.min(offsetInParagraph(ep, range.endContainer, range.endOffset), (ep.textContent || '').length);
+    var text = cross ? (sel.toString() || '') : collectSelectionText(sp, ep, so, eo);
+    if (!cross && text.replace(/\s/g, '').length < 2) return { short: true };
+
+    var rects = range.getClientRects();
+    var first = rects[0] || range.getBoundingClientRect();
+    var last = rects[rects.length - 1] || first;
+    var file = sSec.getAttribute('data-file');
+    return {
+      cross: cross,
+      file: file,
+      title: chapterTitleOf(file),
+      s: Number(sp.dataset.quoteIndex),
+      so: so,
+      e: Number(ep.dataset.quoteIndex),
+      eo: eo,
+      text: text,
+      first: first,
+      last: last
+    };
+  }
+
+  function hasTextSelection() {
+    var sel = window.getSelection();
+    return !!(sel && sel.rangeCount > 0 && !sel.isCollapsed && String(sel.toString()).trim());
+  }
+
+  function onQuoteSelectionChange() {
+    var data = readSelection();
+    if (!data) {
+      /* 点工具条会先清掉选区，留一点时间给按钮把 pending 用完 */
+      clearTimeout(quoteDismissTimer);
+      quoteDismissTimer = setTimeout(function() {
+        quotePending = null;
+        hideQuoteBar();
+      }, 260);
       return;
     }
-    quotes.push({
-      id: id,
-      text: text,
-      chapterFile: file,
-      chapterTitle: p.dataset.chapterTitle || getCurrentChapterTitle(),
-      index: index,
+    if (data.short) { quotePending = null; hideQuoteBar(); return; }
+    quotePending = data;
+    showQuoteBar(data);
+  }
+
+  function showQuoteBar(data) {
+    var bar = document.getElementById('quoteBar');
+    if (!bar) return;
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    var barH = 44;
+
+    /* 贴选区末行下方；下方放不下才回退到首行上方，再不行夹在视口内 */
+    var cx = data.last.left + data.last.width / 2;
+    var left = Math.max(108, Math.min(vw - 108, cx));
+    var top = data.last.bottom + 12;
+    if (top + barH > vh - 8) {
+      var above = data.first.top - barH - 8;
+      top = above >= 8 ? above : Math.max(8, vh - barH - 12);
+    }
+
+    var save = bar.querySelector('[data-quote-act="save"]');
+    var copy = bar.querySelector('[data-quote-act="copy"]');
+    var hint = bar.querySelector('.quote-bar-hint');
+
+    if (data.cross) {
+      save.hidden = true;
+      copy.hidden = true;
+      hint.hidden = false;
+      hint.textContent = '跨章不可摘';
+    } else {
+      save.hidden = false;
+      copy.hidden = false;
+      hint.hidden = true;
+      save.textContent = '收藏 ' + data.text.replace(/\s/g, '').length + ' 字';
+    }
+
+    bar.style.left = left + 'px';
+    bar.style.top = top + 'px';
+    bar.hidden = false;
+    requestAnimationFrame(function() { bar.classList.add('in'); });
+  }
+
+  function hideQuoteBar() {
+    var bar = document.getElementById('quoteBar');
+    if (!bar) return;
+    bar.classList.remove('in');
+    bar.hidden = true;
+  }
+
+  function clearQuoteSelection() {
+    var sel = window.getSelection();
+    if (sel) sel.removeAllRanges();
+    quotePending = null;
+    hideQuoteBar();
+  }
+
+  function saveSelectionQuote() {
+    var data = quotePending;
+    if (!data) { showToast('先选一段文字'); return; }
+    if (data.cross) { showToast('跨章不能摘，请在同一章里选'); return; }
+
+    var q = {
+      id: data.file + '::' + data.s + '@' + data.so + '-' + data.e + '@' + data.eo,
+      v: 2,
+      text: data.text,
+      chapterFile: data.file,
+      chapterTitle: data.title,
+      index: data.s,          /* 兼容旧锚点与 quotes.html：仍指起始段 */
+      range: { s: data.s, so: data.so, e: data.e, eo: data.eo },
       savedAt: Date.now()
-    });
+    };
+
+    var quotes = getStoredQuotes();
+    if (quotes.some(function(item) { return item.id === q.id; })) {
+      showToast('这句已经收进摘句簿了');
+      clearQuoteSelection();
+      return;
+    }
+    if (quotes.some(function(item) { return quoteOverlaps(item, q); })) {
+      showToast('和已收的摘句有重叠，先移出那一条');
+      return;
+    }
+    quotes.push(q);
     saveStoredQuotes(quotes);
-    refreshParagraphQuoteState(p);
+    paintQuotes();
     renderQuotesPanel();
+    clearQuoteSelection();
     showToast('已收进摘句簿');
   }
 
-  function refreshParagraphQuoteState(p) {
-    var btn = p.querySelector('.quote-mark');
-    if (!btn) return;
-    var id = (p.dataset.chapterFile || getCurrentFileName()) + '::' + (p.dataset.quoteIndex || '0');
-    var active = getStoredQuotes().some(function(item) { return item.id === id; });
-    btn.classList.toggle('active', active);
-    p.classList.toggle('quoted', active);
-    p.id = quoteAnchorId(p.dataset.chapterFile || getCurrentFileName(), p.dataset.quoteIndex || '0');
+  function copySelectionQuote() {
+    var data = quotePending;
+    if (!data) return;
+    var text = data.text + ' ——《' + data.title + '》';
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function() {
+        showToast('已复制');
+        clearQuoteSelection();
+      }, function() {
+        showToast('复制失败，请手动选择');
+      });
+    } else {
+      showToast('当前环境不支持复制');
+    }
   }
 
-  function refreshAllParagraphQuoteStates() {
-    document.querySelectorAll('.collectable-paragraph').forEach(refreshParagraphQuoteState);
+  function quoteCompare(a, b) {
+    if (a.i !== b.i) return a.i - b.i;
+    return a.o - b.o;
+  }
+
+  function quoteOverlaps(a, b) {
+    if (a.chapterFile !== b.chapterFile) return false;
+    var ra = LY.store.quoteRange(a);
+    var rb = LY.store.quoteRange(b);
+    if (!ra || !rb) return false;
+    var aStart = { i: ra.s, o: ra.so };
+    var aEnd = { i: ra.e, o: ra.eo == null ? Infinity : ra.eo };
+    var bStart = { i: rb.s, o: rb.so };
+    var bEnd = { i: rb.e, o: rb.eo == null ? Infinity : rb.eo };
+    return quoteCompare(aStart, bEnd) < 0 && quoteCompare(bStart, aEnd) < 0;
+  }
+
+  function rangeInParagraph(p, from, to) {
+    var text = p.textContent || '';
+    if (to == null || to > text.length) to = text.length;
+    from = Math.max(0, Math.min(from, to));
+
+    var walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT, null);
+    var acc = 0;
+    var startNode = null, startOff = 0, endNode = null, endOff = 0, node;
+    while ((node = walker.nextNode())) {
+      var len = (node.nodeValue || '').length;
+      if (startNode === null && acc + len >= from) {
+        startNode = node;
+        startOff = Math.max(0, from - acc);
+      }
+      if (acc + len >= to) {
+        endNode = node;
+        endOff = Math.max(0, to - acc);
+        break;
+      }
+      acc += len;
+    }
+    if (!startNode || !endNode) return null;
+    var r = document.createRange();
+    r.setStart(startNode, startOff);
+    r.setEnd(endNode, endOff);
+    return r.collapsed ? null : r;
+  }
+
+  function quoteRanges(q) {
+    var r = LY.store.quoteRange(q);
+    if (!r) return [];
+    var sec = document.querySelector('.chapter-block[data-file="' + q.chapterFile + '"]');
+    if (!sec) return [];
+    var ps = sec.querySelectorAll('.chapter-content p[data-quote-index]');
+    var out = [];
+    for (var i = r.s; i <= r.e; i++) {
+      var p = ps[i - 1];
+      if (!p) continue;
+      var from = i === r.s ? r.so : 0;
+      var to = i === r.e ? r.eo : null;
+      var range = rangeInParagraph(p, from, to);
+      if (range) out.push(range);
+    }
+    return out;
+  }
+
+  /* 底纹：支持的浏览器走 CSS Custom Highlight API（Paint 阶段，不碰布局）；
+     老 WebView 退化成包裹 span，只在收藏/移出时动一次 DOM。 */
+  function paintQuotes() {
+    var quotes = getStoredQuotes();
+    if (quoteNative) {
+      if (document.querySelector('span.quote-hl')) clearQuoteWraps();
+      var ranges = [];
+      quotes.forEach(function(q) { ranges = ranges.concat(quoteRanges(q)); });
+      if (ranges.length) {
+        var hl = new Highlight();
+        ranges.forEach(function(r) { hl.add(r); });
+        CSS.highlights.set(quoteHL, hl);
+      } else if (CSS.highlights.has(quoteHL)) {
+        CSS.highlights.delete(quoteHL);
+      }
+      return;
+    }
+    clearQuoteWraps();
+    quotes.forEach(function(q) {
+      var r = LY.store.quoteRange(q);
+      if (!r) return;
+      var sec = document.querySelector('.chapter-block[data-file="' + q.chapterFile + '"]');
+      if (!sec) return;
+      var ps = sec.querySelectorAll('.chapter-content p[data-quote-index]');
+      for (var i = r.s; i <= r.e; i++) {
+        var p = ps[i - 1];
+        if (!p) continue;
+        var from = i === r.s ? r.so : 0;
+        var to = i === r.e ? (r.eo == null ? (p.textContent || '').length : r.eo) : (p.textContent || '').length;
+        wrapQuoteSegment(p, from, to);
+      }
+    });
+  }
+
+  function clearQuoteWraps() {
+    document.querySelectorAll('span.quote-hl').forEach(function(s) {
+      var parent = s.parentNode;
+      while (s.firstChild) parent.insertBefore(s.firstChild, s);
+      parent.removeChild(s);
+    });
+    document.querySelectorAll('.chapter-content p').forEach(function(p) {
+      if (p.normalize) p.normalize();
+    });
+  }
+
+  function wrapQuoteSegment(p, from, to) {
+    var walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT, null);
+    var segs = [];
+    var acc = 0, node;
+    while ((node = walker.nextNode())) {
+      var len = (node.nodeValue || '').length;
+      segs.push({ node: node, start: acc, end: acc + len });
+      acc += len;
+    }
+    for (var i = segs.length - 1; i >= 0; i--) {
+      var seg = segs[i];
+      var a = Math.max(from, seg.start);
+      var b = Math.min(to, seg.end);
+      if (b <= a) continue;
+      var target = seg.node;
+      if (a > seg.start) target = target.splitText(a - seg.start);
+      if (b - a < (target.nodeValue || '').length) target.splitText(b - a);
+      var span = document.createElement('span');
+      span.className = 'quote-hl';
+      target.parentNode.insertBefore(span, target);
+      span.appendChild(target);
+    }
   }
 
   function initToast() {

@@ -19,14 +19,16 @@
     return chapterId;
   }
 
-  var STORAGE_SCHEMA = 2;
+  var STORAGE_SCHEMA = 3;
 
   /** @returns {void} */
   function migrateStorage() {
     var ver = parseInt(localStorage.getItem('reader-schema'), 10);
     if (isNaN(ver)) ver = 1;
     if (ver >= STORAGE_SCHEMA) return;
-    /* 旧数据缺 time/dayTime，normalizeFootprints 会补零；写回一次即完成迁移 */
+    /* 旧数据缺 time/dayTime，normalizeFootprints 会补零；写回一次即完成迁移。
+       schema 3 只加了摘句的 range 字段，旧摘句不重写：读取时由 quoteRange()
+       补成整段区间，写回与否都不影响展示和「回到这一页」。 */
     localStorage.setItem('reader-footprints', JSON.stringify(readFootprints()));
     localStorage.setItem('reader-schema', String(STORAGE_SCHEMA));
   }
@@ -45,6 +47,28 @@
     var raw = localStorage.getItem('reader-quotes');
     if (!raw) return [];
     try { return JSON.parse(raw) || []; } catch (err) { return []; }
+  }
+
+  /* 摘句的定位区间：新记录带 range（段号 + 段内字符偏移），
+     旧记录只有整段 index，读的时候补成 {s:index, so:0, e:index, eo:null}。
+     eo === null 表示「到这一段末尾」，和偏移 0 不是一回事。 */
+  /** @param {any} q @returns {{s:number, so:number, e:number, eo:number|null}|null} */
+  function quoteRange(q) {
+    if (q && q.range && typeof q.range === 'object') {
+      var s = Number(q.range.s);
+      var e = Number(q.range.e);
+      if (isFinite(s) && isFinite(e) && s > 0 && e >= s) {
+        return {
+          s: s,
+          so: Math.max(0, Number(q.range.so) || 0),
+          e: e,
+          eo: q.range.eo == null ? null : Math.max(0, Number(q.range.eo) || 0)
+        };
+      }
+    }
+    var i = Number(q && q.index);
+    if (!isFinite(i) || i <= 0) return null;
+    return { s: i, so: 0, e: i, eo: null };
   }
 
   function saveStoredQuotes(quotes) {
@@ -294,6 +318,7 @@
     writeAnchor: writeAnchor,
     getStoredQuotes: getStoredQuotes,
     saveStoredQuotes: saveStoredQuotes,
+    quoteRange: quoteRange,
     collectReaderData: collectReaderData,
     collectReaderDataAsync: collectReaderDataAsync,
     importReaderData: importReaderData,
