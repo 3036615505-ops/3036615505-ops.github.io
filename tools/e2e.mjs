@@ -1258,12 +1258,32 @@ const sayRelay = await evaluate(`(() => {
 })()`);
 check('点「写给作者」发出 QQ 唤端且不离开页面', sayRelay === 'mqq://', sayRelay || '没找到 mqq:// 中转 iframe');
 
-/* 但空白处仍然要能翻页：修遮挡不能顺手把「点下半屏翻页」弄丢 */
+/* 覆盖层原先只盖 0–18% / 30–65% / 82–100% 三段，缝里能长按、别处一按就被吃掉；
+   现在必须整体穿透，长按才可能落到正文上。翻页改由 document 的 click 判断。 */
 const zoneHit = await evaluate(`(() => {
+  const tap = document.getElementById('readerTapArea');
   const el = document.elementFromPoint(Math.round(innerWidth / 2), Math.round(innerHeight * 0.92));
-  return { cls: el ? (el.className || el.tagName) : 'null' };
+  return {
+    zones: tap ? tap.querySelectorAll('.reader-tap-zone').length : 0,
+    pe: tap ? getComputedStyle(tap).pointerEvents : '',
+    hit: el ? (String(el.tagName) + '.' + String(el.className || '')).trim() : 'null'
+  };
 })()`);
-check('空白处仍在翻页感应区内', /reader-tap-zone/.test(zoneHit.cls), zoneHit.cls);
+check('翻页覆盖层不再拦截触摸（长按能落到正文）',
+  zoneHit.zones === 3 && zoneHit.pe === 'none' && !/reader-tap-zone/.test(zoneHit.hit),
+  JSON.stringify(zoneHit));
+
+/* 但点下半屏仍要翻页：修穿透不能把翻页弄丢 */
+await evaluate(`window.scrollTo(0, 0); 1`);
+await sleep(350);
+const turnBefore = await evaluate(`Math.round(scrollY)`);
+const vp = await evaluate(`({ w: innerWidth, h: innerHeight })`);
+await clickAt(Math.round(vp.w / 2), Math.round(vp.h * 0.86));
+await sleep(1000);
+const turnAfter = await evaluate(`Math.round(scrollY)`);
+check('点下半屏仍能翻页', turnAfter > turnBefore + 100, turnBefore + ' → ' + turnAfter);
+await evaluate(`window.scrollTo(0, document.documentElement.scrollHeight); 1`);
+await sleep(700);
 
 /* 底部断层：coda 的留白如果用 margin，会塌出 .reading-wrapper，
    滚到底就露一条 body 的站点渐变（阅读区是纯色，两色一撞就是一道横带） */

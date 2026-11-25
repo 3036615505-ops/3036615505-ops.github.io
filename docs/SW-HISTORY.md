@@ -131,3 +131,7 @@ PRECACHE 补回 `/assets/portrait-shenruoqi-thumb.webp` —— v95 手写清单�
 ## v101（2026-11-25 · 自由选句：整段收藏 → 选区摘句）
 
 段尾引号按钮全部去掉，改成阅读页长按/拖选任意一句，浮层工具条贴在选区末行下方 12px —— Android 的长按系统菜单在选区上方，放下面才不打架；下方放不下才回退上方，再不行夹在视口内。区间按「章文件 + 段号 + 段内字符偏移」记，同一章可以跨段、跨章直接拦下（无限流下页面同时躺着好几章，跨章会让「回到这一页」失去唯一落点）。摘句簿、复制、导出、回到这一页全部沿用；旧记录只有 `index` 的按整段读，不迁移也不改写。底纹走 CSS Custom Highlight API（Paint 阶段，不碰布局），老 WebView 退化为包裹 `span.quote-hl`。`STORAGE_SCHEMA` 升到 3。改了 `style.css` / `reader.ui.js` / `reader.store.js` / `quotes.html` / 33 个 HTML 的引用（`?v=` 156），PRECACHE 里的字节变了，照例 +1。
+
+## v102（2026-11-25 · 自由选句修复：覆盖层穿透 + 关系统长按菜单）
+
+真机反馈两件事：除了中间偏下一小段，其余位置长按选不了词；选中后系统「复制/全选」菜单和我们的工具条一起出现。根因是 `#readerTapArea` 的三个透明按钮只盖 `0–18vh / 30–65vh / 82–100vh` 三段，中间两条缝能长按、其余位置触摸被按钮吃掉。现在覆盖层整体 `pointer-events: none`，翻页与「显示工具栏」改由 `document` 的 `click` 按 `clientY` 分区判断；原先「转发 click」的 `elementUnder`/`interactiveUnder`/`press` 一并删除，链接与按钮直接可点。`contextmenu` 在 `.chapter-content` 内 `preventDefault()`，iOS 侧加 `-webkit-touch-callout: none`，长按只出摘句工具条。改了 `style.css` / `reader.ui.js` / 33 个 HTML 的引用（`?v=` 157），PRECACHE 字节变了，照例 +1。

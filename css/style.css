@@ -5569,4 +5569,12 @@ body.bars-on #readerBattery { opacity: 0; }
 /* 跨段摘句要保住分段，否则两段在摘句簿里挤成一行 */
 .quote-entry-text { white-space: pre-line; }
 
+/* 触摸必须落到文字上，长按才起得来选：覆盖层整体穿透，
+   翻页改由 document 的 click 按坐标判断（见 initTapArea） */
+#readerTapArea,
+#readerTapArea .reader-tap-zone { pointer-events: none; }
+
+/* Android 由 contextmenu 的 preventDefault 关系统菜单；iOS 走这条 */
+.chapter-content { -webkit-touch-callout: none; }
+
 /* v11 层结束 ─────────────────────────────────────────────────────────────── */

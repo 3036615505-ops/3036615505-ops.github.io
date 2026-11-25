@@ -13,6 +13,18 @@
 > **2026-11-09 → 11-24 的空档**：这段时间（`?v=132→150` / `CACHE v78→v98`）没有逐条记录。
 > `CACHE` 每一版为什么升，见 `docs/SW-HISTORY.md`；其余改动看提交历史。本文件不补写。
 
+## 2026-11-25 · 自由选句修复：翻页覆盖层穿透、关掉系统长按菜单（`?v=156→157` / `CACHE v101→v102`）
+
+| 项 | 内容 |
+|---|---|
+| 真机反馈 | ① 手机上除了中间偏下一小段，其余位置**长按都没有反应**，选不了词；② 选中后系统那排「复制/全选/搜索」和我们的工具条一起冒出来，要求只留摘句选项。 |
+| 根因 | `#readerTapArea` 里三个透明按钮只盖住 `0–18vh` / `30–65vh` / `82–100vh` 三段，中间两条缝（18–30、65–82）能长按，其余位置 `touchstart` 被按钮吃掉，浏览器根本不会在文字上起选。不是样式层级问题，是触摸目标被覆盖。 |
+| 改动 | `initTapArea()` 不再让覆盖层接收触摸（`pointer-events: none`），翻页/工具栏判断移到 `document` 的 `click` 上按 `clientY` 分区：`<18%` 上翻、`>82%` 下翻、中间显示/隐藏工具栏。删掉 `elementUnder` / `interactiveUnder` / `press` 与「转发 click」的整套逻辑 —— 覆盖层没了，链接和按钮自己就能收到点击。`initQuoteToolbar()` 增加 `contextmenu` 捕获：目标在 `.chapter-content` 内就 `preventDefault()`，系统菜单不再出现；iOS 侧由 `-webkit-touch-callout: none` 兜底。选过字的那一下仍然不翻页（`quotePending` / `hasTextSelection()` 判断保留）。 |
+| 版本判据 | `?v=156→157`：JS 与 CSS 字节变了。`CACHE v101→v102`：PRECACHE 里的 CSS / JS 字节变了，条目仍是 74。 |
+| 端到端断言的改动 | 原来那条「空白处仍在翻页感应区内」量的是 `elementFromPoint` 必须命中 `.reader-tap-zone`，正是这次要推翻的行为。改成两条：① 覆盖层仍有三段、`pointer-events` 为 `none`、命中点不是 `.reader-tap-zone`；② 滚回顶部后点下半屏，`scrollY` 必须增加（修穿透不能把翻页弄丢）。总数 205 → 206。 |
+| 验证 | `e2e` 206/206；`verify:all` 全绿；`docs:check` 20 项；`typecheck` 0；`storage` 53 处持平；`contrast` 双主题 0 项未达标；`precache` 74 条闭环。 |
+| 已知边界 | 短按正文仍然翻页（与覆盖层时代一致）；长按后若浏览器没产生选区就松手，可能被当成一次点击翻页。系统菜单关掉后，Android 的选择手柄由 WebView 绘制，样式不可定制。 |
+
 ## 2026-11-25 · 自由选句：整段收藏改成任意选区摘句（`?v=155→156` / `CACHE v100→v101`）
 
 | 项 | 内容 |

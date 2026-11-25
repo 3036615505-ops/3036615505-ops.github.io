@@ -833,72 +833,40 @@
 
   /* ===== TAP AREA (上下滚动) ===== */
 
+  /* ===== TAP AREA（上下翻页 / 中间工具栏） =====
+     2026-11-25 起覆盖层不再接收触摸：原先三个透明按钮只盖住 0–18% /
+     30–65% / 82–100%，中间两条缝能长按选词，其余位置一按就被吃掉，
+     自由选句根本起不来。现在翻页判断落在 document 的 click 上，
+     文字层始终能被长按选中；真实链接与按钮也不再需要「转发 click」。 */
   function initTapArea() {
     var tap = document.getElementById('readerTapArea');
     if (!tap) return;
     tap.innerHTML = '<button type="button" class="reader-tap-zone top" aria-label="向上翻页"></button><button type="button" class="reader-tap-zone middle" aria-label="显示工具栏"></button><button type="button" class="reader-tap-zone bottom" aria-label="向下翻页"></button>';
+    tap.style.pointerEvents = 'none';
 
-    var HIT = 'a[href], button, input, label, select, textarea, [role="button"], summary';
+    var SKIP = '#quoteBar, .reader-bottombar, .reader-topbar, .reader-side, .modal-overlay, ' +
+      '#readerToast, #readerStatus, .chapter-afterglow a, .chapter-afterglow button, ' +
+      'a[href], button, input, label, select, textarea, [role="button"], summary';
 
-    function elementUnder(x, y) {
-      var zones = Array.prototype.slice.call(tap.querySelectorAll('.reader-tap-zone'));
-      zones.forEach(function (z) { z.style.pointerEvents = 'none'; });
-      var el = document.elementFromPoint(x, y);
-      zones.forEach(function (z) { z.style.pointerEvents = ''; });
-      return el;
-    }
-
-    /* 下面那个真的可点的元素；找不到或落回这一层自己就返回 null */
-    function interactiveUnder(x, y) {
-      var el = elementUnder(x, y);
-      if (!el || !el.closest) return null;
-      var target = el.closest(HIT);
-      if (!target || target === tap || tap.contains(target)) return null;
-      return target;
-    }
-
-    /* 转发出来的 click 不触发 :active，按下时补一个属性让它缩一下 */
-    var pressed = null;
-    function press(el) {
-      if (pressed === el) return;
-      if (pressed) pressed.removeAttribute('data-press');
-      pressed = el;
-      if (el) el.setAttribute('data-press', '');
-    }
-
-    tap.addEventListener('pointerdown', function (e) {
-      press(interactiveUnder(e.clientX, e.clientY));
-    }, true);
-
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (type) {
-      tap.addEventListener(type, function () { press(null); }, true);
-    });
-
-    /* capture 阶段拦住：zone 自己的翻页 handler 在冒泡阶段，不会被执行到。
-       刚选过字的那一下不要翻页 —— 读者是在收工具条，不是在翻页。 */
-    tap.addEventListener('click', function (e) {
+    document.addEventListener('click', function(e) {
+      /* 选过字的那一下是「收工具条」，不是翻页 */
       if (quotePending || hasTextSelection()) return;
-      var target = interactiveUnder(e.clientX, e.clientY);
-      if (!target) return;
-      e.preventDefault();
-      e.stopPropagation();
-      press(null);
-      target.click();
-    }, true);
+      var target = e.target;
+      if (!target || !target.closest) return;
+      if (target.closest(SKIP)) return;
+      if (!target.closest('.reading-wrapper')) return;
 
-    tap.querySelector('.reader-tap-zone.top').addEventListener('click', function() {
-      if (state.barsVisible) hideBars();
-      window.scrollBy({ top: -window.innerHeight * 0.85, behavior: 'smooth' });
-    });
-
-    tap.querySelector('.reader-tap-zone.middle').addEventListener('click', function() {
-      state.barsVisible ? hideBars() : showBars();
-    });
-
-    tap.querySelector('.reader-tap-zone.bottom').addEventListener('click', function() {
-      if (state.barsVisible) hideBars();
-      window.scrollBy({ top: window.innerHeight * 0.85, behavior: 'smooth' });
-    });
+      var vh = window.innerHeight;
+      if (e.clientY < vh * 0.18) {
+        if (state.barsVisible) hideBars();
+        window.scrollBy({ top: -vh * 0.85, behavior: 'smooth' });
+      } else if (e.clientY > vh * 0.82) {
+        if (state.barsVisible) hideBars();
+        window.scrollBy({ top: vh * 0.85, behavior: 'smooth' });
+      } else {
+        state.barsVisible ? hideBars() : showBars();
+      }
+    }, false);
   }
 
   /* ===== SWIPE (左右切章) ===== */
@@ -2333,6 +2301,13 @@
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') hideQuoteBar();
     });
+
+    /* 长按只出我们自己的工具条，不要系统那排「复制 / 全选 / 搜索」。
+       只拦正文：其它地方的右键/长按菜单照旧（比如输入框）。 */
+    document.addEventListener('contextmenu', function(e) {
+      var t = e.target;
+      if (t && t.closest && t.closest('.chapter-content')) e.preventDefault();
+    }, true);
   }
 
   function paragraphOf(node) {
