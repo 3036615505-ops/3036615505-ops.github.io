@@ -393,9 +393,9 @@ function buildListPage(chars) {
     '  <div class="phone-frame">\n' +
     '\n' +
     '    <div class="detail-header has-tabs">\n' +
-    '      <a href="../index.html" class="detail-back">\n' +
-    '        ' + BACK_SVG + '\n' +
-    '      </a>\n' +
+    /* 列表页是底部标签的一级页面：不放返回箭头，回首页走标签栏（2026-11-25 UI 改版）。
+       详细页是二级页面，上面的返回箭头照旧。 */
+    '      <!-- 一级页面，不放返回箭头：回首页走底部的标签栏 -->\n' +
     '      <span class="detail-header-title">同学录</span>\n' +
     buildHeaderTabs(chars) + '\n' +
     '    </div>\n' +

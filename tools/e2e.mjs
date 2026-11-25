@@ -773,8 +773,11 @@ const noticeShown = await evaluate(`(() => {
     visible: bar ? getComputedStyle(bar).opacity : ''
   };
 })()`);
-check('看到第 ' + SEEN + ' 章时弹出「第 ' + LATEST + ' 章更新了」横幅',
-  noticeShown.exists && noticeShown.text.indexOf('第 ' + LATEST + ' 章') >= 0 && noticeShown.visible === '1',
+/* 文案从「第 11 章《第十一章·晚饭》更新了」改成「新章・晚饭」：
+   章名自带序号，原先把章号说了两遍。期望值同样从 announce.json 现取。 */
+const LATEST_SHORT = String(ann.title || '').replace(/^\s*第[零一二三四五六七八九十百千\d]+章\s*[·•・.、:：\-]\s*/, '').trim();
+check('看到第 ' + SEEN + ' 章时弹出「新章・' + LATEST_SHORT + '」横幅',
+  noticeShown.exists && noticeShown.text === '新章・' + LATEST_SHORT && noticeShown.visible === '1',
   JSON.stringify(noticeShown));
 check('横幅「去读」指向最新章节', noticeShown.href === LATEST_URL, String(noticeShown.href) + ' != ' + LATEST_URL);
 await evaluate(`document.querySelector('#lyNotice .notice-close').click(); 1`);
@@ -796,6 +799,16 @@ const noticeOnLatest = await evaluate(`(() => ({
   seen: localStorage.getItem('reader-notice-seen')
 }))()`);
 check('正停留在最新章节页时不弹、只静默标记', noticeOnLatest.exists === false && noticeOnLatest.seen === String(LATEST), JSON.stringify(noticeOnLatest));
+/* 6 秒后自己收起，且不算「已看到」：下回进站还会提，直到点「去读」或 ✕ */
+await evaluate(`sessionStorage.clear(); localStorage.setItem('reader-notice-seen', '${SEEN}'); 1`);
+await goto(HOME);
+await sleep(6800);
+const noticeAuto = await evaluate(`(() => ({
+  exists: !!document.getElementById('lyNotice'),
+  seen: localStorage.getItem('reader-notice-seen')
+}))()`);
+check('横幅 6 秒后自动收起，且不替读者记成「已看到」',
+  noticeAuto.exists === false && noticeAuto.seen === SEEN, JSON.stringify(noticeAuto));
 
 section('无限流：章末接续');
 /* 这一组盯的是「往下读不换页」：章末的「一章一句」是接缝，滚过去就是下一章。
@@ -1663,21 +1676,25 @@ check('顶栏右侧有三个分类入口，且没有多余按钮条与数字',
   tabsInfo.extraBar === false,
   JSON.stringify(tabsInfo));
 
-/* 标题左靠齐：作者 2026-10-28 要求「同学录」紧贴返回键，右侧整块留给分类入口。
-   注意 .detail-header-title 是 flex:1，只改了 text-align，所以量的是文字盒子左边缘。 */
+/* 标题左靠齐：作者 2026-10-28 要求「同学录」贴着左边，右侧整块留给分类入口。
+   注意 .detail-header-title 是 flex:1，只改了 text-align，所以量的是文字盒子左边缘。
+   2026-11-25 UI 改版：同学录是一级页面，返回箭头去掉了（回首页走底部标签栏），
+   原先量的「离返回键右边缘多远」改成「离页头左内边缘多远」，上限仍是 12px。 */
 const headAlign = await evaluate(`(() => {
   const title = document.querySelector('.detail-header-title');
-  const back = document.querySelector('.detail-back').getBoundingClientRect();
+  const header = document.querySelector('.detail-header');
+  const edge = header.getBoundingClientRect().left + parseFloat(getComputedStyle(header).paddingLeft);
   const tabs = document.querySelector('.char-tabs').getBoundingClientRect();
   const box = title.getBoundingClientRect();
   return {
     textAlign: getComputedStyle(title).textAlign,
-    leftGap: Math.round(box.left - back.right),
+    hasBack: !!document.querySelector('.detail-back'),
+    leftGap: Math.round(box.left - edge),
     beforeTabs: box.right <= tabs.left + 1
   };
 })()`);
-check('「同学录」标题左靠齐，右侧不被分类入口挤到',
-  headAlign.textAlign === 'left' && headAlign.leftGap >= 0 && headAlign.leftGap <= 12 && headAlign.beforeTabs === true,
+check('「同学录」标题左靠齐（页头不再放返回箭头），右侧不被分类入口挤到',
+  headAlign.textAlign === 'left' && headAlign.hasBack === false && headAlign.leftGap >= 0 && headAlign.leftGap <= 12 && headAlign.beforeTabs === true,
   JSON.stringify(headAlign));
 
 /* 关键场景：人已经在新叶中间，直接点顶栏的「乔木」 */
@@ -2380,7 +2397,8 @@ const overflowProbe = await evaluate(`(() => {
 check('收起的抽屉不撑出滚动区（页高与移除面板时一致）',
   overflowProbe.before === overflowProbe.without, JSON.stringify(overflowProbe));
 
-/* 桌面端：抽屉要 420px 居中（与 .reading-wrapper 同一条中线），不是铺满 1280 */
+/* 桌面端：抽屉要 420px 居中（与 .reading-wrapper 同一条中线），不是铺满 1280。
+   本用例的阅读页是在 390 宽下打开的，宽屏阅读取的是「关」，所以这里量到的是单栏形态。 */
 await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
 await sleep(300);
 await evaluate(`openSettings(); 1`);
@@ -2391,7 +2409,42 @@ check('抽屉 · 桌面端：宽度 420px、水平居中（left+right=视口宽�
   Math.abs(desk.left + desk.right - desk.vw) <= 2 &&
   Math.abs(desk.bottomGap - (desk.barH + 22)) <= 3 && desk.h <= Math.round(desk.vh * 0.55),
   JSON.stringify(desk));
-await evaluate(`closeSettings(); 1`);
+/* 平板双栏（宽屏阅读开 + ≥1024px）：左栏 240px、正文栏 ≥720px，
+   抽屉不再 420 居中，而是按正文栏收窄。2026-11-25 UI 改版新增的形态。 */
+await evaluate(`toggleReadWidth(); 1`);
+await sleep(300);
+const dual = await evaluate(`(() => {
+  const side = document.getElementById('readerSide');
+  const flow = document.querySelector('.reading-flow');
+  const s = side ? side.getBoundingClientRect() : null;
+  const f = flow ? flow.getBoundingClientRect() : null;
+  return {
+    wide: document.documentElement.getAttribute('data-readwidth') === 'wide',
+    sideW: s ? Math.round(s.width) : 0,
+    sideLeft: s ? Math.round(s.left) : 0,
+    bodyW: f ? Math.round(f.width) : 0,
+    bodyLeft: f ? Math.round(f.left) : 0,
+    items: side ? side.querySelectorAll('.dir-item').length : 0,
+    topbar: getComputedStyle(document.querySelector('.reader-topbar')).display,
+    cx: document.documentElement.style.getPropertyValue('--dual-cx'),
+    statusW: Math.round(document.getElementById('readerStatus').getBoundingClientRect().width)
+  };
+})()`);
+check('双栏 · 1280：左栏 240px，正文栏 ≥720px 且在左栏右侧，左栏有目录，顶栏隐藏',
+  dual.wide && Math.abs(dual.sideW - 240) <= 1 && dual.bodyW >= 719 &&
+  dual.bodyLeft >= dual.sideLeft + dual.sideW && dual.items >= 11 && dual.topbar === 'none',
+  JSON.stringify(dual));
+check('双栏 · 1280：状态栏与正文栏等宽（原先铺满整个窗口）',
+  Math.abs(dual.statusW - dual.bodyW) <= 2 && dual.cx !== '', JSON.stringify(dual));
+await evaluate(`openSettings(); 1`);
+await sleep(420);
+const dualSheet = await measureSheet('settingsOverlay');
+check('双栏 · 1280：设置面板仍是 420px，改为在正文栏上居中（不横跨 720px，也不按窗口居中）',
+  !!dualSheet && Math.abs(dualSheet.width - 420) <= 1 &&
+  Math.abs(dualSheet.left + dualSheet.right - (dual.bodyLeft * 2 + dual.bodyW)) <= 4 &&
+  Math.abs(dualSheet.bottomGap - (dualSheet.barH + 22)) <= 3,
+  JSON.stringify(dualSheet));
+await evaluate(`closeSettings(); toggleReadWidth(); 1`);
 await sleep(400);
 await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
 await sleep(300);

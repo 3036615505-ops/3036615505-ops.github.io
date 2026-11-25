@@ -19,14 +19,14 @@
        抢走同一条连接上的带宽（实测冷启动：cover 199ms 起、CSS 201ms 起）。
        这里改指 144x196 的 cover-thumb.webp（5.7KB），
        不再用 528x720 的 cover.webp（69.4KB）去画一个 46x62 的方块。 -->
-  <link rel="stylesheet" href="css/style.css?v=151">
+  <link rel="stylesheet" href="css/style.css?v=155">
   <link rel="preload" as="image" href="assets/cover-thumb.webp">
-  <script src="js/theme.js?v=151"></script>
-  <script src="js/native-bridge.js?v=151"></script>
+  <script src="js/theme.js?v=155"></script>
+  <script src="js/native-bridge.js?v=155"></script>
   <!-- 站内「新章节更新了」横幅（取 announce.json 与 localStorage 比对，每会话一次）。 -->
-  <script src="js/announce.js?v=151" defer></script>
+  <script src="js/announce.js?v=155" defer></script>
   <!-- 点击即反馈：按下就在顶部点亮一条细线，盖住「跳转前的空窗期」。 -->
-  <script src="js/nav-feedback.js?v=151" defer></script>
+  <script src="js/nav-feedback.js?v=155" defer></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame home-page">
@@ -46,6 +46,10 @@
          图（实测 LCP 元素就是它）。其余五帧只给 data-src，由下面内联脚本按当前
          进度写 1~2 张；如果这次用不到第一帧，脚本会把 src 撤掉、请求随即取消。
          decoding="async" 让解码离开首帧合成，避免首屏多占一次同步解码。 -->
+    <!-- 梧桐带 + 继续阅读合成一张卡（2026-11-25 UI 改版）：两张卡各自带底色、边框、阴影，
+         叠在一起占 226px。合成后左树右文，约 146px，首屏能多露出一截学期册。
+         里面的 id 一个没动，内联脚本与 e2e 都照旧。 -->
+    <div class="home-continue">
     <section class="tree-band" id="treeBand">
       <div class="tree-sway">
         <img class="tree-stage" src="assets/tree-bare.webp" data-src="assets/tree-bare.webp" alt="" decoding="async" fetchpriority="high">
@@ -72,6 +76,7 @@
         <a href="novel/chapter-01.html" class="rc-btn" id="rcBtn">开始阅读</a>
       </div>
     </section>
+    </div>
 
     <section class="home-quote" id="homeQuote">
       <button class="quote-pause-btn" id="quotePauseBtn" aria-label="暂停轮播" title="暂停">
@@ -126,7 +131,7 @@
        弱网下 chapters.js 没回来之前整页白屏（首屏可感知卡顿）。
        放在这里首屏骨架先画出来；但必须保持在下面依赖 CHAPTERS 的内联脚本之前
        （经典脚本按文档顺序执行，内联脚本是同步 IIFE，等不到任何异步回调）。 -->
-  <script src="js/chapters.js?v=151"></script>
+  <script src="js/chapters.js?v=155"></script>
 
   <script>
   (function() {

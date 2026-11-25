@@ -49,7 +49,7 @@
  *   v99（2026-11-24 · 补漏 + 清死代码）：PRECACHE 补回沈若栖缩略图（v95 手写
  *   清单时漏的）；同批删除零引用的 transition.js 与切换动画样式段，?v= 升到 151。
  */
-var CACHE = 'linyuan-v99';
+var CACHE = 'linyuan-v100';
 
 /**
  * 缓存条目的「自愈 TTL」：超过这个年龄的缓存命中，会在后台补一次刷新。
@@ -152,6 +152,27 @@ var PRECACHE = [
   '/novel/chapter-10.html',
   '/novel/chapter-11.html',
   '/novel/characters.html',
+  '/novel/character-linshu.html',
+  '/novel/character-nanheng.html',
+  '/novel/character-jiangbuqiu.html',
+  '/novel/character-liyan.html',
+  '/novel/character-ningzunjiu.html',
+  '/novel/character-yangmenghan.html',
+  '/novel/character-baiyuhuan.html',
+  '/novel/character-taoyaoyao.html',
+  '/novel/character-xiaozhuo.html',
+  '/novel/character-shenruoqi.html',
+  '/novel/character-yeyulan.html',
+  '/novel/character-guchiyan.html',
+  '/novel/character-yeyuan.html',
+  '/novel/character-baiyu.html',
+  '/novel/character-linwangshu.html',
+  '/novel/character-sujiwen.html',
+  '/novel/character-jiangzhenmo.html',
+  '/novel/character-linxihe.html',
+  '/assets/portrait-linshu-1024.webp',
+  '/assets/portrait-nanheng-1024.webp',
+  '/assets/portrait-jiangbuqiu-1024.webp',,
   /* 同学录列表页的 18 张缩略图（128×150，合计约 76 KB）：
      列表首屏就是它们的网格，缺一张就是一个空框。母版按需取。
      ⚠ 这段清单与人物是一一对应的：加了人物、跑完 make-characters.mjs 后，

@@ -199,7 +199,8 @@ html {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  /* 与阅读页的「黑体」是同一条栈（两套只在电脑上差一个 Noto Sans），见文末 v10 层 */
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   background: var(--site-bg);
   color: var(--text);
   line-height: 1.5;
@@ -4930,3 +4931,552 @@ body.is-reading {
 }
 
 /* v9 层结束 ─────────────────────────────────────────────────────────────── */
+
+/* ===== v10 · 2026-11-25 UI 改版 =====
+   四段：阅读页 / 首页与书架 / 平板 / 细节。全部写在旧规则之后，靠层叠覆盖；
+   平板段的规则都包在 (min-width: 768px) 里，手机上一行都不生效。
+   方案与逐条依据见《临渊羡鱼-UI改版方案.md》。 */
+
+/* ---------- 一、阅读页 ---------- */
+
+/* 状态栏：底色不透明，只让文字变淡。
+   原先整条 opacity .52，连底色也透明了 —— 正文从下面透出来，和页码叠成一片。 */
+#readerStatus { opacity: 1; transition: opacity 0.2s ease; }
+#readerPos,
+#readerBattery { opacity: 0.55; }
+#readerRemain { opacity: 0.45; }
+:root[data-theme="dark"] #readerStatus { opacity: 1; }
+
+/* 工具栏出现时状态栏的文字让位（reader.ui.js 的 showBars/hideBars 切 body.bars-on）。
+   底条本身留着：底栏离屏幕底边还有 10px，整条隐掉的话那一缝里会露出正文。 */
+body.bars-on #readerStatus { opacity: 1; }
+body.bars-on #readerPos,
+body.bars-on #readerRemain,
+body.bars-on #readerBattery { opacity: 0; }
+
+/* 顶栏、底栏：半透明纸色 + 毛玻璃，四周再晕开一圈纸色当渐变遮罩。
+   底栏 overflow:hidden，::after 画不到外面，所以用外阴影代替。
+   晕圈只在 .visible 时给：收起时栏在视口外 20px，晕圈会有 14px 探进视口。
+   不支持毛玻璃或 color-mix 的内核，这两条整条作废，退回原来的不透明底色。 */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .reader-topbar,
+  .reader-bottombar {
+    background: color-mix(in srgb, var(--reader-surface) 84%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(1.1);
+    backdrop-filter: blur(18px) saturate(1.1);
+  }
+
+  .reader-topbar.visible,
+  .reader-bottombar.visible {
+    box-shadow: var(--reader-shadow),
+                0 0 34px 18px color-mix(in srgb, var(--reader-surface) 70%, transparent);
+  }
+
+  /* 抽屉打开时工具栏和抽屉拼成一块（body.sheet-open）：
+     这时它是一块实心面板的底边 —— 不能半透明，晕圈也会画到抽屉上面去。 */
+  body.sheet-open .reader-bottombar.visible {
+    background: var(--reader-surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: var(--reader-shadow);
+  }
+}
+
+/* 章标题跟随正文用的字体：楷体模式下标题不再独独是黑体。
+   字重用回常规 —— 阅读字体只有一档字重，700 是浏览器合成的假粗体，笔画发糊。 */
+.chapter-content h1 {
+  font-family: inherit;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+
+/* 章末：余韵卡下面留 56px，印章和「分享这一章」不再贴着状态栏 */
+.chapter-block:last-of-type .chapter-afterglow { margin-bottom: 56px; }
+.afterglow-share,
+:root[data-theme="dark"] .afterglow-share { background: transparent; }
+
+/* ---------- 二、首页 ---------- */
+
+/* 梧桐带 + 继续阅读合成一张卡：左树右文，按钮落到第二行通栏。
+   类名不叫 home-hero —— 第 360 行有个同名的旧版页头样式（padding: 58px 24px 42px），会叠上来。
+   卡片自带的两套底色/边框/阴影都去掉，只留外层这一套。 */
+.home-continue {
+  display: flex;
+  align-items: stretch;
+  margin: 14px var(--gutter) 0;
+  border: 1px solid rgba(184, 134, 78, 0.14);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(255, 252, 246, 0.95), rgba(255, 247, 235, 0.88));
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.home-continue .tree-band {
+  flex: 0 0 42%;
+  height: auto;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+/* 继续阅读的数据没到之前卡片是 display:none，这时树占满整张卡 */
+.home-continue .home-reading-card {
+  flex: 1.25 1 0;
+  min-width: 0;
+  margin: 0;
+  padding: 16px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+}
+
+.home-continue .home-reading-card.visible { display: block; }
+
+.home-continue .rc-row {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 10px 12px;
+  align-items: center;
+}
+
+.home-continue .rc-btn {
+  grid-column: 1 / -1;
+  padding: 10px 12px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.home-continue .rc-chapter,
+.home-continue .rc-meta {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 卡变窄后树缩小，并且抬到状态文案上方：
+   树原先贴着带子右下角，带子一窄就和左下角那行文案叠在一起。 */
+.home-continue .tree-sway { width: 112px; height: 112px; right: -4px; bottom: 22px; }
+.home-continue .tree-caption-sub { display: none; }
+
+/* 带子的底色取树图自己的底色（实测 #f2e0c4）。原先是另一种更浅的米色，
+   树图看上去像贴在带子上的一块方砖；合成一张卡以后这块更大，更明显。 */
+.home-continue .tree-band { background: #f2e0c4; }
+
+/* 夜读下的梧桐带：原图是米色底的线稿，直接压暗会变成一块灰。
+   这里把图反相再转半个色相 —— 米色底变成暖黑，枝干变成浅色，
+   和夜读的纸色是一路的。带子的底色取反相后的实际颜色（实拍取样 #2d1c00）。 */
+:root[data-theme="dark"] .home-continue .tree-band { background: #2d1c00; }
+:root[data-theme="dark"] .tree-sway { filter: invert(1) hue-rotate(180deg); }
+/* 合卡自己的浅色底在夜读下要去掉：里面的树带和阅读卡都压暗了，只有它还是米白，
+   会从半透明的边框和两块之间的缝里透出来，看上去是一圈亮边。 */
+:root[data-theme="dark"] .home-continue {
+  background: transparent;
+  /* 夜读下不要边框：底色已经够黑，1px 的白边哪怕只有 5% 也看得出是一圈亮线，
+     和下面的摘句卡不在一个重量级。层次交给树带与内侧阅读卡自己表达。 */
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* 金句卡的暂停键：夜读下原来是半透明白底，看上去是一粒灰点 */
+:root[data-theme="dark"] .quote-pause-btn {
+  background: rgba(255, 246, 232, 0.08);
+  border-color: rgba(255, 246, 232, 0.2);
+}
+
+/* 学期册：11 章全留（已定），只把行距收紧一点 */
+.date-year { padding: 14px 0 4px; }
+.date-item { padding: 10px 0 8px; }
+
+/* ---------- 三、书架 ---------- */
+
+/* 窄封面上不再叠书名：92px 宽的缩略图里四个字折成两行，旁边本来就有大标题 */
+.detail-cover .book-cover-text { display: none; }
+
+/* 阅读进度 + 阅读足迹合成一张卡：两张卡说的是同一件事，中间只隔一条线 */
+.shelf-progress {
+  margin: 12px 16px 0;
+  background: var(--card-warm);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--card-shadow-soft);
+  overflow: hidden;
+  animation: slideUp 0.4s ease-out 0.1s both;
+}
+
+.shelf-progress .reading-overview,
+.shelf-progress .reading-footprints.mini {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+}
+
+.shelf-progress .reading-footprints.mini { border-top: 0.5px solid var(--border-light); }
+
+/* 目录平铺：一行一章。
+   原先每章一张卡：上方「第1章」，下面标题自己又带着「第一章·」，再下面一句简介，
+   一章 160px，11 章要滚六屏才见底。章名里已经有序号，卡里那个就不要了。 */
+.chapter-list { gap: 0; padding: 0; }
+
+.chapter-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 18px;
+  border: 0;
+  border-bottom: 0.5px solid var(--border-light);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.chapter-item:last-child { border-bottom: 0; }
+.chapter-item:active { background: var(--accent-light); transform: none; }
+
+.chapter-item .chapter-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.chapter-item .chapter-words { flex: 0 0 auto; }
+
+/* ---------- 三之二、剪贴本与人物详情 ---------- */
+
+/* 一句都没收时导出按钮跟着收起（quotes.html 的 render() 切 .is-empty） */
+.quotes-actions.is-empty { display: none; }
+
+/* 一级页面的页头去掉返回箭头后，标题不用再给箭头让位 */
+.detail-header:not(:has(.detail-back)) .detail-header-title { padding-right: 0; }
+.detail-header.has-tabs:not(:has(.detail-back)) .detail-header-title { padding-left: 6px; }
+
+/* 点顶栏分类跳到某一组时，分组标题停在页头下方。
+   原先写死 72px（旧页头 61 + 11 的呼吸）；页头去掉返回箭头后是 49px，照旧值落位会多出 23px 空白。 */
+.char-group-label { scroll-margin-top: 60px; }
+
+/* 人物详情：顶部换成整幅立绘。
+   页面里一直在用 1024×960 的母版，只是缩到 74×90 显示；18 张母版构图一致（脸在上半部），
+   所以一条规则对所有人物页都成立：图通栏铺满卡片顶部，下沿渐隐进卡片底色，名字落在图下方。 */
+.char-detail-card {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+
+.char-detail-top {
+  flex-direction: column;
+  gap: 0;
+}
+
+.char-detail-photo {
+  width: 100%;
+  height: 300px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* 取景点靠上：母版里脸都在上半部。平板上卡片有 608px 宽，300px 高的窗口只装得下图的 52%，
+   按原先的 28% 取景会把额头和眼睛裁掉。 */
+.char-detail-photo img { object-position: 50% 6%; }
+
+/* 上虚下实：图的下沿 88px 渐隐进卡片底色。pointer-events:none，点击照常落到放大按钮上 */
+.char-detail-photo::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 88px;
+  background: linear-gradient(180deg, transparent, var(--bg-card) 94%);
+  pointer-events: none;
+}
+
+/* 「可放大」的小圆标挪到右上角：右下角现在是渐隐区，放那儿会被底色吃掉 */
+.char-detail-photo .char-photo-btn::after {
+  top: 12px;
+  right: 12px;
+  bottom: auto;
+  width: 30px;
+  height: 30px;
+  background-size: 16px 16px;
+}
+
+/* 卡片左边 3px 的琥珀色竖线 + 18px 内边距 = 21px；下面两节的左边缘对齐到同一条线 */
+.char-detail-id { padding: 14px 18px 0; }
+.char-detail-quote { margin: 12px 18px 16px; }
+.char-detail-section { padding: 0 21px; }
+
+/* ---------- 四、细节 ---------- */
+
+/* 键盘聚焦：全站只有 :active，用键盘或读屏设备时看不出焦点在哪 */
+:focus-visible {
+  outline: 2px solid var(--accent-fill);
+  outline-offset: 2px;
+}
+
+/* ---------- 五、平板（≥ 768px）---------- */
+
+@media (min-width: 768px) {
+  /* 首页、书架、人物、剪贴本：手机框从 420px 放宽到 640px，去掉外框和投影 */
+  .phone-frame { max-width: 640px; box-shadow: none; }
+  .tab-bar { width: 640px; }
+
+  /* 阅读页（宽屏阅读关着）：还是 420px 一栏，但不再套手机框 */
+  .reading-wrapper { box-shadow: none; }
+
+  /* 状态栏跟内容栏同宽同中线。原来是 left:0; right:0，铺满整个窗口，
+     页码贴在最左下角，时间贴在最右下角，离正文各隔着一大片空白。 */
+  #readerStatus {
+    left: 50%;
+    right: auto;
+    width: min(420px, 100vw);
+    transform: translateX(-50%);
+  }
+
+  /* 宽屏阅读（768–1023px，单栏）：正文真的铺满 760px 的栏。
+     原先内边距是按「每行 13 字」反推的，栏放宽后两边各留出 230px，每行还是 13 字。 */
+  [data-readwidth="wide"] .chapter-content { --reader-cpl: 29; }
+  [data-readwidth="wide"] #readerStatus { width: min(760px, 100vw); }
+
+  /* 首页合卡放宽后：树跟着放大，按钮回到右边同一行 */
+  .home-continue .rc-row {
+    grid-template-columns: 46px minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .home-continue { min-height: 150px; }
+  .home-continue .home-reading-card.visible {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .home-continue .rc-btn { grid-column: 3; grid-row: 1; padding: 10px 18px; }
+  .home-continue .tree-sway { width: 118px; height: 118px; bottom: 24px; }
+}
+
+/* ---------- 六、平板双栏（宽屏阅读打开且 ≥ 1024px）---------- */
+
+/* 左栏 240 + 间距 32 + 正文最多 760 + 两侧各 16 = 1064。
+   --dual-cx / --dual-body 是正文栏的中线与宽度，由 reader.ui.js 的 syncDualMetrics()
+   按实际排版量出来写在这；fixed 定位的工具栏、进度线、状态栏、抽屉都靠它们对齐正文栏。
+   量不到时退回 50% / 760px。 */
+@media (min-width: 1024px) {
+  [data-readwidth="wide"] .reading-wrapper {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    column-gap: 32px;
+    align-items: start;
+    max-width: 1064px;
+    padding: 0 16px;
+    box-sizing: border-box;
+  }
+
+  [data-readwidth="wide"] .reading-flow {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  /* 顶栏里只有「返回」和章名，左栏都有了 */
+  [data-readwidth="wide"] .reading-wrapper .reader-topbar { display: none; }
+
+  /* 目录按钮同理 */
+  [data-readwidth="wide"] .reader-menu-row a[onclick*="openDirectory"] { display: none; }
+
+  [data-readwidth="wide"] .reading-wrapper .reader-bottombar {
+    left: var(--dual-cx, 50%);
+    right: auto;
+    width: min(736px, calc(var(--dual-body, 760px) - 24px));
+    max-width: none;
+  }
+
+  [data-readwidth="wide"] .reading-wrapper .reading-progress-line {
+    left: var(--dual-cx, 50%);
+    max-width: var(--dual-body, 760px);
+  }
+
+  [data-readwidth="wide"] #readerStatus {
+    left: var(--dual-cx, 50%);
+    width: var(--dual-body, 760px);
+  }
+
+  /* 抽屉（设置 / 搜索等）与正文栏同中线。遮罩层从两侧各收窄「中线偏移量 × 2」，
+     这样层本身居中时，面板正好落在正文栏上。 */
+  [data-readwidth="wide"] .modal-overlay {
+    left: max(0px, calc((var(--dual-cx, 50%) - 50vw) * 2));
+    right: max(0px, calc((50vw - var(--dual-cx, 50%)) * 2));
+  }
+}
+
+/* 左栏本体：固定不滚动，书封、进度、目录、人物簿入口都在这。
+   z-index 要压过阅读页的点击分区（.reader-tap-area 是 100），否则点不到。 */
+.reader-side { display: none; }
+
+@media (min-width: 1024px) {
+  [data-readwidth="wide"] .reader-side {
+    display: flex;
+    flex-direction: column;
+    grid-column: 1;
+    grid-row: 1;
+    position: sticky;
+    top: 0;
+    z-index: 120;
+    height: 100vh;
+    padding: 28px 0 24px;
+    overflow-y: auto;
+    color: var(--reading-text);
+  }
+}
+
+.side-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 4px;
+}
+
+.side-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: -8px;
+  padding: 8px 10px 8px 6px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--reading-text);
+  opacity: 0.78;
+}
+
+.side-back:active { background: var(--reader-surface-soft); }
+.side-back svg { width: 16px; height: 16px; }
+
+.side-actions { display: flex; gap: 8px; }
+
+.side-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  color: var(--reading-text);
+  background: var(--reader-surface-soft);
+  border: 1px solid var(--reader-border);
+  cursor: pointer;
+}
+
+.side-icon:active { background: var(--accent-light); }
+.side-icon svg { width: 18px; height: 18px; }
+
+.side-book {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.side-cover {
+  flex: 0 0 52px;
+  width: 52px;
+  height: 70px;
+  border-radius: 6px;
+  background: url('../assets/cover.webp') center / cover no-repeat;
+  box-shadow: 0 4px 12px rgba(60, 40, 20, 0.2);
+}
+
+.side-title { font-size: 16px; letter-spacing: 3px; }
+.side-author { margin-top: 5px; font-size: 12px; color: var(--text-muted); }
+
+.side-progress { margin: 18px 0 4px; font-size: 12px; }
+
+.side-progress-row {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+}
+
+.side-progress-row strong {
+  color: var(--reading-text);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.side-bar {
+  height: 3px;
+  margin-top: 7px;
+  border-radius: 2px;
+  background: var(--reader-border);
+  overflow: hidden;
+}
+
+.side-bar i { display: block; height: 100%; background: var(--accent-fill); }
+
+.side-heading {
+  margin: 20px 0 4px;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+}
+
+/* 目录项与底部抽屉里的 .dir-item 是同一份标记，这里改成竖排两行 */
+.reader-side .dir-volume { padding: 12px 10px 2px; }
+
+.reader-side .dir-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  transform: none;
+}
+
+.reader-side .dir-item:active { background: var(--reader-surface-soft); transform: none; }
+
+.reader-side .dir-item.active {
+  background: var(--reader-surface-soft);
+  box-shadow: none;
+  color: inherit;
+}
+
+.reader-side .dir-item.active .dir-item-title { color: var(--accent-text); }
+.reader-side .dir-item.done { opacity: 1; }
+.reader-side .dir-item.done .dir-item-title::after { display: none; }
+.reader-side .dir-item-title { font-size: 14px; line-height: 1.5; }
+
+/* 章名自带「第一章·」，和书架目录同理，不再单写一行章号 */
+.reader-side .dir-item-num { display: none; }
+
+/* 目录抽屉与左栏共用同一份标记，章号已经不再输出（见 reader.ui.js 的 directoryHtml），
+   这里只是留一道保险：真有旧标记进来也不会重复显示章号。 */
+
+.reader-side .dir-item-info {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.reader-side .dir-item-done svg { width: 12px; height: 12px; stroke: var(--leaf-green); }
+
+.side-chars {
+  margin-top: 16px;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--reading-text);
+  opacity: 0.78;
+}
+
+.side-chars:active { background: var(--reader-surface-soft); opacity: 1; }
+
+/* v10 层结束 ─────────────────────────────────────────────────────────────── */

@@ -38,11 +38,22 @@
 
   var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
+  /* ===== 宽屏阅读的默认值 =====
+     2026-11-25 起没存过这个开关时，屏幕 ≥ 768px 默认打开；手动切过一次就以存的为准。
+     默认值不写回存储（见 applyReadWidth 的 persist 参数），所以用户从没碰过这个开关的话，
+     换台窄设备仍然是「关」—— 跟着屏幕走，而不是被第一次访问的设备钉死。 */
+
+  function defaultReadWidth() {
+    var stored = localStorage.getItem('reader-readwidth');
+    if (stored === 'wide' || stored === 'normal') return stored;
+    return window.matchMedia && window.matchMedia('(min-width: 768px)').matches ? 'wide' : 'normal';
+  }
+
   var state = {
     fontSize: localStorage.getItem('reader-fontsize') || 'medium',
     theme: localStorage.getItem('reader-theme') || (systemDark ? 'dark' : 'wheat'),
     fontFamily: localStorage.getItem('reader-fontfamily') || 'fzyouhei',
-    readWidth: localStorage.getItem('reader-readwidth') || 'normal',
+    readWidth: defaultReadWidth(),
     lineHeight: localStorage.getItem('reader-lineheight') || 'normal',
     paraGap: localStorage.getItem('reader-paragap') || 'normal',
     barsVisible: false,
@@ -120,7 +131,7 @@
     applyFontSize(state.fontSize);
     applyFontFamily(state.fontFamily);
     loadUserFontIfNeeded();
-    applyReadWidth(state.readWidth);
+    applyReadWidth(state.readWidth, false);
     applyLineHeight(state.lineHeight);
     applyParaGap(state.paraGap);
     applyTheme(state.theme);
@@ -128,6 +139,7 @@
     initSwipe();
     initReadingProgress();
     initDirectoryPanel();
+    initReaderSide();
     initSettingsPanel();
     initQuoteCollecting();
     initModalKeys();
@@ -665,11 +677,13 @@
     applyFontFamily(CYCLE_FAMILIES[(idx + 1) % CYCLE_FAMILIES.length]);
   };
 
-  /* ===== 宽屏阅读（桌面端生效） ===== */
+  /* ===== 宽屏阅读（≥ 768px 生效；≥ 1024px 且打开时是左目录栏 + 右正文的双栏） ===== */
 
-  function applyReadWidth(mode) {
+  /* persist 为 false 时只应用、不写存储。初始化走的是默认值，
+     那不是用户的选择，不该替他存下来。 */
+  function applyReadWidth(mode, persist) {
     state.readWidth = mode;
-    localStorage.setItem('reader-readwidth', mode);
+    if (persist !== false) localStorage.setItem('reader-readwidth', mode);
     if (mode === 'wide') {
       document.documentElement.setAttribute('data-readwidth', 'wide');
     } else {
@@ -677,6 +691,32 @@
     }
     var label = document.getElementById('readWidthLabel');
     if (label) label.textContent = mode === 'wide' ? '宽屏阅读 · 开' : '宽屏阅读 · 关';
+    syncDualMetrics();
+  }
+
+  /* 双栏下，fixed 定位的工具栏、进度线、状态栏、抽屉都要对齐右边的正文栏，
+     而正文栏不在窗口正中（左边多出一栏）。这里按实际排版量出正文栏的中线与宽度，
+     写成 --dual-cx / --dual-body 两个变量给样式用；不是双栏时清掉。 */
+  function syncDualMetrics() {
+    var root = document.documentElement;
+    var flow = document.querySelector('.reading-wrapper .reading-flow');
+    var dual = document.getElementById('readerSide');
+    if (!flow || !dual || getComputedStyle(dual).display === 'none') {
+      root.style.removeProperty('--dual-cx');
+      root.style.removeProperty('--dual-body');
+      return;
+    }
+    var rect = flow.getBoundingClientRect();
+    root.style.setProperty('--dual-cx', Math.round(rect.left + rect.width / 2) + 'px');
+    root.style.setProperty('--dual-body', Math.round(rect.width) + 'px');
+  }
+
+  var dualMetricsQueued = false;
+
+  function queueDualMetrics() {
+    if (dualMetricsQueued) return;
+    dualMetricsQueued = true;
+    requestAnimationFrame(function () { dualMetricsQueued = false; syncDualMetrics(); });
   }
 
   function syncChoiceButtons(attr, value) {
@@ -764,6 +804,8 @@
     var bot = document.getElementById('readerBottombar');
     if (top) top.classList.add('visible');
     if (bot) bot.classList.add('visible');
+    /* 工具栏在场时状态栏让位：底栏正好压在状态栏上，两行字会叠在一起 */
+    document.body.classList.add('bars-on');
     startAutoClose();
   }
 
@@ -775,6 +817,7 @@
     var bot = document.getElementById('readerBottombar');
     if (top) top.classList.remove('visible');
     if (bot) { bot.classList.remove('visible'); bot.classList.remove('settings-open'); }
+    document.body.classList.remove('bars-on');
   }
 
   function startAutoClose() {
@@ -1914,11 +1957,16 @@
     list.scrollTop = Math.max(0, list.scrollTop + delta);
   }
 
-  function populateDirectory() {
-    var list = document.getElementById('dirList');
-    if (!list) return;
-    var file = currentDirFile();
+  /* 一章读到哪了。抽屉目录、左栏目录、左栏的全书进度都从这里取 ——
+     存储边界守卫按「直接读写的处数」计数，同一件事不在两处各读一遍。 */
+  function chapterProgress(id) {
+    var done = localStorage.getItem('reader-done-' + id) === '1';
+    var pct = parseInt(localStorage.getItem('reader-pos-' + id)) || 0;
+    return { done: done, pct: done ? 100 : pct };
+  }
 
+  /* 目录列表的标记。底部抽屉和双栏左栏用的是同一份，所以单独抽出来。 */
+  function directoryHtml(file) {
     // 按卷分组：仅当 CHAPTERS 中出现 ≥2 个不同 volume 时才渲染分组标题
     var volumes = [];
     CHAPTERS.forEach(function(ch) {
@@ -1932,13 +1980,13 @@
       if (grouped) html += '<div class="dir-volume">' + escapeHtml(v) + '</div>';
       CHAPTERS.forEach(function(ch) {
         if ((ch.volume || '') !== v) return;
-        var id = getChapterStorageId(ch.file);
-        var done = localStorage.getItem('reader-done-' + id) === '1';
-        var pct = parseInt(localStorage.getItem('reader-pos-' + id)) || 0;
+        var progress = chapterProgress(getChapterStorageId(ch.file));
+        var done = progress.done;
+        var pct = progress.pct;
         var active = ch.file === file;
 
         html += '<a href="' + ch.file + '" class="dir-item' + (active ? ' active' : '') + (done ? ' done' : '') + '">';
-        html += '<span class="dir-item-num">第' + ch.num + '章</span>';
+        /* 不再输出「第 N 章」：章名本身就是「第一章·临渊羡鱼」，再写一遍就是把章号说了两遍 */
         html += '<span class="dir-item-title">' + escapeHtml(ch.title) + '</span>';
         html += '<span class="dir-item-info">';
         if (done) {
@@ -1950,11 +1998,18 @@
         html += '</span></a>';
       });
     });
+    return html;
+  }
+
+  function populateDirectory() {
+    var list = document.getElementById('dirList');
+    if (!list) return;
     /* 换 innerHTML 会把列表滚回顶部。面板开着时进度更新会重渲染一次，
        不接住这个 scrollTop，读者正翻着目录就会被打回开头。 */
     var prevTop = list.scrollTop;
-    list.innerHTML = html;
+    list.innerHTML = directoryHtml(currentDirFile());
     list.scrollTop = prevTop;
+    populateSideList();
   }
 
   window.openDirectory = function() {
@@ -1968,6 +2023,85 @@
   window.closeDirectory = function() {
     closeSheet(document.getElementById('dirOverlay'));
   };
+
+  /* ===== 双栏左栏 =====
+     宽屏阅读打开且 ≥ 1024px 时显示（样式见 style.css 的「平板双栏」段）；
+     手机上建了也不显示。目录复用 directoryHtml()，所以章节页的 HTML 不用带目录，
+     章节模板、预缓存清单都不用动。 */
+
+  var sideActiveFile = '';
+
+  function initReaderSide() {
+    var wrap = document.querySelector('.reading-wrapper');
+    var flow = document.querySelector('.reading-flow');
+    if (!wrap || !flow || document.getElementById('readerSide')) return;
+    var side = document.createElement('aside');
+    side.className = 'reader-side';
+    side.id = 'readerSide';
+    side.setAttribute('aria-label', '目录');
+    side.innerHTML =
+      '<div class="side-top">' +
+        '<a href="index.html" class="side-back">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>' +
+          '书架</a>' +
+        '<div class="side-actions">' +
+          '<button type="button" class="side-icon" onclick="toggleNightMode()" aria-label="切换日读与夜读">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg></button>' +
+          '<button type="button" class="side-icon" onclick="openSettings()" aria-label="设置">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="side-book">' +
+        '<div class="side-cover" aria-hidden="true"></div>' +
+        '<div><div class="side-title">临渊羡鱼</div><div class="side-author">南城的梧桐枝繁未歇</div></div>' +
+      '</div>' +
+      '<div class="side-progress">' +
+        '<div class="side-progress-row"><span>全书已读</span><strong id="sidePct">0%</strong></div>' +
+        '<div class="side-bar"><i id="sideFill" style="width:0%"></i></div>' +
+      '</div>' +
+      '<div class="side-heading">目录</div>' +
+      '<div class="side-list" id="sideList"></div>' +
+      '<a href="characters.html" class="side-chars">人物簿</a>';
+    /* 放在最前面：双栏的网格里第一列就是它，.reading-flow 由样式指定到第二列 */
+    wrap.insertBefore(side, wrap.firstChild);
+    populateSideList();
+    syncDualMetrics();
+
+    /* 滚进下一章后左栏的高亮要跟过去。只在换章时重建列表，
+       而不是每次滚动都重建 —— 那会把正在翻的目录不停打回顶部。 */
+    var queued = false;
+    window.addEventListener('scroll', function () {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(function () { queued = false; syncSideActive(); });
+    }, { passive: true });
+  }
+
+  function populateSideList() {
+    var list = document.getElementById('sideList');
+    if (!list) return;
+    sideActiveFile = currentDirFile();
+    var prevTop = list.scrollTop;
+    list.innerHTML = directoryHtml(sideActiveFile);
+    list.scrollTop = prevTop;
+
+    /* 全书进度按字数加权，和书架页、首页用的是同一种算法 */
+    var read = 0, total = 0;
+    CHAPTERS.forEach(function (ch) {
+      var progress = chapterProgress(getChapterStorageId(ch.file));
+      read += ch.words * progress.pct / 100;
+      total += ch.words;
+    });
+    var pct = total ? Math.round(read / total * 100) : 0;
+    var pctEl = document.getElementById('sidePct');
+    var fillEl = document.getElementById('sideFill');
+    if (pctEl) pctEl.textContent = pct + '%';
+    if (fillEl) fillEl.style.width = pct + '%';
+  }
+
+  function syncSideActive() {
+    if (currentDirFile() !== sideActiveFile) populateSideList();
+  }
 
   function initQuoteCollecting() {
     decorateParagraphs();

@@ -5,6 +5,7 @@
 
   var SEEN_KEY = 'reader-notice-seen';
   var SESSION_KEY = 'ly-announce-checked';
+  var AUTO_HIDE_MS = 6000;
 
   /* 页面分布在 / 与 /novel/ 两层，announce.json 在根目录；先按路径猜，猜错再试另一种 */
   function announceUrls() {
@@ -49,7 +50,13 @@
 
     var text = document.createElement('span');
     text.className = 'notice-text';
-    text.textContent = '第 ' + chapter + ' 章' + (data.title ? '《' + data.title + '》' : '') + '更新了';
+    /* announce.json 里的章名自带「第十一章·」，前面再写「第 11 章」就是把章号说了两遍。
+       能从章名里切出标题就写「新章・晚饭」，切不出来才退回「第 N 章更新了」。 */
+    var shortTitle = String(data.title || '')
+      .replace(/^\s*第[零一二三四五六七八九十百千\d]+章\s*[·•・.、:：\-]\s*/, '')
+      .replace(/^\s*第[零一二三四五六七八九十百千\d]+章\s*/, '')
+      .trim();
+    text.textContent = shortTitle ? '新章・' + shortTitle : '第 ' + chapter + ' 章更新了';
 
     var go = document.createElement('a');
     go.className = 'notice-go';
@@ -83,6 +90,15 @@
     requestAnimationFrame(function () {
       requestAnimationFrame(function () { bar.classList.add('is-in'); });
     });
+
+    /* 6 秒后自己滑走：它是一条压在页面底部的浮层，一直停着就盖着底下的东西
+       （阅读页章末的分享按钮最先遭殃）。只收起、不标记已读 ——
+       下次进站还会提一次，直到点「去读」或 ✕。 */
+    setTimeout(function () {
+      if (!bar.isConnected) return;
+      bar.classList.remove('is-in');
+      setTimeout(function () { if (bar.isConnected) bar.remove(); }, 400);
+    }, AUTO_HIDE_MS);
   }
 
   function check() {

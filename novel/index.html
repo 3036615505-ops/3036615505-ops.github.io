@@ -25,23 +25,20 @@
     "author": { "@type": "Person", "name": "叶南衡" }
   }
   </script>
-  <link rel="stylesheet" href="../css/style.css?v=151">
-  <script src="../js/theme.js?v=151"></script>
-  <script src="../js/native-bridge.js?v=151"></script>
+  <link rel="stylesheet" href="../css/style.css?v=155">
+  <script src="../js/theme.js?v=155"></script>
+  <script src="../js/native-bridge.js?v=155"></script>
   <!-- 站内「新章节更新了」横幅（取 announce.json 与 localStorage 比对，每会话一次）。 -->
-  <script src="../js/announce.js?v=151" defer></script>
+  <script src="../js/announce.js?v=155" defer></script>
   <!-- 点击即反馈：按下就在顶部点亮一条细线，盖住「跳转前的空窗期」。 -->
-  <script src="../js/nav-feedback.js?v=151" defer></script>
+  <script src="../js/nav-feedback.js?v=155" defer></script>
 </head>
 <body class="tab-page-body">
   <div class="phone-frame">
 
+  <!-- 书架是底部标签页之一，不是从别处点进来的二级页：左上角不再放返回箭头
+       （2026-11-25 UI 改版；原先点它会回到首页，而「首页」标签就在下面）。 -->
   <div class="detail-header">
-    <a href="../" class="detail-back">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="15 18 9 12 15 6"></polyline>
-      </svg>
-    </a>
     <span class="detail-header-title">书架</span>
   </div>
 
@@ -75,7 +72,9 @@
     </a>
   </div>
 
-  <!-- 阅读进度总览 -->
+  <!-- 阅读进度总览 + 阅读足迹：2026-11-25 起合在一张卡里（说的是同一件事）。
+       外层 .shelf-progress 由下面脚本在「有阅读记录」时显示，里面两个容器的 id 没变。 -->
+  <section class="shelf-progress" id="shelfProgress" style="display:none">
   <div class="reading-overview" id="readingOverview" style="display:none">
     <div class="overview-header">
       <span class="overview-title">阅读进度</span>
@@ -95,6 +94,7 @@
     <div class="footprints-copy" id="novelFootprintsCopy"></div>
     <div class="footprints-metrics" id="novelFootprintsMetrics"></div>
   </div>
+  </section>
 
   <div class="chapter-section">
     <div class="chapter-section-header">
@@ -142,7 +142,7 @@
        弱网下 chapters.js 没回来之前整页白屏（书架页首屏可感知卡顿）。
        放在这里首屏骨架先画出来；但必须保持在下面依赖 CHAPTERS 的内联脚本之前
        （经典脚本按文档顺序执行，内联脚本是同步 IIFE，等不到任何异步回调）。 -->
-  <script src="../js/chapters.js?v=151"></script>
+  <script src="../js/chapters.js?v=155"></script>
 
   <script>
   (function() {
@@ -176,16 +176,13 @@
         if (grouped) html += '<div class="chapter-volume">' + escapeHtml(v) + '</div>';
         CHAPTERS.forEach(function(ch) {
           if ((ch.volume || '') !== v) return;
+          /* 一行一章（2026-11-25 UI 改版）：章名里已经带着「第一章·」，不再另起一行写章号，
+             也不再放简介 —— 11 章从 2381px 压到一屏半以内。
+             .chapter-title / .chapter-status-slot 两个类名下面的进度脚本要用，别改。 */
           html += '<a href="' + ch.file + '" class="chapter-item">' +
-            '<div class="chapter-topline">' +
-              '<span class="chapter-num">第' + ch.num + '章</span>' +
-              '<span class="chapter-words">' + ch.words + ' 字</span>' +
-            '</div>' +
-            '<div class="chapter-main">' +
-              '<span class="chapter-title">' + escapeHtml(ch.title) + '</span>' +
-              '<span class="chapter-status-slot"></span>' +
-            '</div>' +
-            (ch.blurb ? '<div class="chapter-blurb">' + escapeHtml(ch.blurb) + '</div>' : '') +
+            '<span class="chapter-title">' + escapeHtml(ch.title) + '</span>' +
+            '<span class="chapter-words">' + ch.words + ' 字</span>' +
+            '<span class="chapter-status-slot"></span>' +
           '</a>';
         });
       });
@@ -252,6 +249,8 @@
       var overviewEl = document.getElementById('readingOverview');
       if (overviewEl) {
         overviewEl.style.display = 'block';
+        var progressCard = document.getElementById('shelfProgress');
+        if (progressCard) progressCard.style.display = 'block';
         document.getElementById('overviewPct').textContent = readPct + '%';
         document.getElementById('overviewFill').style.width = readPct + '%';
 
