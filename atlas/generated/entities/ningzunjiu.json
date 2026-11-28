@@ -1,0 +1,94 @@
+{
+  "id": "ningzunjiu",
+  "type": "character",
+  "name": "宁樽酒",
+  "group": "xinlei",
+  "role": "朋友",
+  "summary": "把哥哥的影子放在心上，把仰望的人当成方向。",
+  "quote": "“……我也可以，成为那样的人吗？”",
+  "birthday": "2007.06.05",
+  "traits": [
+    "不善言辞",
+    "自卑"
+  ],
+  "tags": [
+    "沉着"
+  ],
+  "bio": [
+    "重要主角团之一。父母离婚，与哥哥相依为命。但哥哥因为车祸昏迷，一直陪在他身边照顾他。渐渐地不爱说话了。",
+    "被叶南衡无声的帮助了很多次，在他身上找到了哥哥的感觉。从那以后，心里十分仰慕叶南衡。暗恋四大校花之一的黎颜——他与黎颜在小学的时候是同学，那时的他胆小，自卑，但是黎颜是一个非常有正义感的人，在他被欺负的时候，挺身而出。虽然黎颜不记得，因为那就是她会做的事，不是因为这个人是谁。但是，黎颜的身影却深深刻在了他的脑海里，挥之不去。"
+  ],
+  "portrait": "portrait-ningzunjiu-1024.webp",
+  "aliases": [],
+  "deceased": false,
+  "status": "canon",
+  "source": {
+    "kind": "projection",
+    "file": "content/characters.json",
+    "upstream": "js/characters-data.js",
+    "id": "ningzunjiu"
+  },
+  "graph": {
+    "x": 300,
+    "y": 585,
+    "r": 20,
+    "glyph": "樽"
+  },
+  "reader": {
+    "revealAt": 3,
+    "summary": "叶南衡的同学，沉默寡言；体育课上被叶南衡解围。",
+    "visible": true
+  },
+  "derived": {
+    "ageAtStoryStart": 15
+  },
+  "relations": [
+    {
+      "id": "rel-ningzunjiu-liyan-love",
+      "kind": "love",
+      "label": "暗恋",
+      "directed": true,
+      "direction": "out",
+      "other": {
+        "id": "liyan",
+        "name": "黎颜"
+      }
+    },
+    {
+      "id": "rel-nanheng-ningzunjiu-friend",
+      "kind": "friend",
+      "label": "仰慕",
+      "directed": true,
+      "direction": "in",
+      "other": {
+        "id": "nanheng",
+        "name": "叶南衡"
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "evt-ch03-pe-help",
+      "title": "体育课替宁樽酒解围",
+      "chapter": 3,
+      "date": null,
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch06-paint-return",
+      "title": "颜料归还与黎颜退线",
+      "chapter": 6,
+      "date": "2022-09-20",
+      "place": "nancheng1"
+    }
+  ],
+  "foreshadowing": [
+    {
+      "id": "fs-ningzunjiu-gaze",
+      "title": "宁樽酒在走廊尽头看黎颜",
+      "status": "open",
+      "plantedIn": 6,
+      "payoffIn": null
+    }
+  ]
+}

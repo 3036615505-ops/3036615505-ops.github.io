@@ -1,0 +1,119 @@
+{
+  "id": "baiyuhuan",
+  "type": "character",
+  "name": "白余欢",
+  "group": "xinlei",
+  "role": "朋友",
+  "summary": "南城第一乐子人。",
+  "quote": "“哈哈哈哈哈哈哈哈哈——”",
+  "birthday": "2007.06.07",
+  "traits": [
+    "开朗",
+    "外向",
+    "搞笑"
+  ],
+  "tags": [
+    "乐观"
+  ],
+  "bio": [
+    "重要主角团之一。胖胖的，所以被叶南衡亲切地称为“白胖子”。在喜欢上杨梦寒后，努力减肥。瘦下来后，妥妥的帅哥。叶南衡一行人中最幽默的一个人，平时特别不正经。",
+    "生平最大的乐趣就是“调戏”杨梦寒了，却十分有分寸。也正是因为他的这份开朗，才让杨梦寒的世界拥有了很多的欢声笑语。爱八卦，南城百晓生，是大家口中的“白大嗓子”。"
+  ],
+  "portrait": "portrait-baiyuhuan-1024.webp",
+  "aliases": [
+    "白胖子",
+    "白大嗓子",
+    "南城百晓生"
+  ],
+  "deceased": false,
+  "status": "canon",
+  "source": {
+    "kind": "projection",
+    "file": "content/characters.json",
+    "upstream": "js/characters-data.js",
+    "id": "baiyuhuan"
+  },
+  "graph": {
+    "x": 420,
+    "y": 700,
+    "r": 20,
+    "glyph": "欢"
+  },
+  "reader": {
+    "revealAt": 2,
+    "summary": "叶南衡的同学，开朗健谈，自称“南城百晓生”。",
+    "visible": true
+  },
+  "derived": {
+    "ageAtStoryStart": 15
+  },
+  "relations": [
+    {
+      "id": "rel-baiyuhuan-yangmenghan-love",
+      "kind": "love",
+      "label": "喜欢",
+      "directed": true,
+      "direction": "out",
+      "other": {
+        "id": "yangmenghan",
+        "name": "杨梦寒"
+      }
+    },
+    {
+      "id": "rel-nanheng-baiyuhuan-friend",
+      "kind": "friend",
+      "label": "朋友",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "nanheng",
+        "name": "叶南衡"
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "evt-ch02-seat-change",
+      "title": "白榆重新排座位",
+      "chapter": 2,
+      "date": "2022-09-19",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch05-board-start",
+      "title": "板报分工与越界两指",
+      "chapter": 5,
+      "date": "2022-09-20",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch06-paint-return",
+      "title": "颜料归还与黎颜退线",
+      "chapter": 6,
+      "date": "2022-09-20",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch07-result",
+      "title": "板报评比：二班第一",
+      "chapter": 7,
+      "date": "2022-09-26",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch08-last-day",
+      "title": "国庆前最后一天与捡到钢笔",
+      "chapter": 8,
+      "date": "2022-09-30",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch09-pen-return",
+      "title": "杨梦寒找回外婆的钢笔",
+      "chapter": 9,
+      "date": "2022-09-30",
+      "place": "nancheng1"
+    }
+  ],
+  "foreshadowing": []
+}

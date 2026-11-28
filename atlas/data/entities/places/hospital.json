@@ -1,0 +1,14 @@
+{
+  "id": "hospital",
+  "type": "place",
+  "name": "南城人民医院",
+  "group": "place",
+  "role": "医院",
+  "icon": "hospital",
+  "aliases": ["人民医院"],
+  "summary": "二级甲等医院，叶渊在这里任呼吸与危重症医学科主任。",
+  "status": "canon",
+  "source": [
+    "content/characters.json#yeyuan"
+  ]
+}

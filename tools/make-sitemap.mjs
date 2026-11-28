@@ -100,6 +100,9 @@ characters.forEach((c) => {
 // 剪贴本
 urls.push({ loc: '/quotes.html', lastmod: lastmodOf(path.join(ROOT, 'quotes.html')), changefreq: 'weekly', priority: '0.7' });
 
+// 星图（读者端百科；不放进 PRECACHE，避免把全量立绘与数据塞进阅读器缓存）
+urls.push({ loc: '/atlas/', lastmod: lastmodOf(path.join(ROOT, 'atlas', 'index.html')), changefreq: 'weekly', priority: '0.6' });
+
 /* ---------- 输出（2 空格缩进，与既有 sitemap.xml 风格一致） ---------- */
 const blocks = urls.map((u) => [
   '  <url>',
@@ -121,7 +124,7 @@ if (before === xml) {
 } else {
   fs.writeFileSync(SITEMAP, xml);
   console.log('✓ sitemap.xml 已生成：' + urls.length + ' 条' +
-    '（章节 ' + chapters.length + ' · 人物详细页 ' + characters.length + ' · 固定页 4）');
+    '（章节 ' + chapters.length + ' · 人物详细页 ' + characters.length + ' · 固定页 5）');
   const noLastmod = urls.filter((u) => !u.lastmod).length;
   if (noLastmod) console.log('⚠ ' + noLastmod + ' 条没有 lastmod（对应文件不存在）');
 }

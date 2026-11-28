@@ -1,0 +1,89 @@
+{
+  "id": "taoyaoyao",
+  "type": "character",
+  "name": "桃夭夭",
+  "group": "qingzhi",
+  "role": "数学老师",
+  "summary": "只有靠近她的人才懂得她心中的炽热。",
+  "quote": "“肖灼，你为什么一直躲着我？”",
+  "birthday": null,
+  "traits": [
+    "外冷内热"
+  ],
+  "tags": [
+    "克制"
+  ],
+  "bio": [
+    "学校的数学老师，很漂亮，身世显赫，被肖灼叫做“大小姐”。是同学们眼中的灭绝师太，暗恋了肖灼许久，但肖灼迟迟不肯表白，自己也耷拉不下脸面。",
+    "尤其喜欢叶南衡和江不秋。喜欢叶南衡，是因为叶南衡总给人一种乐观开朗的感觉，是个“小宝藏”；看到了江不秋的不合群，想到了曾经的自己，给予了她很多帮助。也推进了叶南衡和江不秋之间的交流。"
+  ],
+  "portrait": "portrait-taoyaoyao-1024.webp",
+  "aliases": [],
+  "deceased": false,
+  "status": "canon",
+  "source": {
+    "kind": "projection",
+    "file": "content/characters.json",
+    "upstream": "js/characters-data.js",
+    "id": "taoyaoyao"
+  },
+  "graph": {
+    "x": 835,
+    "y": 520,
+    "r": 20,
+    "glyph": "桃"
+  },
+  "reader": {
+    "revealAt": null,
+    "summary": "只有靠近她的人才懂得她心中的炽热。",
+    "visible": false
+  },
+  "relations": [
+    {
+      "id": "rel-xiaozhuo-taoyaoyao-love",
+      "kind": "love",
+      "label": "暗恋",
+      "directed": true,
+      "direction": "in",
+      "other": {
+        "id": "xiaozhuo",
+        "name": "肖灼"
+      }
+    },
+    {
+      "id": "rel-taoyaoyao-nanheng-mentor",
+      "kind": "mentor",
+      "label": "师生",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "nanheng",
+        "name": "叶南衡"
+      }
+    },
+    {
+      "id": "rel-taoyaoyao-jiangbuqiu-mentor",
+      "kind": "mentor",
+      "label": "关照",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "jiangbuqiu",
+        "name": "江不秋"
+      }
+    },
+    {
+      "id": "rel-taoyaoyao-nancheng1-place",
+      "kind": "place",
+      "label": "任教",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "nancheng1",
+        "name": "南城一中"
+      }
+    }
+  ],
+  "events": [],
+  "foreshadowing": []
+}

@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 1,
+  "canvas": {
+    "width": 1200,
+    "height": 860,
+    "safe": {
+      "left": 40,
+      "top": 40,
+      "right": 1160,
+      "bottom": 820
+    }
+  },
+  "entityTypes": {
+    "character": {
+      "required": [
+        "id",
+        "type",
+        "name",
+        "group",
+        "role",
+        "summary"
+      ],
+      "optional": [
+        "aliases",
+        "quote",
+        "birthday",
+        "traits",
+        "tags",
+        "bio",
+        "portrait",
+        "deceased",
+        "status",
+        "source"
+      ]
+    },
+    "place": {
+      "required": [
+        "id",
+        "type",
+        "name",
+        "group",
+        "role",
+        "summary"
+      ],
+      "optional": [
+        "aliases",
+        "icon",
+        "status",
+        "source"
+      ]
+    }
+  },
+  "groups": {
+    "xinlei": {
+      "name": "新叶",
+      "color": "#8a9e6c",
+      "order": 1
+    },
+    "qingzhi": {
+      "name": "青枝",
+      "color": "#c4a24e",
+      "order": 2
+    },
+    "qiaomu": {
+      "name": "乔木",
+      "color": "#9e7c4a",
+      "order": 3
+    },
+    "place": {
+      "name": "地点",
+      "color": "#6d4a2e",
+      "order": 4
+    }
+  },
+  "relationKinds": {
+    "family": {
+      "name": "亲缘",
+      "line": "solid",
+      "color": "#6d4a2e",
+      "order": 1
+    },
+    "love": {
+      "name": "情感",
+      "line": "long-dash",
+      "color": "#b8864e",
+      "order": 2
+    },
+    "friend": {
+      "name": "朋友",
+      "line": "solid",
+      "color": "#8a9e6c",
+      "order": 3
+    },
+    "mentor": {
+      "name": "师生",
+      "line": "dotted",
+      "color": "#c4a24e",
+      "order": 4
+    },
+    "place": {
+      "name": "地点",
+      "line": "short-dash",
+      "color": "#6d4a2e",
+      "order": 5
+    }
+  },
+  "statuses": [
+    "canon",
+    "draft",
+    "retired"
+  ],
+  "relation": {
+    "required": [
+      "id",
+      "a",
+      "b",
+      "kind",
+      "label",
+      "status",
+      "evidence"
+    ],
+    "optional": [
+      "directed",
+      "note"
+    ]
+  },
+  "timeOfDay": [
+    "morning",
+    "noon",
+    "afternoon",
+    "evening",
+    "night",
+    "unknown"
+  ],
+  "dateConfidence": [
+    "exact",
+    "inferred",
+    "unknown"
+  ],
+  "event": {
+    "required": [
+      "id",
+      "title",
+      "chapter",
+      "timeOfDay",
+      "participants",
+      "summary",
+      "evidence"
+    ],
+    "optional": [
+      "date",
+      "dateConfidence",
+      "place",
+      "placeText"
+    ]
+  },
+  "claim": {
+    "required": [
+      "id",
+      "subject",
+      "field",
+      "value",
+      "status",
+      "evidence"
+    ],
+    "optional": [
+      "date",
+      "chapter",
+      "quote",
+      "note"
+    ]
+  },
+  "foreshadowing": {
+    "required": [
+      "id",
+      "title",
+      "plantedIn",
+      "status",
+      "owner",
+      "evidence"
+    ],
+    "optional": [
+      "payoffIn",
+      "note"
+    ]
+  },
+  "foreshadowingStatuses": [
+    "open",
+    "paid",
+    "abandoned"
+  ],
+  "claimStatuses": [
+    "canon",
+    "draft",
+    "retired",
+    "ignored"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "title": "临渊羡鱼",
+  "subtitle": "人物星图",
+  "storyYear": 2022,
+  "storyStart": "2022-09-01",
+  "storyEnd": "2022-10-01",
+  "place": "南城",
+  "canvas": {
+    "width": 1200,
+    "height": 860
+  },
+  "note": "坐标是构建时冻结的版面坐标，不是地理坐标；新增节点时先改 layout.json，再跑 build。"
+}

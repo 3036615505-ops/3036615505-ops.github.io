@@ -1,0 +1,476 @@
+{
+  "relationKinds": [
+    "family",
+    "love",
+    "friend",
+    "mentor",
+    "place"
+  ],
+  "items": [
+    {
+      "id": "rel-nanheng-guchiyan-family",
+      "a": "nanheng",
+      "b": "guchiyan",
+      "kind": "family",
+      "label": "母子",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-nanheng-yeyuan-family",
+      "a": "nanheng",
+      "b": "yeyuan",
+      "kind": "family",
+      "label": "父子",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-linshu-baiyu-family",
+      "a": "linshu",
+      "b": "baiyu",
+      "kind": "family",
+      "label": "母女",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-linshu-linwangshu-family",
+      "a": "linshu",
+      "b": "linwangshu",
+      "kind": "family",
+      "label": "父女",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-jiangbuqiu-jiangzhenmo-family",
+      "a": "jiangbuqiu",
+      "b": "jiangzhenmo",
+      "kind": "family",
+      "label": "父女",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-jiangbuqiu-sujiwen-family",
+      "a": "jiangbuqiu",
+      "b": "sujiwen",
+      "kind": "family",
+      "label": "母女",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-jiangbuqiu-linxihe-family",
+      "a": "jiangbuqiu",
+      "b": "linxihe",
+      "kind": "family",
+      "label": "继母女",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-jiangzhenmo-sujiwen-family",
+      "a": "jiangzhenmo",
+      "b": "sujiwen",
+      "kind": "family",
+      "label": "夫妻",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-jiangzhenmo-linxihe-family",
+      "a": "jiangzhenmo",
+      "b": "linxihe",
+      "kind": "family",
+      "label": "夫妻",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-guchiyan-baiyu-family",
+      "a": "guchiyan",
+      "b": "baiyu",
+      "kind": "family",
+      "label": "闺蜜",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "note": "顾池宴与白榆是多年闺蜜（双方小传）。"
+    },
+    {
+      "id": "rel-nanheng-yeyulan-family",
+      "a": "nanheng",
+      "b": "yeyulan",
+      "kind": "family",
+      "label": "表姐弟",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-nanheng-linshu-love",
+      "a": "nanheng",
+      "b": "linshu",
+      "kind": "love",
+      "label": "青梅竹马",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-nanheng-jiangbuqiu-love",
+      "a": "nanheng",
+      "b": "jiangbuqiu",
+      "kind": "love",
+      "label": "相互照亮",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-ningzunjiu-liyan-love",
+      "a": "ningzunjiu",
+      "b": "liyan",
+      "kind": "love",
+      "label": "暗恋",
+      "directed": true,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "note": "宁樽酒小学时被黎颜挺身保护，此后暗恋；黎颜并不记得。"
+    },
+    {
+      "id": "rel-baiyuhuan-yangmenghan-love",
+      "a": "baiyuhuan",
+      "b": "yangmenghan",
+      "kind": "love",
+      "label": "喜欢",
+      "directed": true,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-liyan-nanheng-love",
+      "a": "liyan",
+      "b": "nanheng",
+      "kind": "love",
+      "label": "后来喜欢",
+      "directed": true,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "note": "黎颜小传：一次次经历后发现叶南衡的温柔，渐渐喜欢上他。"
+    },
+    {
+      "id": "rel-xiaozhuo-taoyaoyao-love",
+      "a": "xiaozhuo",
+      "b": "taoyaoyao",
+      "kind": "love",
+      "label": "暗恋",
+      "directed": true,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-nanheng-baiyuhuan-friend",
+      "a": "nanheng",
+      "b": "baiyuhuan",
+      "kind": "friend",
+      "label": "朋友",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-nanheng-ningzunjiu-friend",
+      "a": "nanheng",
+      "b": "ningzunjiu",
+      "kind": "friend",
+      "label": "仰慕",
+      "directed": true,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-linshu-jiangbuqiu-friend",
+      "a": "linshu",
+      "b": "jiangbuqiu",
+      "kind": "friend",
+      "label": "朋友",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-liyan-yangmenghan-friend",
+      "a": "liyan",
+      "b": "yangmenghan",
+      "kind": "friend",
+      "label": "同班",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-yeyulan-jiangbuqiu-friend",
+      "a": "yeyulan",
+      "b": "jiangbuqiu",
+      "kind": "friend",
+      "label": "开解",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "note": "叶羽澜小传：回家做手术期间见过江不秋、林纾，并告诉她们自己的感受。"
+    },
+    {
+      "id": "rel-baiyu-nanheng-mentor",
+      "a": "baiyu",
+      "b": "nanheng",
+      "kind": "mentor",
+      "label": "班主任",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-taoyaoyao-nanheng-mentor",
+      "a": "taoyaoyao",
+      "b": "nanheng",
+      "kind": "mentor",
+      "label": "师生",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-taoyaoyao-jiangbuqiu-mentor",
+      "a": "taoyaoyao",
+      "b": "jiangbuqiu",
+      "kind": "mentor",
+      "label": "关照",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-xiaozhuo-nanheng-mentor",
+      "a": "xiaozhuo",
+      "b": "nanheng",
+      "kind": "mentor",
+      "label": "师生",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ]
+    },
+    {
+      "id": "rel-shenruoqi-linyuan-place",
+      "a": "shenruoqi",
+      "b": "linyuan",
+      "kind": "place",
+      "label": "店主",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ]
+    },
+    {
+      "id": "rel-nanheng-linyuan-place",
+      "a": "nanheng",
+      "b": "linyuan",
+      "kind": "place",
+      "label": "常去",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ]
+    },
+    {
+      "id": "rel-linshu-linyuan-place",
+      "a": "linshu",
+      "b": "linyuan",
+      "kind": "place",
+      "label": "常去",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ]
+    },
+    {
+      "id": "rel-jiangbuqiu-linyuan-place",
+      "a": "jiangbuqiu",
+      "b": "linyuan",
+      "kind": "place",
+      "label": "常去",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ]
+    },
+    {
+      "id": "rel-nanheng-nancheng1-place",
+      "a": "nanheng",
+      "b": "nancheng1",
+      "kind": "place",
+      "label": "就读",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ]
+    },
+    {
+      "id": "rel-linshu-nancheng1-place",
+      "a": "linshu",
+      "b": "nancheng1",
+      "kind": "place",
+      "label": "就读",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ]
+    },
+    {
+      "id": "rel-jiangbuqiu-nancheng1-place",
+      "a": "jiangbuqiu",
+      "b": "nancheng1",
+      "kind": "place",
+      "label": "就读",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ]
+    },
+    {
+      "id": "rel-baiyu-nancheng1-place",
+      "a": "baiyu",
+      "b": "nancheng1",
+      "kind": "place",
+      "label": "任教",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ]
+    },
+    {
+      "id": "rel-guchiyan-nancheng1-place",
+      "a": "guchiyan",
+      "b": "nancheng1",
+      "kind": "place",
+      "label": "任教",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ]
+    },
+    {
+      "id": "rel-taoyaoyao-nancheng1-place",
+      "a": "taoyaoyao",
+      "b": "nancheng1",
+      "kind": "place",
+      "label": "任教",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ]
+    },
+    {
+      "id": "rel-xiaozhuo-nancheng1-place",
+      "a": "xiaozhuo",
+      "b": "nancheng1",
+      "kind": "place",
+      "label": "任教",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ]
+    },
+    {
+      "id": "rel-yeyuan-hospital-place",
+      "a": "yeyuan",
+      "b": "hospital",
+      "kind": "place",
+      "label": "任职",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ]
+    },
+    {
+      "id": "rel-yeyuan-beicheng-place",
+      "a": "yeyuan",
+      "b": "beicheng",
+      "kind": "place",
+      "label": "旧日工作",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ],
+      "note": "叶渊小传：在北城时与江不秋的妈妈曾是同事。"
+    },
+    {
+      "id": "rel-sujiwen-beicheng-place",
+      "a": "sujiwen",
+      "b": "beicheng",
+      "kind": "place",
+      "label": "旧日工作",
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ],
+      "note": "依据叶渊小传“在北城时与江不秋的妈妈曾是同事”推得苏霁温也在北城工作。"
+    }
+  ]
+}

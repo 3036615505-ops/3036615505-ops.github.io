@@ -1,0 +1,101 @@
+{
+  "id": "yangmenghan",
+  "type": "character",
+  "name": "杨梦寒",
+  "group": "xinlei",
+  "role": "四大校花",
+  "summary": "安静地走进人群，也安静地被光照亮。",
+  "quote": "“……嗯，我在听。”",
+  "birthday": "2007.10.21",
+  "traits": [
+    "安静",
+    "内向",
+    "温柔"
+  ],
+  "tags": [
+    "安静"
+  ],
+  "bio": [
+    "重要主角团之一。四大校花之一，是一个安静的人。成绩很好，在板报活动中与叶南衡等人相识，后来交集加多，渐渐地融入了他们这个团体。性格也逐渐开朗起来。"
+  ],
+  "portrait": "portrait-yangmenghan-1024.webp",
+  "aliases": [],
+  "deceased": false,
+  "status": "canon",
+  "source": {
+    "kind": "projection",
+    "file": "content/characters.json",
+    "upstream": "js/characters-data.js",
+    "id": "yangmenghan"
+  },
+  "graph": {
+    "x": 600,
+    "y": 705,
+    "r": 20,
+    "glyph": "梦"
+  },
+  "reader": {
+    "revealAt": 5,
+    "summary": "安静内向的女生，在板报活动中与主角团相识；外婆的钢笔失而复得。",
+    "visible": true
+  },
+  "derived": {
+    "ageAtStoryStart": 14
+  },
+  "relations": [
+    {
+      "id": "rel-baiyuhuan-yangmenghan-love",
+      "kind": "love",
+      "label": "喜欢",
+      "directed": true,
+      "direction": "in",
+      "other": {
+        "id": "baiyuhuan",
+        "name": "白余欢"
+      }
+    },
+    {
+      "id": "rel-liyan-yangmenghan-friend",
+      "kind": "friend",
+      "label": "同班",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "liyan",
+        "name": "黎颜"
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "evt-ch05-board-start",
+      "title": "板报分工与越界两指",
+      "chapter": 5,
+      "date": "2022-09-20",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch06-paint-return",
+      "title": "颜料归还与黎颜退线",
+      "chapter": 6,
+      "date": "2022-09-20",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch09-pen-return",
+      "title": "杨梦寒找回外婆的钢笔",
+      "chapter": 9,
+      "date": "2022-09-30",
+      "place": "nancheng1"
+    }
+  ],
+  "foreshadowing": [
+    {
+      "id": "fs-pen-grandma",
+      "title": "杨梦寒外婆留下的钢笔",
+      "status": "open",
+      "plantedIn": 9,
+      "payoffIn": null
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "id": "yeyulan",
+  "type": "character",
+  "name": "叶羽澜",
+  "group": "qingzhi",
+  "role": "叶南衡表姐",
+  "summary": "世上最懂南衡的人，潇洒地来，又潇洒地走。",
+  "quote": "“走啦，小笨蛋。”",
+  "birthday": null,
+  "traits": [
+    "通透",
+    "潇洒"
+  ],
+  "tags": [
+    "通透"
+  ],
+  "bio": [
+    "叶南衡的表姐，温柔，漂亮。目前在上大学。是世界上最懂叶南衡的人，也是最心疼叶南衡的人。曾经被小时候的乐观的叶南衡“拯救”过，所以对叶南衡十分喜欢，胜过姐弟。",
+    "因为回家做手术，而留在了这里一段时间，期间见过江不秋、林纾，并告诉她们自己的感受和经历，告诉她们叶南衡是一个怎样的人。最后，潇洒地离开了家——“走啦，小笨蛋”。是小说进程重要的推进人之一。"
+  ],
+  "portrait": "portrait-yeyulan-1024.webp",
+  "aliases": [],
+  "deceased": false,
+  "status": "canon",
+  "source": {
+    "kind": "projection",
+    "file": "content/characters.json",
+    "upstream": "js/characters-data.js",
+    "id": "yeyulan"
+  },
+  "graph": {
+    "x": 735,
+    "y": 625,
+    "r": 20,
+    "glyph": "澜"
+  },
+  "reader": {
+    "revealAt": null,
+    "summary": "世上最懂南衡的人，潇洒地来，又潇洒地走。",
+    "visible": false
+  },
+  "relations": [
+    {
+      "id": "rel-nanheng-yeyulan-family",
+      "kind": "family",
+      "label": "表姐弟",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "nanheng",
+        "name": "叶南衡"
+      }
+    },
+    {
+      "id": "rel-yeyulan-jiangbuqiu-friend",
+      "kind": "friend",
+      "label": "开解",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "jiangbuqiu",
+        "name": "江不秋"
+      }
+    }
+  ],
+  "events": [],
+  "foreshadowing": []
+}

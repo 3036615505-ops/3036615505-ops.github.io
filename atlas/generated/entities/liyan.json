@@ -1,0 +1,120 @@
+{
+  "id": "liyan",
+  "type": "character",
+  "name": "黎颜",
+  "group": "xinlei",
+  "role": "朋友",
+  "summary": "一身正气，瞧见了委屈就要管到底。",
+  "quote": "“别怕，我在这儿。”",
+  "birthday": "2007.02.13",
+  "traits": [
+    "正义感强",
+    "热烈",
+    "傲娇"
+  ],
+  "tags": [
+    "傲娇"
+  ],
+  "bio": [
+    "重要主角团之一。四大校花之一，与叶南衡一行人在办报活动中初见。后来，交集越来越多，矛盾也不少，算是与他们“不打不相识”。",
+    "个性傲娇，一开始看不起叶南衡，觉得他是“老好人”，个性软弱。后来却在一次次的经历中，发现叶南衡就是这样的人，就是这么的温柔，渐渐喜欢上他。"
+  ],
+  "portrait": "portrait-liyan-1024.webp",
+  "aliases": [],
+  "deceased": false,
+  "status": "canon",
+  "source": {
+    "kind": "projection",
+    "file": "content/characters.json",
+    "upstream": "js/characters-data.js",
+    "id": "liyan"
+  },
+  "graph": {
+    "x": 230,
+    "y": 360,
+    "r": 20,
+    "glyph": "颜"
+  },
+  "reader": {
+    "revealAt": 5,
+    "summary": "一班的女生，板报评比中与二班交手；要强、直接。",
+    "visible": true
+  },
+  "derived": {
+    "ageAtStoryStart": 15
+  },
+  "relations": [
+    {
+      "id": "rel-ningzunjiu-liyan-love",
+      "kind": "love",
+      "label": "暗恋",
+      "directed": true,
+      "direction": "in",
+      "other": {
+        "id": "ningzunjiu",
+        "name": "宁樽酒"
+      }
+    },
+    {
+      "id": "rel-liyan-nanheng-love",
+      "kind": "love",
+      "label": "后来喜欢",
+      "directed": true,
+      "direction": "out",
+      "other": {
+        "id": "nanheng",
+        "name": "叶南衡"
+      }
+    },
+    {
+      "id": "rel-liyan-yangmenghan-friend",
+      "kind": "friend",
+      "label": "同班",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "yangmenghan",
+        "name": "杨梦寒"
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "evt-ch05-board-start",
+      "title": "板报分工与越界两指",
+      "chapter": 5,
+      "date": "2022-09-20",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch06-paint-return",
+      "title": "颜料归还与黎颜退线",
+      "chapter": 6,
+      "date": "2022-09-20",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch07-result",
+      "title": "板报评比：二班第一",
+      "chapter": 7,
+      "date": "2022-09-26",
+      "place": "nancheng1"
+    }
+  ],
+  "foreshadowing": [
+    {
+      "id": "fs-liyan-rematch",
+      "title": "黎颜“下次一定要赢回来”",
+      "status": "open",
+      "plantedIn": 7,
+      "payoffIn": null
+    },
+    {
+      "id": "fs-ningzunjiu-gaze",
+      "title": "宁樽酒在走廊尽头看黎颜",
+      "status": "open",
+      "plantedIn": 6,
+      "payoffIn": null
+    }
+  ]
+}

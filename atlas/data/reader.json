@@ -1,0 +1,103 @@
+{
+  "entities": {
+    "nanheng": {
+      "revealAt": 1,
+      "summary": "高一（2）班学生，林纾的青梅竹马；总把暖意给别人。"
+    },
+    "linshu": {
+      "revealAt": 1,
+      "summary": "叶南衡的青梅竹马，南城一中的学霸；笑起来像九月的阳光。"
+    },
+    "guchiyan": {
+      "revealAt": 1,
+      "summary": "叶南衡的母亲，南城一中的语文老师。"
+    },
+    "baiyu": {
+      "revealAt": 1,
+      "summary": "林纾的母亲，南城一中的英语老师，也是高一二班的班主任。"
+    },
+    "baiyuhuan": {
+      "revealAt": 2,
+      "summary": "叶南衡的同学，开朗健谈，自称“南城百晓生”。"
+    },
+    "ningzunjiu": {
+      "revealAt": 3,
+      "summary": "叶南衡的同学，沉默寡言；体育课上被叶南衡解围。"
+    },
+    "xiaozhuo": {
+      "revealAt": 3,
+      "summary": "南城一中的体育老师；哨子总吹破音。"
+    },
+    "liyan": {
+      "revealAt": 5,
+      "summary": "一班的女生，板报评比中与二班交手；要强、直接。"
+    },
+    "yangmenghan": {
+      "revealAt": 5,
+      "summary": "安静内向的女生，在板报活动中与主角团相识；外婆的钢笔失而复得。"
+    },
+    "yeyuan": {
+      "revealAt": 2,
+      "summary": "叶南衡的父亲；国庆家宴里下厨的人。"
+    },
+    "linwangshu": {
+      "revealAt": 11,
+      "summary": "林纾的父亲，航天工程师；国庆仍在两千公里外的发射场。"
+    },
+    "linyuan": {
+      "revealAt": 1,
+      "summary": "南城新开的咖啡店，主角团的老地方。"
+    },
+    "nancheng1": {
+      "revealAt": 1,
+      "summary": "故事的主要校园，高一（2）班所在。"
+    },
+    "jiangbuqiu": {
+      "revealAt": null
+    },
+    "taoyaoyao": {
+      "revealAt": null
+    },
+    "shenruoqi": {
+      "revealAt": null
+    },
+    "yeyulan": {
+      "revealAt": null
+    },
+    "sujiwen": {
+      "revealAt": null
+    },
+    "jiangzhenmo": {
+      "revealAt": null
+    },
+    "linxihe": {
+      "revealAt": null
+    },
+    "hospital": {
+      "revealAt": null
+    },
+    "beicheng": {
+      "revealAt": null
+    }
+  },
+  "relations": {
+    "rel-liyan-nanheng-love": {
+      "visible": false,
+      "reason": "第 11 章前尚未发生"
+    },
+    "rel-ningzunjiu-liyan-love": {
+      "revealAt": 6,
+      "readerLabel": "在意"
+    },
+    "rel-baiyuhuan-yangmenghan-love": {
+      "revealAt": 9,
+      "readerLabel": "在意"
+    },
+    "rel-guchiyan-baiyu-family": {
+      "readerLabel": "多年好友"
+    },
+    "rel-nanheng-ningzunjiu-friend": {
+      "readerLabel": "崇拜"
+    }
+  }
+}

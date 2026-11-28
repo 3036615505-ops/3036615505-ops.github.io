@@ -1,0 +1,179 @@
+{
+  "generatedAt": "2026-11-28T14:21:44.149Z",
+  "sourceHash": "b83878f8faa2",
+  "chapters": [
+    {
+      "num": 1,
+      "title": "第一章·临渊羡鱼",
+      "file": "chapter-01.html",
+      "words": 3043,
+      "year": 2022,
+      "dates": [
+        "九月一日",
+        "九月十七"
+      ],
+      "storyDate": [
+        "二〇二二年 · 九月一日",
+        "二〇二二年 · 九月十七"
+      ],
+      "updated": "2026-11-14",
+      "blurb": "所有的事都还没开始，一切都还来得及。",
+      "events": [
+        "evt-ch01-first-day",
+        "evt-ch01-cafe-first"
+      ]
+    },
+    {
+      "num": 2,
+      "title": "第二章·前桌",
+      "file": "chapter-02.html",
+      "words": 2553,
+      "year": 2022,
+      "dates": [],
+      "storyDate": [
+        "二〇二二年 · 九月十九"
+      ],
+      "updated": "2026-11-14",
+      "blurb": "有些位置只是前后桌，有些位置会慢慢变得不同。",
+      "events": [
+        "evt-ch02-seat-change"
+      ]
+    },
+    {
+      "num": 3,
+      "title": "第三章·课上",
+      "file": "chapter-03.html",
+      "words": 2074,
+      "year": 2022,
+      "dates": [],
+      "storyDate": [],
+      "updated": "2026-11-14",
+      "blurb": "有些课要站起来回答，有些事要站起来走过去。",
+      "events": [
+        "evt-ch03-english-class",
+        "evt-ch03-pe-help"
+      ]
+    },
+    {
+      "num": 4,
+      "title": "第四章·身位",
+      "file": "chapter-04.html",
+      "words": 2451,
+      "year": 2022,
+      "dates": [],
+      "storyDate": [],
+      "updated": "2026-10-24",
+      "blurb": "有些距离不用说出来，走近两三步就够了。",
+      "events": [
+        "evt-ch04-afterschool"
+      ]
+    },
+    {
+      "num": 5,
+      "title": "第五章·板报",
+      "file": "chapter-05.html",
+      "words": 2013,
+      "year": 2022,
+      "dates": [],
+      "storyDate": [
+        "二〇二二年 · 九月二十"
+      ],
+      "updated": "2026-10-25",
+      "blurb": "有些界线不用争，往旁边挪两指，字照样写得直。",
+      "events": [
+        "evt-ch05-board-start"
+      ]
+    },
+    {
+      "num": 6,
+      "title": "第六章·越界",
+      "file": "chapter-06.html",
+      "words": 2184,
+      "year": 2022,
+      "dates": [],
+      "storyDate": [],
+      "updated": "2026-10-25",
+      "blurb": "有些界线退得干干净净，有些习惯退不回去。",
+      "events": [
+        "evt-ch06-paint-return"
+      ]
+    },
+    {
+      "num": 7,
+      "title": "第七章·余响",
+      "file": "chapter-07.html",
+      "words": 2022,
+      "year": 2022,
+      "dates": [],
+      "storyDate": [
+        "二〇二二年 · 九月二十六"
+      ],
+      "updated": "2026-10-25",
+      "blurb": "有些声音传得比名次远，有些诺言一直没过期。",
+      "events": [
+        "evt-ch07-result",
+        "evt-ch07-cafe"
+      ]
+    },
+    {
+      "num": 8,
+      "title": "第八章·前奏",
+      "file": "chapter-08.html",
+      "words": 2339,
+      "year": 2022,
+      "dates": [],
+      "storyDate": [
+        "二〇二二年 · 九月三十"
+      ],
+      "updated": "2026-11-01",
+      "blurb": "有些课在假期前没人听得进去，有些故事在校门口等着人捡。",
+      "events": [
+        "evt-ch08-last-day"
+      ]
+    },
+    {
+      "num": 9,
+      "title": "第九章·旧钢笔",
+      "file": "chapter-09.html",
+      "words": 2134,
+      "year": 2022,
+      "dates": [],
+      "storyDate": [],
+      "updated": "2026-11-01",
+      "blurb": "有些东西丢了能找回来，有些名字只喊给自己听。",
+      "events": [
+        "evt-ch09-pen-return",
+        "evt-ch09-walk-home"
+      ]
+    },
+    {
+      "num": 10,
+      "title": "第十章·两家一家",
+      "file": "chapter-10.html",
+      "words": 2463,
+      "year": 2022,
+      "dates": [],
+      "storyDate": [],
+      "updated": "2026-11-08",
+      "blurb": "有些饭两家吃了十几年，有些人早就是一家人。",
+      "events": [
+        "evt-ch10-dinner-prep"
+      ]
+    },
+    {
+      "num": 11,
+      "title": "第十一章·晚饭",
+      "file": "chapter-11.html",
+      "words": 3240,
+      "year": 2022,
+      "dates": [],
+      "storyDate": [],
+      "updated": "2026-11-10",
+      "blurb": "有些碗筷多摆一副，有些人隔着两千公里也算在场。",
+      "events": [
+        "evt-ch11-dinner"
+      ]
+    }
+  ],
+  "totalWords": 26516
+}

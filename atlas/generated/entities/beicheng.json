@@ -1,0 +1,54 @@
+{
+  "id": "beicheng",
+  "type": "place",
+  "name": "北城",
+  "group": "place",
+  "role": "旧事之地",
+  "icon": "north",
+  "aliases": [
+    "北城"
+  ],
+  "summary": "叶渊与苏霁温曾经共事的地方，旧事的源头。",
+  "status": "canon",
+  "source": [
+    "content/characters.json#yeyuan",
+    "content/characters.json#sujiwen"
+  ],
+  "graph": {
+    "x": 1130,
+    "y": 745,
+    "r": 18,
+    "glyph": "北"
+  },
+  "reader": {
+    "revealAt": null,
+    "summary": "叶渊与苏霁温曾经共事的地方，旧事的源头。",
+    "visible": false
+  },
+  "relations": [
+    {
+      "id": "rel-yeyuan-beicheng-place",
+      "kind": "place",
+      "label": "旧日工作",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "yeyuan",
+        "name": "叶渊"
+      }
+    },
+    {
+      "id": "rel-sujiwen-beicheng-place",
+      "kind": "place",
+      "label": "旧日工作",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "sujiwen",
+        "name": "苏霁温"
+      }
+    }
+  ],
+  "events": [],
+  "foreshadowing": []
+}

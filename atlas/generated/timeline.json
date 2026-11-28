@@ -1,0 +1,333 @@
+{
+  "generatedAt": "2026-11-28T14:21:44.149Z",
+  "sourceHash": "b83878f8faa2",
+  "events": [
+    {
+      "id": "evt-ch01-first-day",
+      "title": "高一开学，分班名单前",
+      "chapter": 1,
+      "sequence": 1,
+      "date": "2022-09-01",
+      "dateConfidence": "exact",
+      "timeOfDay": "morning",
+      "place": "nancheng1",
+      "placeText": "南城一中",
+      "participants": [
+        "nanheng",
+        "linshu"
+      ],
+      "summary": "叶南衡在分班名单前找不到自己的名字，林纾指出他在高一二班；林纾透露班主任是自己的母亲白榆。",
+      "evidence": [
+        "content/chapter-01.json#p0-19",
+        "content/chapter-01.json#p66"
+      ],
+      "readerVisible": true
+    },
+    {
+      "id": "evt-ch01-cafe-first",
+      "title": "第一次走进临渊羡鱼",
+      "chapter": 1,
+      "sequence": 2,
+      "date": "2022-09-17",
+      "dateConfidence": "exact",
+      "timeOfDay": "afternoon",
+      "place": "linyuan",
+      "placeText": "临渊羡鱼",
+      "participants": [
+        "nanheng",
+        "linshu",
+        "shenruoqi"
+      ],
+      "summary": "林纾带叶南衡去新开的临渊羡鱼，两杯焦糖玛奇朵；叶南衡答应“下次还来，我请你”。",
+      "evidence": [
+        "content/chapter-01.json#p27-64"
+      ],
+      "readerVisible": true
+    },
+    {
+      "id": "evt-ch02-seat-change",
+      "title": "白榆重新排座位",
+      "chapter": 2,
+      "sequence": 3,
+      "date": "2022-09-19",
+      "dateConfidence": "exact",
+      "timeOfDay": "morning",
+      "place": "nancheng1",
+      "placeText": "南城一中",
+      "participants": [
+        "nanheng",
+        "linshu",
+        "baiyu",
+        "baiyuhuan"
+      ],
+      "summary": "开学第三周周一，白榆以课堂纪律为由重排座位，把林纾安排在叶南衡正前方；白余欢正式登场。",
+      "evidence": [
+        "content/chapter-02.json#p0-64"
+      ],
+      "readerVisible": true
+    },
+    {
+      "id": "evt-ch03-english-class",
+      "title": "英语课点名与读课文",
+      "chapter": 3,
+      "sequence": 4,
+      "date": null,
+      "dateConfidence": "unknown",
+      "timeOfDay": "morning",
+      "place": "nancheng1",
+      "placeText": "南城一中",
+      "participants": [
+        "nanheng",
+        "linshu",
+        "baiyu"
+      ],
+      "summary": "白榆故意点叶南衡读后半段课文，叶南衡流利读完；林纾小声评价“发音还不错”。",
+      "evidence": [
+        "content/chapter-03.json#p0-25"
+      ],
+      "readerVisible": true
+    },
+    {
+      "id": "evt-ch03-pe-help",
+      "title": "体育课替宁樽酒解围",
+      "chapter": 3,
+      "sequence": 5,
+      "date": null,
+      "dateConfidence": "unknown",
+      "timeOfDay": "afternoon",
+      "place": "nancheng1",
+      "placeText": "南城一中操场",
+      "participants": [
+        "nanheng",
+        "ningzunjiu"
+      ],
+      "summary": "宁樽酒被其他班男生要求搬垫子，叶南衡以“去拿羽毛球拍”为由把他带走，两人打了羽毛球。",
+      "evidence": [
+        "content/chapter-03.json#p28-42",
+        "content/chapter-04.json#p0-20"
+      ],
+      "readerVisible": true
+    },
+    {
+      "id": "evt-ch04-afterschool",
+      "title": "放学同路与家长会警告",
+      "chapter": 4,
+      "sequence": 6,
+      "date": null,
+      "dateConfidence": "unknown",
+      "timeOfDay": "evening",
+      "place": "nancheng1",
+      "placeText": "南城一中到回家路上",
+      "participants": [
+        "nanheng",
+        "linshu"
+      ],
+      "summary": "林纾转告白榆的话：期中考试后开家长会，叶南衡若物理数学再拖后腿就要“请喝茶”；林纾说“这是另外的价钱，先欠着”。",
+      "evidence": [
+        "content/chapter-04.json#p29-55"
+      ],
+      "readerVisible": true
+    },
+    {
+      "id": "evt-ch05-board-start",
+      "title": "板报分工与越界两指",
+      "chapter": 5,
+      "sequence": 7,
+      "date": "2022-09-20",
+      "dateConfidence": "exact",
+      "timeOfDay": "afternoon",
+      "place": "nancheng1",
+      "placeText": "南城一中教学楼走廊",
+      "participants": [
+        "nanheng",
+        "linshu",
+        "baiyu",
+        "baiyuhuan",
+        "liyan",
+        "yangmenghan"
+      ],
+      "summary": "白榆把年级板报交给叶南衡与林纾；一班边框越界约两指，叶南衡让出并收窄自己的字距。黎颜、杨梦寒初次进入主角团视野。",
+      "evidence": [
+        "content/chapter-05.json#p0-48"
+      ],
+      "readerVisible": true
+    },
+    {
+      "id": "evt-ch06-paint-return",
+      "title": "颜料归还与黎颜退线",
+      "chapter": 6,
+      "sequence": 8,
+      "date": "2022-09-20",
+      "dateConfidence": "inferred",
+      "timeOfDay": "evening",
+      "place": "nancheng1",
+      "placeText": "南城一中教学楼走廊",
+      "participants": [
+        "nanheng",
+        "linshu",
+        "baiyuhuan",
+        "liyan",
+        "yangmenghan",
+        "ningzunjiu"
+      ],
+      "summary": "一班男生拿走二班蓝色颜料，黎颜把颜料送回并主动把一班边框往里退两指；宁樽酒在走廊尽头看见黎颜背影。",
+      "evidence": [
+        "content/chapter-06.json#p0-38"
+      ],
+      "readerVisible": true
+    },
+    {
+      "id": "evt-ch07-result",
+      "title": "板报评比：二班第一",
+      "chapter": 7,
+      "sequence": 9,
+      "date": "2022-09-26",
+      "dateConfidence": "exact",
+      "timeOfDay": "morning",
+      "place": "nancheng1",
+      "placeText": "南城一中",
+      "participants": [
+        "nanheng",
+        "linshu",
+        "baiyuhuan",
+        "liyan"
+      ],
+      "summary": "板报评比二班第一、一班第二；黎颜表面平静，心里决定“下次一定要赢回来”。",
+      "evidence": [
+        "content/chapter-07.json#p0-23"
+      ],
+      "readerVisible": true
+    },
+    {
+      "id": "evt-ch07-cafe",
+      "title": "临渊羡鱼庆祝与兑现承诺",
+      "chapter": 7,
+      "sequence": 10,
+      "date": "2022-09-26",
+      "dateConfidence": "exact",
+      "timeOfDay": "evening",
+      "place": "linyuan",
+      "placeText": "临渊羡鱼",
+      "participants": [
+        "nanheng",
+        "linshu"
+      ],
+      "summary": "林纾拉着叶南衡去临渊羡鱼庆祝第一，提醒他上次答应请客；两人再喝焦糖玛奇朵。",
+      "evidence": [
+        "content/chapter-07.json#p30-43"
+      ],
+      "readerVisible": true
+    },
+    {
+      "id": "evt-ch08-last-day",
+      "title": "国庆前最后一天与捡到钢笔",
+      "chapter": 8,
+      "sequence": 11,
+      "date": "2022-09-30",
+      "dateConfidence": "exact",
+      "timeOfDay": "afternoon",
+      "place": "nancheng1",
+      "placeText": "南城一中",
+      "participants": [
+        "nanheng",
+        "linshu",
+        "baiyuhuan",
+        "baiyu"
+      ],
+      "summary": "白榆布置国庆安排；白余欢在校门口捡到一支旧的蓝色英雄钢笔，决定等失主。",
+      "evidence": [
+        "content/chapter-08.json#p0-51"
+      ],
+      "readerVisible": true
+    },
+    {
+      "id": "evt-ch09-pen-return",
+      "title": "杨梦寒找回外婆的钢笔",
+      "chapter": 9,
+      "sequence": 12,
+      "date": "2022-09-30",
+      "dateConfidence": "exact",
+      "timeOfDay": "evening",
+      "place": "nancheng1",
+      "placeText": "南城一中校门口",
+      "participants": [
+        "baiyuhuan",
+        "yangmenghan",
+        "nanheng",
+        "linshu"
+      ],
+      "summary": "杨梦寒一路找回钢笔，白余欢归还；钢笔是外婆所赠。分别时杨梦寒用只有自己听得见的声音说“白同学”。",
+      "evidence": [
+        "content/chapter-09.json#p0-34"
+      ],
+      "readerVisible": true
+    },
+    {
+      "id": "evt-ch09-walk-home",
+      "title": "林纾约国庆补数学",
+      "chapter": 9,
+      "sequence": 13,
+      "date": "2022-09-30",
+      "dateConfidence": "exact",
+      "timeOfDay": "evening",
+      "place": null,
+      "placeText": "回家路上",
+      "participants": [
+        "nanheng",
+        "linshu"
+      ],
+      "summary": "林纾说白榆让叶南衡一家国庆来吃饭，并顺便给他补数学；叶南衡问“没空也有空”。",
+      "evidence": [
+        "content/chapter-09.json#p35-55"
+      ],
+      "readerVisible": true
+    },
+    {
+      "id": "evt-ch10-dinner-prep",
+      "title": "两家人包饺子",
+      "chapter": 10,
+      "sequence": 14,
+      "date": "2022-10-01",
+      "dateConfidence": "inferred",
+      "timeOfDay": "evening",
+      "place": null,
+      "placeText": "林纾家",
+      "participants": [
+        "nanheng",
+        "linshu",
+        "guchiyan",
+        "yeyuan",
+        "baiyu"
+      ],
+      "summary": "临时改成当天去林纾家吃饭；两家人包饺子，林望舒因航天项目未归。",
+      "evidence": [
+        "content/chapter-10.json#p0-55"
+      ],
+      "readerVisible": true
+    },
+    {
+      "id": "evt-ch11-dinner",
+      "title": "多摆一副碗筷的晚饭",
+      "chapter": 11,
+      "sequence": 15,
+      "date": "2022-10-01",
+      "dateConfidence": "inferred",
+      "timeOfDay": "night",
+      "place": null,
+      "placeText": "林纾家 / 两千公里外发射场",
+      "participants": [
+        "nanheng",
+        "linshu",
+        "guchiyan",
+        "yeyuan",
+        "baiyu",
+        "linwangshu"
+      ],
+      "summary": "白榆仍给林望舒摆了一副碗筷；林纾与林望舒视频，林望舒在两千公里外发射场继续项目。",
+      "evidence": [
+        "content/chapter-11.json#p17-60"
+      ],
+      "readerVisible": true
+    }
+  ]
+}

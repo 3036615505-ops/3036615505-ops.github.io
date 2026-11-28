@@ -1,0 +1,78 @@
+{
+  "id": "xiaozhuo",
+  "type": "character",
+  "name": "肖灼",
+  "group": "qingzhi",
+  "role": "体育老师",
+  "summary": "一身腱子肉，揣着一颗不敢开口的心。",
+  "quote": "“我……我就是，不放心你。”",
+  "birthday": null,
+  "traits": [
+    "憨厚",
+    "长情"
+  ],
+  "tags": [
+    "憨厚"
+  ],
+  "bio": [
+    "学校的体育老师，长得很结实，人很憨厚，与桃夭夭是同学，暗恋了她很久。但碍于两人身份地位的差距，不敢表白。在叶南衡等人的促进下，最终和桃夭夭走到了一起。"
+  ],
+  "portrait": "portrait-xiaozhuo-1024.webp",
+  "aliases": [],
+  "deceased": false,
+  "status": "canon",
+  "source": {
+    "kind": "projection",
+    "file": "content/characters.json",
+    "upstream": "js/characters-data.js",
+    "id": "xiaozhuo"
+  },
+  "graph": {
+    "x": 925,
+    "y": 605,
+    "r": 20,
+    "glyph": "灼"
+  },
+  "reader": {
+    "revealAt": 3,
+    "summary": "南城一中的体育老师；哨子总吹破音。",
+    "visible": true
+  },
+  "relations": [
+    {
+      "id": "rel-xiaozhuo-taoyaoyao-love",
+      "kind": "love",
+      "label": "暗恋",
+      "directed": true,
+      "direction": "out",
+      "other": {
+        "id": "taoyaoyao",
+        "name": "桃夭夭"
+      }
+    },
+    {
+      "id": "rel-xiaozhuo-nanheng-mentor",
+      "kind": "mentor",
+      "label": "师生",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "nanheng",
+        "name": "叶南衡"
+      }
+    },
+    {
+      "id": "rel-xiaozhuo-nancheng1-place",
+      "kind": "place",
+      "label": "任教",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "nancheng1",
+        "name": "南城一中"
+      }
+    }
+  ],
+  "events": [],
+  "foreshadowing": []
+}

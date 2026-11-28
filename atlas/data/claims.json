@@ -1,0 +1,58 @@
+{
+  "items": [
+    {
+      "id": "claim-ch01-xinlei-age-15",
+      "subject": "group:xinlei",
+      "field": "age",
+      "value": 15,
+      "date": "2022-09-17",
+      "chapter": 1,
+      "status": "ignored",
+      "quote": "十五岁的他们",
+      "evidence": [
+        "content/chapter-01.json#p60"
+      ],
+      "note": "作者确认：这句“十五岁的他们”按统称处理，不按生日逐人校验；保留记录但不产生冲突。"
+    },
+    {
+      "id": "claim-ch01-class-2",
+      "subject": "group:xinlei",
+      "field": "class",
+      "value": "高一二班",
+      "date": "2022-09-01",
+      "chapter": 1,
+      "status": "canon",
+      "evidence": [
+        "content/chapter-01.json#p7",
+        "content/chapter-01.json#p66"
+      ],
+      "note": "分班名单与林纾口中的“高一二班”。"
+    },
+    {
+      "id": "claim-linyuan-opened",
+      "subject": "linyuan",
+      "field": "openedAt",
+      "value": "2022-09",
+      "date": "2022-09-17",
+      "chapter": 1,
+      "status": "canon",
+      "evidence": [
+        "content/chapter-01.json#p28"
+      ],
+      "note": "传单写“新开的”；店内还有新装修的木屑味。"
+    },
+    {
+      "id": "claim-jiangbuqiu-transfer",
+      "subject": "jiangbuqiu",
+      "field": "transfer",
+      "value": "高一下学期转入",
+      "date": null,
+      "chapter": null,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json#jiangbuqiu"
+      ],
+      "note": "人物小传设定，尚未在前 11 章正文中发生。"
+    }
+  ]
+}

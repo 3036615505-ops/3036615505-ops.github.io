@@ -1,0 +1,86 @@
+{
+  "id": "linwangshu",
+  "type": "character",
+  "name": "林望舒",
+  "group": "qiaomu",
+  "role": "林纾父亲",
+  "summary": "把星星画给女儿，把奔忙留给自己。",
+  "quote": "“等爸爸回来，带你看星星。”",
+  "birthday": null,
+  "traits": [
+    "严谨",
+    "常年出差"
+  ],
+  "tags": [
+    "细心"
+  ],
+  "bio": [
+    "林纾的父亲。是某研究所的一名航天工程师。林纾小时候，他的工作还不忙，能够每天陪林纾和白榆。但是现在却因为经常出差，不常在家。"
+  ],
+  "portrait": "portrait-linwangshu-1024.webp",
+  "aliases": [],
+  "deceased": false,
+  "status": "canon",
+  "source": {
+    "kind": "projection",
+    "file": "content/characters.json",
+    "upstream": "js/characters-data.js",
+    "id": "linwangshu"
+  },
+  "graph": {
+    "x": 700,
+    "y": 95,
+    "r": 20,
+    "glyph": "望"
+  },
+  "reader": {
+    "revealAt": 11,
+    "summary": "林纾的父亲，航天工程师；国庆仍在两千公里外的发射场。",
+    "visible": true
+  },
+  "relations": [
+    {
+      "id": "rel-linshu-linwangshu-family",
+      "kind": "family",
+      "label": "父女",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "linshu",
+        "name": "林纾"
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "evt-ch11-dinner",
+      "title": "多摆一副碗筷的晚饭",
+      "chapter": 11,
+      "date": "2022-10-01",
+      "place": null
+    }
+  ],
+  "foreshadowing": [
+    {
+      "id": "fs-rocket-cup",
+      "title": "白榆的航天马克杯与保温杯",
+      "status": "paid",
+      "plantedIn": 2,
+      "payoffIn": 10
+    },
+    {
+      "id": "fs-linwangshu-return",
+      "title": "林望舒“快了快了”的归期",
+      "status": "open",
+      "plantedIn": 11,
+      "payoffIn": null
+    },
+    {
+      "id": "fs-extra-bowl",
+      "title": "给林望舒多摆的一副碗筷",
+      "status": "open",
+      "plantedIn": 11,
+      "payoffIn": null
+    }
+  ]
+}

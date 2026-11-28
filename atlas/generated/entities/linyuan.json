@@ -1,0 +1,76 @@
+{
+  "id": "linyuan",
+  "type": "place",
+  "name": "临渊羡鱼",
+  "group": "place",
+  "role": "咖啡店 · 老地方",
+  "icon": "cafe",
+  "aliases": [
+    "临渊"
+  ],
+  "summary": "南城新开的咖啡店，主角团的老地方；院子里的梧桐树还没有长过二楼的窗。",
+  "status": "canon",
+  "source": [
+    "content/chapter-01.json#p27-37",
+    "content/characters.json#shenruoqi"
+  ],
+  "graph": {
+    "x": 655,
+    "y": 455,
+    "r": 27,
+    "glyph": "鱼"
+  },
+  "reader": {
+    "revealAt": 1,
+    "summary": "南城新开的咖啡店，主角团的老地方。",
+    "visible": true
+  },
+  "relations": [
+    {
+      "id": "rel-shenruoqi-linyuan-place",
+      "kind": "place",
+      "label": "店主",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "shenruoqi",
+        "name": "沈若栖"
+      }
+    },
+    {
+      "id": "rel-nanheng-linyuan-place",
+      "kind": "place",
+      "label": "常去",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "nanheng",
+        "name": "叶南衡"
+      }
+    },
+    {
+      "id": "rel-linshu-linyuan-place",
+      "kind": "place",
+      "label": "常去",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "linshu",
+        "name": "林纾"
+      }
+    },
+    {
+      "id": "rel-jiangbuqiu-linyuan-place",
+      "kind": "place",
+      "label": "常去",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "jiangbuqiu",
+        "name": "江不秋"
+      }
+    }
+  ],
+  "events": [],
+  "foreshadowing": []
+}

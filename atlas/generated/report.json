@@ -1,0 +1,28 @@
+{
+  "ok": true,
+  "generatedAt": "2026-11-28T14:21:44.149Z",
+  "sourceHash": "b83878f8faa2",
+  "counts": {
+    "entities": 22,
+    "characters": 18,
+    "places": 4,
+    "relations": 40,
+    "events": 15,
+    "claims": 4,
+    "foreshadowing": 11,
+    "openForeshadowing": 9,
+    "readerEntities": 13,
+    "readerRelations": 20,
+    "hiddenEntities": 9,
+    "chapters": 11,
+    "words": 26516,
+    "conflictsSoft": 0,
+    "conflictsInfo": 0
+  },
+  "errors": [],
+  "warnings": [],
+  "conflicts": {
+    "soft": 0,
+    "info": 0
+  }
+}

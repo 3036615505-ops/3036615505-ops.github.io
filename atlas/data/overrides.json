@@ -1,0 +1,36 @@
+{
+  "characters": {
+    "nanheng": {
+      "aliases": ["南南", "叶南衡同学"]
+    },
+    "linshu": {
+      "aliases": ["木木"]
+    },
+    "jiangbuqiu": {
+      "aliases": ["不秋"]
+    },
+    "baiyuhuan": {
+      "aliases": ["白胖子", "白大嗓子", "南城百晓生"]
+    },
+    "sujiwen": {
+      "deceased": true
+    },
+    "shenruoqi": {
+      "aliases": ["沈老板"]
+    }
+  },
+  "places": {
+    "linyuan": {
+      "aliases": ["临渊"]
+    },
+    "nancheng1": {
+      "aliases": ["南城一中", "一中"]
+    },
+    "hospital": {
+      "aliases": ["南城人民医院", "人民医院"]
+    },
+    "beicheng": {
+      "aliases": ["北城"]
+    }
+  }
+}

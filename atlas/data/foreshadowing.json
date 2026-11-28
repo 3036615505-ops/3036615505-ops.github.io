@@ -1,0 +1,114 @@
+{
+  "items": [
+    {
+      "id": "fs-cafe-promise",
+      "title": "叶南衡答应下次请林纾喝咖啡",
+      "plantedIn": 1,
+      "payoffIn": 7,
+      "status": "paid",
+      "owner": ["nanheng", "linshu"],
+      "evidence": ["content/chapter-01.json#p61-64", "content/chapter-07.json#p38-43"],
+      "note": "第一章“下次还来，我请你”；第七章林纾用同一句话提醒他兑现。"
+    },
+    {
+      "id": "fs-parent-meeting",
+      "title": "期中考试后的家长会",
+      "plantedIn": 4,
+      "payoffIn": null,
+      "status": "open",
+      "owner": ["nanheng", "linshu", "baiyu"],
+      "evidence": ["content/chapter-04.json#p44-47"],
+      "note": "白榆放话：叶南衡物理数学再拖后腿就“请喝茶”；尚未到期。"
+    },
+    {
+      "id": "fs-extra-price",
+      "title": "林纾的“另外的价钱”",
+      "plantedIn": 4,
+      "payoffIn": null,
+      "status": "open",
+      "owner": ["linshu", "nanheng"],
+      "evidence": ["content/chapter-04.json#p53-55"],
+      "note": "叶南衡求林纾帮忙补数学，林纾说“这是另外的价钱，先欠着”。"
+    },
+    {
+      "id": "fs-rocket-cup",
+      "title": "白榆的航天马克杯与保温杯",
+      "plantedIn": 2,
+      "payoffIn": 10,
+      "status": "paid",
+      "owner": ["baiyu", "linwangshu"],
+      "evidence": ["content/chapter-02.json#p31", "content/chapter-08.json#p38", "content/chapter-10.json#p33"],
+      "note": "杯身的“航天”和小火箭，指向林望舒的航天工程师身份；第十章明确交代。"
+    },
+    {
+      "id": "fs-linwangshu-return",
+      "title": "林望舒“快了快了”的归期",
+      "plantedIn": 11,
+      "payoffIn": null,
+      "status": "open",
+      "owner": ["linwangshu", "linshu", "baiyu"],
+      "evidence": ["content/chapter-11.json#p56-60"],
+      "note": "项目进入关键时刻，林望舒在两千公里外发射场；归期未定。"
+    },
+    {
+      "id": "fs-pen-grandma",
+      "title": "杨梦寒外婆留下的钢笔",
+      "plantedIn": 9,
+      "payoffIn": null,
+      "status": "open",
+      "owner": ["yangmenghan"],
+      "evidence": ["content/chapter-09.json#p4", "content/chapter-09.json#p20"],
+      "note": "钢笔是外婆所赠，笔帽有玉兰花绣布；目前只承担情感物件功能。"
+    },
+    {
+      "id": "fs-liyan-rematch",
+      "title": "黎颜“下次一定要赢回来”",
+      "plantedIn": 7,
+      "payoffIn": null,
+      "status": "open",
+      "owner": ["liyan"],
+      "evidence": ["content/chapter-07.json#p23"],
+      "note": "板报评比输给二班后，黎颜在心里定下的下一次。"
+    },
+    {
+      "id": "fs-ningzunjiu-gaze",
+      "title": "宁樽酒在走廊尽头看黎颜",
+      "plantedIn": 6,
+      "payoffIn": null,
+      "status": "open",
+      "owner": ["ningzunjiu", "liyan"],
+      "evidence": ["content/chapter-06.json#p37"],
+      "note": "黎颜拐过楼梯口没有回头；宁樽酒把拖把换到左手。人物小传里的暗恋线在正文中的第一次落点。"
+    },
+    {
+      "id": "fs-math-tutoring",
+      "title": "林纾要给叶南衡补数学",
+      "plantedIn": 11,
+      "payoffIn": null,
+      "status": "open",
+      "owner": ["linshu", "nanheng"],
+      "evidence": ["content/chapter-11.json#p63-66"],
+      "note": "临走时林纾提醒“记得明天来，我给你补数学”，直接指向下一章。"
+    },
+    {
+      "id": "fs-wutong-window",
+      "title": "梧桐树会长过二楼的窗",
+      "plantedIn": 1,
+      "payoffIn": null,
+      "status": "open",
+      "owner": [],
+      "evidence": ["content/chapter-01.json#p61"],
+      "note": "“后来这棵树长过了二楼的窗，但那是很久以后的事了”，是叙述者对时间跨度的预告。"
+    },
+    {
+      "id": "fs-extra-bowl",
+      "title": "给林望舒多摆的一副碗筷",
+      "plantedIn": 11,
+      "payoffIn": null,
+      "status": "open",
+      "owner": ["baiyu", "linwangshu"],
+      "evidence": ["content/chapter-11.json#p18"],
+      "note": "林望舒缺席，白榆仍摆了他的碗筷；与“隔着两千公里也算在场”呼应。"
+    }
+  ]
+}

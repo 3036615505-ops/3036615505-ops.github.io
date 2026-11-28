@@ -1,0 +1,15 @@
+{
+  "id": "nancheng1",
+  "type": "place",
+  "name": "南城一中",
+  "group": "place",
+  "role": "学校",
+  "icon": "school",
+  "aliases": ["一中"],
+  "summary": "故事的主要校园，高一（2）班所在；白榆任班主任，顾池宴、桃夭夭、肖灼在此任教。",
+  "status": "canon",
+  "source": [
+    "content/chapter-01.json#p7-12",
+    "content/characters.json#baiyu"
+  ]
+}

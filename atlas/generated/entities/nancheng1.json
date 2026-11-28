@@ -1,0 +1,110 @@
+{
+  "id": "nancheng1",
+  "type": "place",
+  "name": "南城一中",
+  "group": "place",
+  "role": "学校",
+  "icon": "school",
+  "aliases": [
+    "一中",
+    "南城一中"
+  ],
+  "summary": "故事的主要校园，高一（2）班所在；白榆任班主任，顾池宴、桃夭夭、肖灼在此任教。",
+  "status": "canon",
+  "source": [
+    "content/chapter-01.json#p7-12",
+    "content/characters.json#baiyu"
+  ],
+  "graph": {
+    "x": 180,
+    "y": 205,
+    "r": 24,
+    "glyph": "校"
+  },
+  "reader": {
+    "revealAt": 1,
+    "summary": "故事的主要校园，高一（2）班所在。",
+    "visible": true
+  },
+  "relations": [
+    {
+      "id": "rel-nanheng-nancheng1-place",
+      "kind": "place",
+      "label": "就读",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "nanheng",
+        "name": "叶南衡"
+      }
+    },
+    {
+      "id": "rel-linshu-nancheng1-place",
+      "kind": "place",
+      "label": "就读",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "linshu",
+        "name": "林纾"
+      }
+    },
+    {
+      "id": "rel-jiangbuqiu-nancheng1-place",
+      "kind": "place",
+      "label": "就读",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "jiangbuqiu",
+        "name": "江不秋"
+      }
+    },
+    {
+      "id": "rel-baiyu-nancheng1-place",
+      "kind": "place",
+      "label": "任教",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "baiyu",
+        "name": "白榆"
+      }
+    },
+    {
+      "id": "rel-guchiyan-nancheng1-place",
+      "kind": "place",
+      "label": "任教",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "guchiyan",
+        "name": "顾池宴"
+      }
+    },
+    {
+      "id": "rel-taoyaoyao-nancheng1-place",
+      "kind": "place",
+      "label": "任教",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "taoyaoyao",
+        "name": "桃夭夭"
+      }
+    },
+    {
+      "id": "rel-xiaozhuo-nancheng1-place",
+      "kind": "place",
+      "label": "任教",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "xiaozhuo",
+        "name": "肖灼"
+      }
+    }
+  ],
+  "events": [],
+  "foreshadowing": []
+}

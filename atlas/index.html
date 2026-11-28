@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f8f4ed">
+  <meta name="description" content="临渊羡鱼 · 星图：人物、地点与它们之间的关系。默认只显示已发布章节内的事实。">
+  <link rel="icon" href="../favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+  <title>星图 · 临渊羡鱼</title>
+  <meta property="og:title" content="星图 · 临渊羡鱼">
+  <meta property="og:description" content="人物、地点与它们之间的线。">
+  <meta property="og:image" content="https://zephyrw.site/assets/og-cover.jpg">
+  <meta property="og:type" content="website">
+  <link rel="manifest" href="../manifest.json">
+  <link rel="stylesheet" href="../css/style.css?v=158">
+  <link rel="stylesheet" href="atlas.css?v=158">
+  <script src="../js/theme.js?v=158"></script>
+  <script src="../js/native-bridge.js?v=158"></script>
+  <script src="../js/announce.js?v=158" defer></script>
+  <script src="../js/nav-feedback.js?v=158" defer></script>
+</head>
+<body class="atlas-body">
+  <div class="atlas-page">
+    <header class="atlas-topbar">
+      <a href="../novel/index.html" class="detail-back" aria-label="返回书架">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </a>
+      <span class="atlas-topbar-title">星图</span>
+      <a href="../novel/characters.html" class="atlas-toplink">人物簿</a>
+    </header>
+
+    <section class="atlas-hero">
+      <p class="atlas-kicker">《临渊羡鱼》· 人物与地点</p>
+      <h1>星图</h1>
+      <div class="atlas-rule"></div>
+      <p class="atlas-lede">人物是星，关系是线。默认只展开已发布章节里已经发生的事；想看得更远，再打开完整星图。</p>
+      <div class="atlas-mode">
+        <button class="atlas-mode-btn" id="modeToggle" type="button">显示全部（含剧透）</button>
+        <span class="atlas-mode-note" id="modeNote">正在读取已发布章节…</span>
+      </div>
+    </section>
+
+    <section class="atlas-toolbar" aria-label="筛选与视图控制">
+      <div class="atlas-chips" id="atlasChips">
+        <button class="atlas-chip" type="button" data-group="all" aria-pressed="true">全部</button>
+        <button class="atlas-chip" type="button" data-group="xinlei" aria-pressed="false">新叶</button>
+        <button class="atlas-chip" type="button" data-group="qingzhi" aria-pressed="false">青枝</button>
+        <button class="atlas-chip" type="button" data-group="qiaomu" aria-pressed="false">乔木</button>
+        <button class="atlas-chip" type="button" data-group="place" aria-pressed="false">地点</button>
+      </div>
+      <div class="atlas-tools">
+        <label class="atlas-search">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.5"></circle><path d="M13 13l4 4"></path></svg>
+          <input id="atlasSearch" type="search" placeholder="搜人物、地点、身份" autocomplete="off">
+        </label>
+        <button class="atlas-tool-btn" type="button" data-zoom="in" aria-label="放大">+</button>
+        <button class="atlas-tool-btn" type="button" data-zoom="out" aria-label="缩小">−</button>
+        <button class="atlas-tool-btn" type="button" data-zoom="reset" aria-label="复位">⟲</button>
+      </div>
+    </section>
+    <p class="atlas-mode-note" id="searchNote" aria-live="polite"></p>
+
+    <main class="atlas-stage">
+      <section class="atlas-map-card" aria-label="人物与地点关系图">
+        <div class="atlas-map-head">
+          <b>关系图</b>
+          <span id="atlasStats"></span>
+        </div>
+        <div class="atlas-map-wrap" id="atlasMapWrap">
+          <svg id="atlasMap" viewBox="0 0 1200 860" role="group" aria-label="临渊羡鱼人物与地点星图"></svg>
+          <div class="atlas-map-hint">拖拽平移 · 滚轮缩放</div>
+          <div class="atlas-legend" aria-label="图例">
+            <span class="atlas-legend-item"><svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="6" fill="none" stroke="var(--bark)" stroke-width="1.2"/></svg>人物</span>
+            <span class="atlas-legend-item"><svg viewBox="0 0 18 18"><rect x="3.5" y="3.5" width="11" height="11" rx="3" fill="none" stroke="var(--bark)" stroke-width="1.2"/></svg>地点</span>
+            <span class="atlas-legend-item"><svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.6" fill="none" stroke="var(--bark)" stroke-width="1.2"/><circle cx="9" cy="9" r="4.4" fill="none" stroke="var(--bark)" stroke-width=".8"/></svg>主视角</span>
+            <span class="atlas-legend-item"><svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="6" fill="none" stroke="var(--bark)" stroke-width="1.2" stroke-dasharray="2 3"/></svg>已故</span>
+            <span class="atlas-legend-item"><i class="atlas-legend-line"></i>亲缘</span>
+            <span class="atlas-legend-item"><i class="atlas-legend-line love"></i>情感</span>
+            <span class="atlas-legend-item"><i class="atlas-legend-line friend"></i>朋友</span>
+            <span class="atlas-legend-item"><i class="atlas-legend-line mentor"></i>师生</span>
+            <span class="atlas-legend-item"><i class="atlas-legend-line place"></i>地点</span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="atlas-panel" id="atlasPanel" aria-live="polite"></aside>
+    </main>
+
+    <section class="atlas-section" id="timelineSection">
+      <div class="atlas-section-head">
+        <h2>时间线</h2>
+        <span id="timelineNote"></span>
+      </div>
+      <div class="atlas-event-grid" id="timelineGrid"></div>
+    </section>
+
+    <section class="atlas-section" id="indexSection">
+      <div class="atlas-section-head">
+        <h2>人物与地点</h2>
+        <span id="indexNote"></span>
+      </div>
+      <div id="atlasIndex"></div>
+    </section>
+
+    <section class="atlas-section" id="spoilerSection" hidden>
+      <div class="atlas-section-head">
+        <h2>伏笔</h2>
+        <span>埋设与回收</span>
+      </div>
+      <div class="atlas-fs-grid" id="spoilerGrid"></div>
+    </section>
+
+    <footer class="atlas-footer">
+      <span><b>默认视图</b>只显示已发布章节内的事实；完整视图包含未登场人物与后续关系。</span>
+      <span>数据：<code>atlas/generated/reader.js</code> · 构建：<code>node atlas/build.mjs</code></span>
+    </footer>
+  </div>
+
+  <script src="generated/reader.js?v=158"></script>
+  <script src="atlas.js?v=158"></script>
+</body>
+</html>

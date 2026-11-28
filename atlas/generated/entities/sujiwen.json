@@ -1,0 +1,79 @@
+{
+  "id": "sujiwen",
+  "type": "character",
+  "name": "苏霁温",
+  "group": "qiaomu",
+  "role": "江不秋母亲",
+  "summary": "她给女儿取名「不秋」，愿四季都吹不落她。",
+  "quote": "“不秋，要做秋天也吹不落的叶子。”",
+  "birthday": null,
+  "traits": [
+    "温柔",
+    "浪漫"
+  ],
+  "tags": [
+    "温婉"
+  ],
+  "bio": [
+    "江不秋的母亲。在江不秋五岁时因为车祸去世了。她给女儿取名“不秋”，希望她能够拒绝所有季节的萧瑟，留住雨霁后的一片晴暖。但是，自从她去世后，女儿的世界便很少放晴了。"
+  ],
+  "portrait": "portrait-sujiwen-1024.webp",
+  "aliases": [],
+  "deceased": true,
+  "status": "canon",
+  "source": {
+    "kind": "projection",
+    "file": "content/characters.json",
+    "upstream": "js/characters-data.js",
+    "id": "sujiwen"
+  },
+  "graph": {
+    "x": 1030,
+    "y": 110,
+    "r": 19,
+    "glyph": "温",
+    "deceased": true
+  },
+  "reader": {
+    "revealAt": null,
+    "summary": "她给女儿取名「不秋」，愿四季都吹不落她。",
+    "visible": false
+  },
+  "relations": [
+    {
+      "id": "rel-jiangbuqiu-sujiwen-family",
+      "kind": "family",
+      "label": "母女",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "jiangbuqiu",
+        "name": "江不秋"
+      }
+    },
+    {
+      "id": "rel-jiangzhenmo-sujiwen-family",
+      "kind": "family",
+      "label": "夫妻",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "jiangzhenmo",
+        "name": "江枕默"
+      }
+    },
+    {
+      "id": "rel-sujiwen-beicheng-place",
+      "kind": "place",
+      "label": "旧日工作",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "beicheng",
+        "name": "北城"
+      }
+    }
+  ],
+  "events": [],
+  "foreshadowing": []
+}

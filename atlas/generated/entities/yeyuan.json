@@ -1,0 +1,93 @@
+{
+  "id": "yeyuan",
+  "type": "character",
+  "name": "叶渊",
+  "group": "qiaomu",
+  "role": "叶南衡父亲",
+  "summary": "白大褂裹着全家的安稳，也牵着两代人的旧缘。",
+  "quote": "“南衡那孩子，什么事都自己扛。”",
+  "birthday": null,
+  "traits": [
+    "沉稳"
+  ],
+  "tags": [
+    "沉稳"
+  ],
+  "bio": [
+    "叶南衡的父亲。如今是南城人民医院（二级甲等医院）的一名科主任（呼吸与危重症医学科）。",
+    "在北城时，与江不秋的妈妈曾经是同事。是江不秋和叶南衡关系的重要推动之一。"
+  ],
+  "portrait": "portrait-yeyuan-1024.webp",
+  "aliases": [],
+  "deceased": false,
+  "status": "canon",
+  "source": {
+    "kind": "projection",
+    "file": "content/characters.json",
+    "upstream": "js/characters-data.js",
+    "id": "yeyuan"
+  },
+  "graph": {
+    "x": 950,
+    "y": 215,
+    "r": 20,
+    "glyph": "渊"
+  },
+  "reader": {
+    "revealAt": 2,
+    "summary": "叶南衡的父亲；国庆家宴里下厨的人。",
+    "visible": true
+  },
+  "relations": [
+    {
+      "id": "rel-nanheng-yeyuan-family",
+      "kind": "family",
+      "label": "父子",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "nanheng",
+        "name": "叶南衡"
+      }
+    },
+    {
+      "id": "rel-yeyuan-hospital-place",
+      "kind": "place",
+      "label": "任职",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "hospital",
+        "name": "南城人民医院"
+      }
+    },
+    {
+      "id": "rel-yeyuan-beicheng-place",
+      "kind": "place",
+      "label": "旧日工作",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "beicheng",
+        "name": "北城"
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "evt-ch10-dinner-prep",
+      "title": "两家人包饺子",
+      "chapter": 10,
+      "date": "2022-10-01",
+      "place": null
+    },
+    {
+      "id": "evt-ch11-dinner",
+      "title": "多摆一副碗筷的晚饭",
+      "chapter": 11,
+      "date": "2022-10-01",
+      "place": null
+    }
+  ],
+  "foreshadowing": []
+}

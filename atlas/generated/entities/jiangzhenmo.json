@@ -1,0 +1,79 @@
+{
+  "id": "jiangzhenmo",
+  "type": "character",
+  "name": "江枕默",
+  "group": "qiaomu",
+  "role": "江不秋父亲",
+  "summary": "爱在心口难开，枕着思念过长夜。",
+  "quote": "“有些话，说了怕她难过，不说，怕她不懂。”",
+  "birthday": null,
+  "traits": [
+    "重情重义",
+    "少言寡语"
+  ],
+  "tags": [
+    "沉默"
+  ],
+  "bio": [
+    "江不秋的父亲。“枕”是沉默的陪伴；“默”是少言寡语，爱在心口难开的性格。江不秋的清冷与沉默又何尝不是一面映出父亲最深的性格底色的镜子。",
+    "他很爱自己的妻子和女儿，但却有自己难言的苦衷。他始终在女儿看不见的地方，默默枕着思念与愧疚。"
+  ],
+  "portrait": "portrait-jiangzhenmo-1024.webp",
+  "aliases": [],
+  "deceased": false,
+  "status": "canon",
+  "source": {
+    "kind": "projection",
+    "file": "content/characters.json",
+    "upstream": "js/characters-data.js",
+    "id": "jiangzhenmo"
+  },
+  "graph": {
+    "x": 1035,
+    "y": 245,
+    "r": 20,
+    "glyph": "默"
+  },
+  "reader": {
+    "revealAt": null,
+    "summary": "爱在心口难开，枕着思念过长夜。",
+    "visible": false
+  },
+  "relations": [
+    {
+      "id": "rel-jiangbuqiu-jiangzhenmo-family",
+      "kind": "family",
+      "label": "父女",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "jiangbuqiu",
+        "name": "江不秋"
+      }
+    },
+    {
+      "id": "rel-jiangzhenmo-sujiwen-family",
+      "kind": "family",
+      "label": "夫妻",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "sujiwen",
+        "name": "苏霁温"
+      }
+    },
+    {
+      "id": "rel-jiangzhenmo-linxihe-family",
+      "kind": "family",
+      "label": "夫妻",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "linxihe",
+        "name": "林晞和"
+      }
+    }
+  ],
+  "events": [],
+  "foreshadowing": []
+}

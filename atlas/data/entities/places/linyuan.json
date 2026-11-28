@@ -1,0 +1,15 @@
+{
+  "id": "linyuan",
+  "type": "place",
+  "name": "临渊羡鱼",
+  "group": "place",
+  "role": "咖啡店 · 老地方",
+  "icon": "cafe",
+  "aliases": ["临渊"],
+  "summary": "南城新开的咖啡店，主角团的老地方；院子里的梧桐树还没有长过二楼的窗。",
+  "status": "canon",
+  "source": [
+    "content/chapter-01.json#p27-37",
+    "content/characters.json#shenruoqi"
+  ]
+}

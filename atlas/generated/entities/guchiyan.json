@@ -1,0 +1,95 @@
+{
+  "id": "guchiyan",
+  "type": "character",
+  "name": "顾池宴",
+  "group": "qiaomu",
+  "role": "叶南衡母亲",
+  "summary": "絮语温婉，乐观坦荡，是叶南衡永远可以安心停靠的港湾。",
+  "quote": "“慢慢来，我陪着你。”",
+  "birthday": null,
+  "traits": [
+    "温柔",
+    "乐观",
+    "爱唠叨"
+  ],
+  "tags": [
+    "婉和"
+  ],
+  "bio": [
+    "叶南衡的母亲。是南城一中的一名语文老师。是叶南衡口中“极其啰嗦”的人。是一个很温柔的人，又长得十分漂亮，温婉大方，深受学生们的喜爱。是学生们口中“别人的妈妈”。",
+    "她的温柔和乐观深深地影响了叶南衡，使之从容地面对世界。很爱很爱叶南衡。"
+  ],
+  "portrait": "portrait-guchiyan-1024.webp",
+  "aliases": [],
+  "deceased": false,
+  "status": "canon",
+  "source": {
+    "kind": "projection",
+    "file": "content/characters.json",
+    "upstream": "js/characters-data.js",
+    "id": "guchiyan"
+  },
+  "graph": {
+    "x": 820,
+    "y": 170,
+    "r": 20,
+    "glyph": "顾"
+  },
+  "reader": {
+    "revealAt": 1,
+    "summary": "叶南衡的母亲，南城一中的语文老师。",
+    "visible": true
+  },
+  "relations": [
+    {
+      "id": "rel-nanheng-guchiyan-family",
+      "kind": "family",
+      "label": "母子",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "nanheng",
+        "name": "叶南衡"
+      }
+    },
+    {
+      "id": "rel-guchiyan-baiyu-family",
+      "kind": "family",
+      "label": "闺蜜",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "baiyu",
+        "name": "白榆"
+      }
+    },
+    {
+      "id": "rel-guchiyan-nancheng1-place",
+      "kind": "place",
+      "label": "任教",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "nancheng1",
+        "name": "南城一中"
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "evt-ch10-dinner-prep",
+      "title": "两家人包饺子",
+      "chapter": 10,
+      "date": "2022-10-01",
+      "place": null
+    },
+    {
+      "id": "evt-ch11-dinner",
+      "title": "多摆一副碗筷的晚饭",
+      "chapter": 11,
+      "date": "2022-10-01",
+      "place": null
+    }
+  ],
+  "foreshadowing": []
+}

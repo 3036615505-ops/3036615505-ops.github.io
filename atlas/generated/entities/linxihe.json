@@ -1,0 +1,69 @@
+{
+  "id": "linxihe",
+  "type": "character",
+  "name": "林晞和",
+  "group": "qiaomu",
+  "role": "江不秋继母",
+  "summary": "雨霁之后，她把光让给了所有人。",
+  "quote": "“我什么都不求，你好好的就行。”",
+  "birthday": null,
+  "traits": [
+    "善良",
+    "不求回报"
+  ],
+  "tags": [
+    "善良"
+  ],
+  "bio": [
+    "江不秋的继母。江不秋口中“很好很好的人”。她跟江不秋的爸妈是同学，也一直喜欢着江枕默。但是知道他喜欢的是江不秋的母亲后，便选择了退出。",
+    "在江枕默因为苏霁温的死而消沉的时候，主动地走向了他，让他再次振作起来，却从不奢求什么。在她表明了自己曾经喜欢她的心迹之后，江枕默作为一个重情重义的人，最终给了她一个家。",
+    "她也是个很善良的人，对江不秋视如己出。江不秋也知道继母对她很好，只不过，在母亲死后，她的世界就容不下任何人了。"
+  ],
+  "portrait": "portrait-linxihe-1024.webp",
+  "aliases": [],
+  "deceased": false,
+  "status": "canon",
+  "source": {
+    "kind": "projection",
+    "file": "content/characters.json",
+    "upstream": "js/characters-data.js",
+    "id": "linxihe"
+  },
+  "graph": {
+    "x": 1105,
+    "y": 350,
+    "r": 20,
+    "glyph": "和"
+  },
+  "reader": {
+    "revealAt": null,
+    "summary": "雨霁之后，她把光让给了所有人。",
+    "visible": false
+  },
+  "relations": [
+    {
+      "id": "rel-jiangbuqiu-linxihe-family",
+      "kind": "family",
+      "label": "继母女",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "jiangbuqiu",
+        "name": "江不秋"
+      }
+    },
+    {
+      "id": "rel-jiangzhenmo-linxihe-family",
+      "kind": "family",
+      "label": "夫妻",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "jiangzhenmo",
+        "name": "江枕默"
+      }
+    }
+  ],
+  "events": [],
+  "foreshadowing": []
+}

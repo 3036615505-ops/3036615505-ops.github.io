@@ -1,0 +1,144 @@
+{
+  "canvas": {
+    "width": 1200,
+    "height": 860
+  },
+  "nodes": {
+    "nanheng": {
+      "x": 495,
+      "y": 395,
+      "r": 28,
+      "glyph": "南",
+      "primary": true
+    },
+    "linshu": {
+      "x": 340,
+      "y": 455,
+      "r": 26,
+      "glyph": "纾",
+      "primary": true
+    },
+    "jiangbuqiu": {
+      "x": 535,
+      "y": 545,
+      "r": 26,
+      "glyph": "秋",
+      "primary": true
+    },
+    "liyan": {
+      "x": 230,
+      "y": 360,
+      "r": 20,
+      "glyph": "颜"
+    },
+    "ningzunjiu": {
+      "x": 300,
+      "y": 585,
+      "r": 20,
+      "glyph": "樽"
+    },
+    "yangmenghan": {
+      "x": 600,
+      "y": 705,
+      "r": 20,
+      "glyph": "梦"
+    },
+    "baiyuhuan": {
+      "x": 420,
+      "y": 700,
+      "r": 20,
+      "glyph": "欢"
+    },
+    "taoyaoyao": {
+      "x": 835,
+      "y": 520,
+      "r": 20,
+      "glyph": "桃"
+    },
+    "xiaozhuo": {
+      "x": 925,
+      "y": 605,
+      "r": 20,
+      "glyph": "灼"
+    },
+    "shenruoqi": {
+      "x": 790,
+      "y": 390,
+      "r": 22,
+      "glyph": "栖"
+    },
+    "yeyulan": {
+      "x": 735,
+      "y": 625,
+      "r": 20,
+      "glyph": "澜"
+    },
+    "guchiyan": {
+      "x": 820,
+      "y": 170,
+      "r": 20,
+      "glyph": "顾"
+    },
+    "yeyuan": {
+      "x": 950,
+      "y": 215,
+      "r": 20,
+      "glyph": "渊"
+    },
+    "baiyu": {
+      "x": 540,
+      "y": 135,
+      "r": 20,
+      "glyph": "榆"
+    },
+    "linwangshu": {
+      "x": 700,
+      "y": 95,
+      "r": 20,
+      "glyph": "望"
+    },
+    "sujiwen": {
+      "x": 1030,
+      "y": 110,
+      "r": 19,
+      "glyph": "温",
+      "deceased": true
+    },
+    "jiangzhenmo": {
+      "x": 1035,
+      "y": 245,
+      "r": 20,
+      "glyph": "默"
+    },
+    "linxihe": {
+      "x": 1105,
+      "y": 350,
+      "r": 20,
+      "glyph": "和"
+    },
+    "linyuan": {
+      "x": 655,
+      "y": 455,
+      "r": 27,
+      "glyph": "鱼"
+    },
+    "nancheng1": {
+      "x": 180,
+      "y": 205,
+      "r": 24,
+      "glyph": "校"
+    },
+    "hospital": {
+      "x": 1035,
+      "y": 665,
+      "r": 23,
+      "glyph": "医"
+    },
+    "beicheng": {
+      "x": 1130,
+      "y": 745,
+      "r": 18,
+      "glyph": "北"
+    }
+  }
+}

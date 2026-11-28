@@ -1,0 +1,152 @@
+{
+  "id": "jiangbuqiu",
+  "type": "character",
+  "name": "江不秋",
+  "group": "xinlei",
+  "role": "主视角",
+  "summary": "身如不秋草木，曾遇微光，终难忘。",
+  "quote": "“我见过光，就很难再接受黑暗了。”",
+  "birthday": "2007.08.16",
+  "traits": [
+    "偏爱叶南衡",
+    "天生善良",
+    "高一下转入"
+  ],
+  "tags": [
+    "清冷"
+  ],
+  "bio": [
+    "“人天解种不秋草，欲界独为无色花。”不秋取竹之四季常青，冬夏常翠，永不凋零之意。母亲在她很小的时候车祸去世了，父亲再婚后，与父亲的交流渐渐减少。她其实知道无论是父亲还是继母，都对她很好，但她的世界里已经容不下任何人了——除了那个在这之前，在那个雪天闯进她世界里的男孩。母亲死后，她的世界里只有那个男孩了。",
+    "她不喜欢被人可怜，不喜欢跟人亲近，喜欢独来独往。她的美是精致的美，是易碎的美，与林纾的那种漂亮不一样，她的美给人一种难以亲近的高冷的感觉。是四大校花之首。不爱笑，不爱说话。后来在叶南衡等人的引导下渐渐敞开心扉。但不秋最终还是没能不秋。这么温暖的世界，还是没能留住她。"
+  ],
+  "portrait": "portrait-jiangbuqiu-1024.webp",
+  "aliases": [
+    "不秋"
+  ],
+  "deceased": false,
+  "status": "canon",
+  "source": {
+    "kind": "projection",
+    "file": "content/characters.json",
+    "upstream": "js/characters-data.js",
+    "id": "jiangbuqiu"
+  },
+  "graph": {
+    "x": 535,
+    "y": 545,
+    "r": 26,
+    "glyph": "秋",
+    "primary": true
+  },
+  "reader": {
+    "revealAt": null,
+    "summary": "身如不秋草木，曾遇微光，终难忘。",
+    "visible": false
+  },
+  "derived": {
+    "ageAtStoryStart": 15
+  },
+  "relations": [
+    {
+      "id": "rel-jiangbuqiu-jiangzhenmo-family",
+      "kind": "family",
+      "label": "父女",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "jiangzhenmo",
+        "name": "江枕默"
+      }
+    },
+    {
+      "id": "rel-jiangbuqiu-sujiwen-family",
+      "kind": "family",
+      "label": "母女",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "sujiwen",
+        "name": "苏霁温"
+      }
+    },
+    {
+      "id": "rel-jiangbuqiu-linxihe-family",
+      "kind": "family",
+      "label": "继母女",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "linxihe",
+        "name": "林晞和"
+      }
+    },
+    {
+      "id": "rel-nanheng-jiangbuqiu-love",
+      "kind": "love",
+      "label": "相互照亮",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "nanheng",
+        "name": "叶南衡"
+      }
+    },
+    {
+      "id": "rel-linshu-jiangbuqiu-friend",
+      "kind": "friend",
+      "label": "朋友",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "linshu",
+        "name": "林纾"
+      }
+    },
+    {
+      "id": "rel-yeyulan-jiangbuqiu-friend",
+      "kind": "friend",
+      "label": "开解",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "yeyulan",
+        "name": "叶羽澜"
+      }
+    },
+    {
+      "id": "rel-taoyaoyao-jiangbuqiu-mentor",
+      "kind": "mentor",
+      "label": "关照",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "taoyaoyao",
+        "name": "桃夭夭"
+      }
+    },
+    {
+      "id": "rel-jiangbuqiu-linyuan-place",
+      "kind": "place",
+      "label": "常去",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "linyuan",
+        "name": "临渊羡鱼"
+      }
+    },
+    {
+      "id": "rel-jiangbuqiu-nancheng1-place",
+      "kind": "place",
+      "label": "就读",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "nancheng1",
+        "name": "南城一中"
+      }
+    }
+  ],
+  "events": [],
+  "foreshadowing": []
+}

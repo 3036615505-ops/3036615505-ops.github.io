@@ -1,0 +1,1015 @@
+{
+  "generatedAt": "2026-11-28T14:21:44.149Z",
+  "sourceHash": "b83878f8faa2",
+  "meta": {
+    "title": "临渊羡鱼",
+    "subtitle": "人物星图",
+    "storyYear": 2022,
+    "storyStart": "2022-09-01",
+    "storyEnd": "2022-10-01",
+    "place": "南城",
+    "canvas": {
+      "width": 1200,
+      "height": 860
+    },
+    "note": "坐标是构建时冻结的版面坐标，不是地理坐标；新增节点时先改 layout.json，再跑 build。"
+  },
+  "groups": {
+    "xinlei": {
+      "name": "新叶",
+      "color": "#8a9e6c",
+      "order": 1
+    },
+    "qingzhi": {
+      "name": "青枝",
+      "color": "#c4a24e",
+      "order": 2
+    },
+    "qiaomu": {
+      "name": "乔木",
+      "color": "#9e7c4a",
+      "order": 3
+    },
+    "place": {
+      "name": "地点",
+      "color": "#6d4a2e",
+      "order": 4
+    }
+  },
+  "nodes": [
+    {
+      "id": "linshu",
+      "name": "林纾",
+      "type": "character",
+      "group": "xinlei",
+      "role": "主视角",
+      "r": 26,
+      "x": 340,
+      "y": 455,
+      "primary": true,
+      "deceased": false,
+      "glyph": "纾",
+      "portrait": "portrait-linshu-1024.webp",
+      "quote": "“南南，请我喝焦糖玛奇朵！”",
+      "summary": "做他漫长岁月里永不熄灭的光。"
+    },
+    {
+      "id": "nanheng",
+      "name": "叶南衡",
+      "type": "character",
+      "group": "xinlei",
+      "role": "主视角",
+      "r": 28,
+      "x": 495,
+      "y": 395,
+      "primary": true,
+      "deceased": false,
+      "glyph": "南",
+      "portrait": "portrait-nanheng-1024.webp",
+      "quote": "“我一直会在的。”",
+      "summary": "把暖意赠予世间，独自收容所有沉郁。"
+    },
+    {
+      "id": "jiangbuqiu",
+      "name": "江不秋",
+      "type": "character",
+      "group": "xinlei",
+      "role": "主视角",
+      "r": 26,
+      "x": 535,
+      "y": 545,
+      "primary": true,
+      "deceased": false,
+      "glyph": "秋",
+      "portrait": "portrait-jiangbuqiu-1024.webp",
+      "quote": "“我见过光，就很难再接受黑暗了。”",
+      "summary": "身如不秋草木，曾遇微光，终难忘。"
+    },
+    {
+      "id": "liyan",
+      "name": "黎颜",
+      "type": "character",
+      "group": "xinlei",
+      "role": "朋友",
+      "r": 20,
+      "x": 230,
+      "y": 360,
+      "primary": false,
+      "deceased": false,
+      "glyph": "颜",
+      "portrait": "portrait-liyan-1024.webp",
+      "quote": "“别怕，我在这儿。”",
+      "summary": "一身正气，瞧见了委屈就要管到底。"
+    },
+    {
+      "id": "ningzunjiu",
+      "name": "宁樽酒",
+      "type": "character",
+      "group": "xinlei",
+      "role": "朋友",
+      "r": 20,
+      "x": 300,
+      "y": 585,
+      "primary": false,
+      "deceased": false,
+      "glyph": "樽",
+      "portrait": "portrait-ningzunjiu-1024.webp",
+      "quote": "“……我也可以，成为那样的人吗？”",
+      "summary": "把哥哥的影子放在心上，把仰望的人当成方向。"
+    },
+    {
+      "id": "yangmenghan",
+      "name": "杨梦寒",
+      "type": "character",
+      "group": "xinlei",
+      "role": "四大校花",
+      "r": 20,
+      "x": 600,
+      "y": 705,
+      "primary": false,
+      "deceased": false,
+      "glyph": "梦",
+      "portrait": "portrait-yangmenghan-1024.webp",
+      "quote": "“……嗯，我在听。”",
+      "summary": "安静地走进人群，也安静地被光照亮。"
+    },
+    {
+      "id": "baiyuhuan",
+      "name": "白余欢",
+      "type": "character",
+      "group": "xinlei",
+      "role": "朋友",
+      "r": 20,
+      "x": 420,
+      "y": 700,
+      "primary": false,
+      "deceased": false,
+      "glyph": "欢",
+      "portrait": "portrait-baiyuhuan-1024.webp",
+      "quote": "“哈哈哈哈哈哈哈哈哈——”",
+      "summary": "南城第一乐子人。"
+    },
+    {
+      "id": "taoyaoyao",
+      "name": "桃夭夭",
+      "type": "character",
+      "group": "qingzhi",
+      "role": "数学老师",
+      "r": 20,
+      "x": 835,
+      "y": 520,
+      "primary": false,
+      "deceased": false,
+      "glyph": "桃",
+      "portrait": "portrait-taoyaoyao-1024.webp",
+      "quote": "“肖灼，你为什么一直躲着我？”",
+      "summary": "只有靠近她的人才懂得她心中的炽热。"
+    },
+    {
+      "id": "xiaozhuo",
+      "name": "肖灼",
+      "type": "character",
+      "group": "qingzhi",
+      "role": "体育老师",
+      "r": 20,
+      "x": 925,
+      "y": 605,
+      "primary": false,
+      "deceased": false,
+      "glyph": "灼",
+      "portrait": "portrait-xiaozhuo-1024.webp",
+      "quote": "“我……我就是，不放心你。”",
+      "summary": "一身腱子肉，揣着一颗不敢开口的心。"
+    },
+    {
+      "id": "shenruoqi",
+      "name": "沈若栖",
+      "type": "character",
+      "group": "qingzhi",
+      "role": "「临渊羡鱼」店主",
+      "r": 22,
+      "x": 790,
+      "y": 390,
+      "primary": false,
+      "deceased": false,
+      "glyph": "栖",
+      "portrait": "portrait-shenruoqi-1024.webp",
+      "quote": "“我又游向哪里呢？”",
+      "summary": "她把店开在水边，等每一条游累了的鱼靠岸。"
+    },
+    {
+      "id": "yeyulan",
+      "name": "叶羽澜",
+      "type": "character",
+      "group": "qingzhi",
+      "role": "叶南衡表姐",
+      "r": 20,
+      "x": 735,
+      "y": 625,
+      "primary": false,
+      "deceased": false,
+      "glyph": "澜",
+      "portrait": "portrait-yeyulan-1024.webp",
+      "quote": "“走啦，小笨蛋。”",
+      "summary": "世上最懂南衡的人，潇洒地来，又潇洒地走。"
+    },
+    {
+      "id": "guchiyan",
+      "name": "顾池宴",
+      "type": "character",
+      "group": "qiaomu",
+      "role": "叶南衡母亲",
+      "r": 20,
+      "x": 820,
+      "y": 170,
+      "primary": false,
+      "deceased": false,
+      "glyph": "顾",
+      "portrait": "portrait-guchiyan-1024.webp",
+      "quote": "“慢慢来，我陪着你。”",
+      "summary": "絮语温婉，乐观坦荡，是叶南衡永远可以安心停靠的港湾。"
+    },
+    {
+      "id": "yeyuan",
+      "name": "叶渊",
+      "type": "character",
+      "group": "qiaomu",
+      "role": "叶南衡父亲",
+      "r": 20,
+      "x": 950,
+      "y": 215,
+      "primary": false,
+      "deceased": false,
+      "glyph": "渊",
+      "portrait": "portrait-yeyuan-1024.webp",
+      "quote": "“南衡那孩子，什么事都自己扛。”",
+      "summary": "白大褂裹着全家的安稳，也牵着两代人的旧缘。"
+    },
+    {
+      "id": "baiyu",
+      "name": "白榆",
+      "type": "character",
+      "group": "qiaomu",
+      "role": "林纾母亲",
+      "r": 20,
+      "x": 540,
+      "y": 135,
+      "primary": false,
+      "deceased": false,
+      "glyph": "榆",
+      "portrait": "portrait-baiyu-1024.webp",
+      "quote": "“毕业快乐，同学们。”",
+      "summary": "给青春留白，让风推着这群少年向上生长吧。"
+    },
+    {
+      "id": "linwangshu",
+      "name": "林望舒",
+      "type": "character",
+      "group": "qiaomu",
+      "role": "林纾父亲",
+      "r": 20,
+      "x": 700,
+      "y": 95,
+      "primary": false,
+      "deceased": false,
+      "glyph": "望",
+      "portrait": "portrait-linwangshu-1024.webp",
+      "quote": "“等爸爸回来，带你看星星。”",
+      "summary": "把星星画给女儿，把奔忙留给自己。"
+    },
+    {
+      "id": "sujiwen",
+      "name": "苏霁温",
+      "type": "character",
+      "group": "qiaomu",
+      "role": "江不秋母亲",
+      "r": 19,
+      "x": 1030,
+      "y": 110,
+      "primary": false,
+      "deceased": true,
+      "glyph": "温",
+      "portrait": "portrait-sujiwen-1024.webp",
+      "quote": "“不秋，要做秋天也吹不落的叶子。”",
+      "summary": "她给女儿取名「不秋」，愿四季都吹不落她。"
+    },
+    {
+      "id": "jiangzhenmo",
+      "name": "江枕默",
+      "type": "character",
+      "group": "qiaomu",
+      "role": "江不秋父亲",
+      "r": 20,
+      "x": 1035,
+      "y": 245,
+      "primary": false,
+      "deceased": false,
+      "glyph": "默",
+      "portrait": "portrait-jiangzhenmo-1024.webp",
+      "quote": "“有些话，说了怕她难过，不说，怕她不懂。”",
+      "summary": "爱在心口难开，枕着思念过长夜。"
+    },
+    {
+      "id": "linxihe",
+      "name": "林晞和",
+      "type": "character",
+      "group": "qiaomu",
+      "role": "江不秋继母",
+      "r": 20,
+      "x": 1105,
+      "y": 350,
+      "primary": false,
+      "deceased": false,
+      "glyph": "和",
+      "portrait": "portrait-linxihe-1024.webp",
+      "quote": "“我什么都不求，你好好的就行。”",
+      "summary": "雨霁之后，她把光让给了所有人。"
+    },
+    {
+      "id": "beicheng",
+      "name": "北城",
+      "type": "place",
+      "group": "place",
+      "role": "旧事之地",
+      "r": 18,
+      "x": 1130,
+      "y": 745,
+      "primary": false,
+      "deceased": false,
+      "glyph": "北",
+      "portrait": null,
+      "quote": "",
+      "summary": "叶渊与苏霁温曾经共事的地方，旧事的源头。"
+    },
+    {
+      "id": "hospital",
+      "name": "南城人民医院",
+      "type": "place",
+      "group": "place",
+      "role": "医院",
+      "r": 23,
+      "x": 1035,
+      "y": 665,
+      "primary": false,
+      "deceased": false,
+      "glyph": "医",
+      "portrait": null,
+      "quote": "",
+      "summary": "二级甲等医院，叶渊在这里任呼吸与危重症医学科主任。"
+    },
+    {
+      "id": "linyuan",
+      "name": "临渊羡鱼",
+      "type": "place",
+      "group": "place",
+      "role": "咖啡店 · 老地方",
+      "r": 27,
+      "x": 655,
+      "y": 455,
+      "primary": false,
+      "deceased": false,
+      "glyph": "鱼",
+      "portrait": null,
+      "quote": "",
+      "summary": "南城新开的咖啡店，主角团的老地方；院子里的梧桐树还没有长过二楼的窗。"
+    },
+    {
+      "id": "nancheng1",
+      "name": "南城一中",
+      "type": "place",
+      "group": "place",
+      "role": "学校",
+      "r": 24,
+      "x": 180,
+      "y": 205,
+      "primary": false,
+      "deceased": false,
+      "glyph": "校",
+      "portrait": null,
+      "quote": "",
+      "summary": "故事的主要校园，高一（2）班所在；白榆任班主任，顾池宴、桃夭夭、肖灼在此任教。"
+    }
+  ],
+  "edges": [
+    {
+      "id": "rel-nanheng-guchiyan-family",
+      "a": "nanheng",
+      "b": "guchiyan",
+      "kind": "family",
+      "label": "母子",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": 1,
+      "readerLabel": "母子",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-nanheng-yeyuan-family",
+      "a": "nanheng",
+      "b": "yeyuan",
+      "kind": "family",
+      "label": "父子",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": 2,
+      "readerLabel": "父子",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-linshu-baiyu-family",
+      "a": "linshu",
+      "b": "baiyu",
+      "kind": "family",
+      "label": "母女",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": 1,
+      "readerLabel": "母女",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-linshu-linwangshu-family",
+      "a": "linshu",
+      "b": "linwangshu",
+      "kind": "family",
+      "label": "父女",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": 11,
+      "readerLabel": "父女",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-jiangbuqiu-jiangzhenmo-family",
+      "a": "jiangbuqiu",
+      "b": "jiangzhenmo",
+      "kind": "family",
+      "label": "父女",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": null,
+      "readerLabel": "父女",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-jiangbuqiu-sujiwen-family",
+      "a": "jiangbuqiu",
+      "b": "sujiwen",
+      "kind": "family",
+      "label": "母女",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": null,
+      "readerLabel": "母女",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-jiangbuqiu-linxihe-family",
+      "a": "jiangbuqiu",
+      "b": "linxihe",
+      "kind": "family",
+      "label": "继母女",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": null,
+      "readerLabel": "继母女",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-jiangzhenmo-sujiwen-family",
+      "a": "jiangzhenmo",
+      "b": "sujiwen",
+      "kind": "family",
+      "label": "夫妻",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": null,
+      "readerLabel": "夫妻",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-jiangzhenmo-linxihe-family",
+      "a": "jiangzhenmo",
+      "b": "linxihe",
+      "kind": "family",
+      "label": "夫妻",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": null,
+      "readerLabel": "夫妻",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-guchiyan-baiyu-family",
+      "a": "guchiyan",
+      "b": "baiyu",
+      "kind": "family",
+      "label": "闺蜜",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "note": "顾池宴与白榆是多年闺蜜（双方小传）。",
+      "revealAt": 1,
+      "readerLabel": "多年好友",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-nanheng-yeyulan-family",
+      "a": "nanheng",
+      "b": "yeyulan",
+      "kind": "family",
+      "label": "表姐弟",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": null,
+      "readerLabel": "表姐弟",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-nanheng-linshu-love",
+      "a": "nanheng",
+      "b": "linshu",
+      "kind": "love",
+      "label": "青梅竹马",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": 1,
+      "readerLabel": "青梅竹马",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-nanheng-jiangbuqiu-love",
+      "a": "nanheng",
+      "b": "jiangbuqiu",
+      "kind": "love",
+      "label": "相互照亮",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": null,
+      "readerLabel": "相互照亮",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-ningzunjiu-liyan-love",
+      "a": "ningzunjiu",
+      "b": "liyan",
+      "kind": "love",
+      "label": "暗恋",
+      "directed": true,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "note": "宁樽酒小学时被黎颜挺身保护，此后暗恋；黎颜并不记得。",
+      "revealAt": 6,
+      "readerLabel": "在意",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-baiyuhuan-yangmenghan-love",
+      "a": "baiyuhuan",
+      "b": "yangmenghan",
+      "kind": "love",
+      "label": "喜欢",
+      "directed": true,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": 9,
+      "readerLabel": "在意",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-liyan-nanheng-love",
+      "a": "liyan",
+      "b": "nanheng",
+      "kind": "love",
+      "label": "后来喜欢",
+      "directed": true,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "note": "黎颜小传：一次次经历后发现叶南衡的温柔，渐渐喜欢上他。",
+      "revealAt": 5,
+      "readerLabel": "后来喜欢",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-xiaozhuo-taoyaoyao-love",
+      "a": "xiaozhuo",
+      "b": "taoyaoyao",
+      "kind": "love",
+      "label": "暗恋",
+      "directed": true,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": null,
+      "readerLabel": "暗恋",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-nanheng-baiyuhuan-friend",
+      "a": "nanheng",
+      "b": "baiyuhuan",
+      "kind": "friend",
+      "label": "朋友",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": 2,
+      "readerLabel": "朋友",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-nanheng-ningzunjiu-friend",
+      "a": "nanheng",
+      "b": "ningzunjiu",
+      "kind": "friend",
+      "label": "仰慕",
+      "directed": true,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": 3,
+      "readerLabel": "崇拜",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-linshu-jiangbuqiu-friend",
+      "a": "linshu",
+      "b": "jiangbuqiu",
+      "kind": "friend",
+      "label": "朋友",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": null,
+      "readerLabel": "朋友",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-liyan-yangmenghan-friend",
+      "a": "liyan",
+      "b": "yangmenghan",
+      "kind": "friend",
+      "label": "同班",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": 5,
+      "readerLabel": "同班",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-yeyulan-jiangbuqiu-friend",
+      "a": "yeyulan",
+      "b": "jiangbuqiu",
+      "kind": "friend",
+      "label": "开解",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "note": "叶羽澜小传：回家做手术期间见过江不秋、林纾，并告诉她们自己的感受。",
+      "revealAt": null,
+      "readerLabel": "开解",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-baiyu-nanheng-mentor",
+      "a": "baiyu",
+      "b": "nanheng",
+      "kind": "mentor",
+      "label": "班主任",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": 1,
+      "readerLabel": "班主任",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-taoyaoyao-nanheng-mentor",
+      "a": "taoyaoyao",
+      "b": "nanheng",
+      "kind": "mentor",
+      "label": "师生",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": null,
+      "readerLabel": "师生",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-taoyaoyao-jiangbuqiu-mentor",
+      "a": "taoyaoyao",
+      "b": "jiangbuqiu",
+      "kind": "mentor",
+      "label": "关照",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": null,
+      "readerLabel": "关照",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-xiaozhuo-nanheng-mentor",
+      "a": "xiaozhuo",
+      "b": "nanheng",
+      "kind": "mentor",
+      "label": "师生",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json"
+      ],
+      "revealAt": 3,
+      "readerLabel": "师生",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-shenruoqi-linyuan-place",
+      "a": "shenruoqi",
+      "b": "linyuan",
+      "kind": "place",
+      "label": "店主",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ],
+      "revealAt": null,
+      "readerLabel": "店主",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-nanheng-linyuan-place",
+      "a": "nanheng",
+      "b": "linyuan",
+      "kind": "place",
+      "label": "常去",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ],
+      "revealAt": 1,
+      "readerLabel": "常去",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-linshu-linyuan-place",
+      "a": "linshu",
+      "b": "linyuan",
+      "kind": "place",
+      "label": "常去",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ],
+      "revealAt": 1,
+      "readerLabel": "常去",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-jiangbuqiu-linyuan-place",
+      "a": "jiangbuqiu",
+      "b": "linyuan",
+      "kind": "place",
+      "label": "常去",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ],
+      "revealAt": null,
+      "readerLabel": "常去",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-nanheng-nancheng1-place",
+      "a": "nanheng",
+      "b": "nancheng1",
+      "kind": "place",
+      "label": "就读",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ],
+      "revealAt": 1,
+      "readerLabel": "就读",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-linshu-nancheng1-place",
+      "a": "linshu",
+      "b": "nancheng1",
+      "kind": "place",
+      "label": "就读",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ],
+      "revealAt": 1,
+      "readerLabel": "就读",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-jiangbuqiu-nancheng1-place",
+      "a": "jiangbuqiu",
+      "b": "nancheng1",
+      "kind": "place",
+      "label": "就读",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ],
+      "revealAt": null,
+      "readerLabel": "就读",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-baiyu-nancheng1-place",
+      "a": "baiyu",
+      "b": "nancheng1",
+      "kind": "place",
+      "label": "任教",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ],
+      "revealAt": 1,
+      "readerLabel": "任教",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-guchiyan-nancheng1-place",
+      "a": "guchiyan",
+      "b": "nancheng1",
+      "kind": "place",
+      "label": "任教",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ],
+      "revealAt": 1,
+      "readerLabel": "任教",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-taoyaoyao-nancheng1-place",
+      "a": "taoyaoyao",
+      "b": "nancheng1",
+      "kind": "place",
+      "label": "任教",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ],
+      "revealAt": null,
+      "readerLabel": "任教",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-xiaozhuo-nancheng1-place",
+      "a": "xiaozhuo",
+      "b": "nancheng1",
+      "kind": "place",
+      "label": "任教",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ],
+      "revealAt": 3,
+      "readerLabel": "任教",
+      "readerVisible": true
+    },
+    {
+      "id": "rel-yeyuan-hospital-place",
+      "a": "yeyuan",
+      "b": "hospital",
+      "kind": "place",
+      "label": "任职",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ],
+      "revealAt": null,
+      "readerLabel": "任职",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-yeyuan-beicheng-place",
+      "a": "yeyuan",
+      "b": "beicheng",
+      "kind": "place",
+      "label": "旧日工作",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ],
+      "note": "叶渊小传：在北城时与江不秋的妈妈曾是同事。",
+      "revealAt": null,
+      "readerLabel": "旧日工作",
+      "readerVisible": false
+    },
+    {
+      "id": "rel-sujiwen-beicheng-place",
+      "a": "sujiwen",
+      "b": "beicheng",
+      "kind": "place",
+      "label": "旧日工作",
+      "directed": false,
+      "status": "canon",
+      "evidence": [
+        "content/characters.json",
+        "content/chapter-01.json"
+      ],
+      "note": "依据叶渊小传“在北城时与江不秋的妈妈曾是同事”推得苏霁温也在北城工作。",
+      "revealAt": null,
+      "readerLabel": "旧日工作",
+      "readerVisible": false
+    }
+  ]
+}

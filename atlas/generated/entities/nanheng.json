@@ -1,0 +1,333 @@
+{
+  "id": "nanheng",
+  "type": "character",
+  "name": "叶南衡",
+  "group": "xinlei",
+  "role": "主视角",
+  "summary": "把暖意赠予世间，独自收容所有沉郁。",
+  "quote": "“我一直会在的。”",
+  "birthday": "2006.11.18",
+  "traits": [
+    "INFJ",
+    "温柔",
+    "内耗"
+  ],
+  "tags": [
+    "温柔"
+  ],
+  "bio": [
+    "叶南衡长得很漂亮，和妈妈顾池宴一样漂亮。他是林纾口中“世界上最温柔的人”；是江不秋孤独年少里唯一不需要她开口索取就自动照进来的光；是宁樽酒最崇拜的人，虽然他自己从不觉得自己有什么值得被崇拜的地方；也是全校都认识的人。",
+    "他从小就很懂事，天天笑嘻嘻的，却从来不愿意告诉别人自己的心事。大家都说他是个大笨蛋——明明自己也有不开心的时候，却从来不说，只顾着让身边的人开心。他对每一个人都温柔，因为他不希望别人难过，他不想让别人经历那些孤单和沉默，所以他把所有的暖意都给了外面，把所有的情绪都吞进了自己肚子里。",
+    "他也是一个十分内耗的人。在深夜，只有他自己一个人的时候，他会莫名其妙地睡不着，他并不难过，但也并不开心，他只是会哭，也许不是因为悲伤，也许只是因为太累了，扮演一个永远阳光的人是一件很累的事。他从来不告诉任何人这件事，第二天太阳升起，他还是那个笑嘻嘻的叶南衡，还是那个全校都认识的、温柔的、懂事的、从来不愿意让别人替他担心的——大笨蛋。"
+  ],
+  "portrait": "portrait-nanheng-1024.webp",
+  "aliases": [
+    "南南",
+    "叶南衡同学"
+  ],
+  "deceased": false,
+  "status": "canon",
+  "source": {
+    "kind": "projection",
+    "file": "content/characters.json",
+    "upstream": "js/characters-data.js",
+    "id": "nanheng"
+  },
+  "graph": {
+    "x": 495,
+    "y": 395,
+    "r": 28,
+    "glyph": "南",
+    "primary": true
+  },
+  "reader": {
+    "revealAt": 1,
+    "summary": "高一（2）班学生，林纾的青梅竹马；总把暖意给别人。",
+    "visible": true
+  },
+  "derived": {
+    "ageAtStoryStart": 15
+  },
+  "relations": [
+    {
+      "id": "rel-nanheng-guchiyan-family",
+      "kind": "family",
+      "label": "母子",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "guchiyan",
+        "name": "顾池宴"
+      }
+    },
+    {
+      "id": "rel-nanheng-yeyuan-family",
+      "kind": "family",
+      "label": "父子",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "yeyuan",
+        "name": "叶渊"
+      }
+    },
+    {
+      "id": "rel-nanheng-yeyulan-family",
+      "kind": "family",
+      "label": "表姐弟",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "yeyulan",
+        "name": "叶羽澜"
+      }
+    },
+    {
+      "id": "rel-nanheng-linshu-love",
+      "kind": "love",
+      "label": "青梅竹马",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "linshu",
+        "name": "林纾"
+      }
+    },
+    {
+      "id": "rel-nanheng-jiangbuqiu-love",
+      "kind": "love",
+      "label": "相互照亮",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "jiangbuqiu",
+        "name": "江不秋"
+      }
+    },
+    {
+      "id": "rel-liyan-nanheng-love",
+      "kind": "love",
+      "label": "后来喜欢",
+      "directed": true,
+      "direction": "in",
+      "other": {
+        "id": "liyan",
+        "name": "黎颜"
+      }
+    },
+    {
+      "id": "rel-nanheng-baiyuhuan-friend",
+      "kind": "friend",
+      "label": "朋友",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "baiyuhuan",
+        "name": "白余欢"
+      }
+    },
+    {
+      "id": "rel-nanheng-ningzunjiu-friend",
+      "kind": "friend",
+      "label": "仰慕",
+      "directed": true,
+      "direction": "out",
+      "other": {
+        "id": "ningzunjiu",
+        "name": "宁樽酒"
+      }
+    },
+    {
+      "id": "rel-baiyu-nanheng-mentor",
+      "kind": "mentor",
+      "label": "班主任",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "baiyu",
+        "name": "白榆"
+      }
+    },
+    {
+      "id": "rel-taoyaoyao-nanheng-mentor",
+      "kind": "mentor",
+      "label": "师生",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "taoyaoyao",
+        "name": "桃夭夭"
+      }
+    },
+    {
+      "id": "rel-xiaozhuo-nanheng-mentor",
+      "kind": "mentor",
+      "label": "师生",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "xiaozhuo",
+        "name": "肖灼"
+      }
+    },
+    {
+      "id": "rel-nanheng-linyuan-place",
+      "kind": "place",
+      "label": "常去",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "linyuan",
+        "name": "临渊羡鱼"
+      }
+    },
+    {
+      "id": "rel-nanheng-nancheng1-place",
+      "kind": "place",
+      "label": "就读",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "nancheng1",
+        "name": "南城一中"
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "evt-ch01-first-day",
+      "title": "高一开学，分班名单前",
+      "chapter": 1,
+      "date": "2022-09-01",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch01-cafe-first",
+      "title": "第一次走进临渊羡鱼",
+      "chapter": 1,
+      "date": "2022-09-17",
+      "place": "linyuan"
+    },
+    {
+      "id": "evt-ch02-seat-change",
+      "title": "白榆重新排座位",
+      "chapter": 2,
+      "date": "2022-09-19",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch03-english-class",
+      "title": "英语课点名与读课文",
+      "chapter": 3,
+      "date": null,
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch03-pe-help",
+      "title": "体育课替宁樽酒解围",
+      "chapter": 3,
+      "date": null,
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch04-afterschool",
+      "title": "放学同路与家长会警告",
+      "chapter": 4,
+      "date": null,
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch05-board-start",
+      "title": "板报分工与越界两指",
+      "chapter": 5,
+      "date": "2022-09-20",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch06-paint-return",
+      "title": "颜料归还与黎颜退线",
+      "chapter": 6,
+      "date": "2022-09-20",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch07-result",
+      "title": "板报评比：二班第一",
+      "chapter": 7,
+      "date": "2022-09-26",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch07-cafe",
+      "title": "临渊羡鱼庆祝与兑现承诺",
+      "chapter": 7,
+      "date": "2022-09-26",
+      "place": "linyuan"
+    },
+    {
+      "id": "evt-ch08-last-day",
+      "title": "国庆前最后一天与捡到钢笔",
+      "chapter": 8,
+      "date": "2022-09-30",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch09-pen-return",
+      "title": "杨梦寒找回外婆的钢笔",
+      "chapter": 9,
+      "date": "2022-09-30",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch09-walk-home",
+      "title": "林纾约国庆补数学",
+      "chapter": 9,
+      "date": "2022-09-30",
+      "place": null
+    },
+    {
+      "id": "evt-ch10-dinner-prep",
+      "title": "两家人包饺子",
+      "chapter": 10,
+      "date": "2022-10-01",
+      "place": null
+    },
+    {
+      "id": "evt-ch11-dinner",
+      "title": "多摆一副碗筷的晚饭",
+      "chapter": 11,
+      "date": "2022-10-01",
+      "place": null
+    }
+  ],
+  "foreshadowing": [
+    {
+      "id": "fs-cafe-promise",
+      "title": "叶南衡答应下次请林纾喝咖啡",
+      "status": "paid",
+      "plantedIn": 1,
+      "payoffIn": 7
+    },
+    {
+      "id": "fs-parent-meeting",
+      "title": "期中考试后的家长会",
+      "status": "open",
+      "plantedIn": 4,
+      "payoffIn": null
+    },
+    {
+      "id": "fs-extra-price",
+      "title": "林纾的“另外的价钱”",
+      "status": "open",
+      "plantedIn": 4,
+      "payoffIn": null
+    },
+    {
+      "id": "fs-math-tutoring",
+      "title": "林纾要给叶南衡补数学",
+      "status": "open",
+      "plantedIn": 11,
+      "payoffIn": null
+    }
+  ]
+}

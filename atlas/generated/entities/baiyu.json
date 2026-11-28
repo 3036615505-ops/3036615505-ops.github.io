@@ -1,0 +1,162 @@
+{
+  "id": "baiyu",
+  "type": "character",
+  "name": "白榆",
+  "group": "qiaomu",
+  "role": "林纾母亲",
+  "summary": "给青春留白，让风推着这群少年向上生长吧。",
+  "quote": "“毕业快乐，同学们。”",
+  "birthday": null,
+  "traits": [
+    "有气质",
+    "疼孩子"
+  ],
+  "tags": [
+    "分寸"
+  ],
+  "bio": [
+    "林纾的母亲。是一个很有气质的人。跟顾池宴是多年闺蜜。是南城一中的一位英语老师，同时也是林纾和叶南衡的班主任。",
+    "十分爱林纾，同时也十分喜欢叶南衡，早就将叶南衡视为自己的女婿了。"
+  ],
+  "portrait": "portrait-baiyu-1024.webp",
+  "aliases": [],
+  "deceased": false,
+  "status": "canon",
+  "source": {
+    "kind": "projection",
+    "file": "content/characters.json",
+    "upstream": "js/characters-data.js",
+    "id": "baiyu"
+  },
+  "graph": {
+    "x": 540,
+    "y": 135,
+    "r": 20,
+    "glyph": "榆"
+  },
+  "reader": {
+    "revealAt": 1,
+    "summary": "林纾的母亲，南城一中的英语老师，也是高一二班的班主任。",
+    "visible": true
+  },
+  "relations": [
+    {
+      "id": "rel-linshu-baiyu-family",
+      "kind": "family",
+      "label": "母女",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "linshu",
+        "name": "林纾"
+      }
+    },
+    {
+      "id": "rel-guchiyan-baiyu-family",
+      "kind": "family",
+      "label": "闺蜜",
+      "directed": false,
+      "direction": "in",
+      "other": {
+        "id": "guchiyan",
+        "name": "顾池宴"
+      }
+    },
+    {
+      "id": "rel-baiyu-nanheng-mentor",
+      "kind": "mentor",
+      "label": "班主任",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "nanheng",
+        "name": "叶南衡"
+      }
+    },
+    {
+      "id": "rel-baiyu-nancheng1-place",
+      "kind": "place",
+      "label": "任教",
+      "directed": false,
+      "direction": "out",
+      "other": {
+        "id": "nancheng1",
+        "name": "南城一中"
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "evt-ch02-seat-change",
+      "title": "白榆重新排座位",
+      "chapter": 2,
+      "date": "2022-09-19",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch03-english-class",
+      "title": "英语课点名与读课文",
+      "chapter": 3,
+      "date": null,
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch05-board-start",
+      "title": "板报分工与越界两指",
+      "chapter": 5,
+      "date": "2022-09-20",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch08-last-day",
+      "title": "国庆前最后一天与捡到钢笔",
+      "chapter": 8,
+      "date": "2022-09-30",
+      "place": "nancheng1"
+    },
+    {
+      "id": "evt-ch10-dinner-prep",
+      "title": "两家人包饺子",
+      "chapter": 10,
+      "date": "2022-10-01",
+      "place": null
+    },
+    {
+      "id": "evt-ch11-dinner",
+      "title": "多摆一副碗筷的晚饭",
+      "chapter": 11,
+      "date": "2022-10-01",
+      "place": null
+    }
+  ],
+  "foreshadowing": [
+    {
+      "id": "fs-parent-meeting",
+      "title": "期中考试后的家长会",
+      "status": "open",
+      "plantedIn": 4,
+      "payoffIn": null
+    },
+    {
+      "id": "fs-rocket-cup",
+      "title": "白榆的航天马克杯与保温杯",
+      "status": "paid",
+      "plantedIn": 2,
+      "payoffIn": 10
+    },
+    {
+      "id": "fs-linwangshu-return",
+      "title": "林望舒“快了快了”的归期",
+      "status": "open",
+      "plantedIn": 11,
+      "payoffIn": null
+    },
+    {
+      "id": "fs-extra-bowl",
+      "title": "给林望舒多摆的一副碗筷",
+      "status": "open",
+      "plantedIn": 11,
+      "payoffIn": null
+    }
+  ]
+}
