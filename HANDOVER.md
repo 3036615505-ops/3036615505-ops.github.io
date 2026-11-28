@@ -17,8 +17,8 @@
 | 项 | 值 |
 |---|---|
 | 线上 | <https://zephyrw.site>（GitHub Pages，push 即发布） |
-| 站点资源版本 | `?v=157`（全站 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
-| SW 缓存名 | `linyuan-v102`（逐版记录在 `docs/SW-HISTORY.md`） |
+| 站点资源版本 | `?v=158`（全站 HTML 引用统一；楷体子集另有 `?f=` 缓存键） |
+| SW 缓存名 | `linyuan-v103`（逐版记录在 `docs/SW-HISTORY.md`） |
 | 内容契约 | `content/*.json`（manifest + 11 章 + 18 人）是 Android 原生版的数据源；由 `tools/gen-content.mjs` 从页面/数据源派生，`tools/check-content.mjs` 逐字守卫；**不进 PRECACHE、不带 `?v=`、不被任何页面引用**，改它既不升 `?v=` 也不升 `CACHE` |
 | 阅读器模块 | dom 57 行 · flags 71 · store 328 · engine 531 · ui 3873 · 入口 30（行数由 `tools/compact-comments.py` 压过注释，只当量级看） |
 | 样式 | `css/style.css` 5580 行（4 套主题令牌；文末「v10 · 2026-11-25 UI 改版」一层是平板双栏与各页改版，其后「v11 · 自由选句」一层是选区工具条与底纹，全部写在旧规则之后靠层叠覆盖） |
@@ -161,7 +161,7 @@ git push -u origin wip/mac-键盘
 git config core.hooksPath .githooks   # 没配则本地九项校验不跑，只剩 CI 兜底
 ```
 
-**版本号现状**：`?v=157`（2026-11-25）。谁改谁 bump，`?v=` 与改动一起提交，不要攒——
+**版本号现状**：`?v=158`（2026-12-01）。谁改谁 bump，`?v=` 与改动一起提交，不要攒——
 攒多了中间任何一次 push 都可能带着别人的旧缓存。
 
 ## 两类改动，两种流程
